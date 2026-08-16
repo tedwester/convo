@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 
 data class SearchPreferences(
     /** When true, the composer search toggle stays on after sending a message. */
-    val persistAfterPrompt: Boolean = false,
+    val persistAfterPrompt: Boolean = true,
 )
 
 class SearchPreferencesStore(context: Context) {
@@ -14,7 +14,7 @@ class SearchPreferencesStore(context: Context) {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun load(): SearchPreferences = SearchPreferences(
-        persistAfterPrompt = prefs.getBoolean(KEY_PERSIST, false),
+        persistAfterPrompt = prefs.getBoolean(KEY_PERSIST, true),
     )
 
     fun save(value: SearchPreferences) {

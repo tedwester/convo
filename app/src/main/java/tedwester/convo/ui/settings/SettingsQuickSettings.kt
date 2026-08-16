@@ -9,11 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -52,7 +49,6 @@ import kotlinx.coroutines.launch
 import tedwester.convo.features.chat.data.QuickSettingsConfig
 import tedwester.convo.features.chat.model.QuickSettingDescriptor
 import tedwester.convo.ui.components.ConvoBottomSheet
-import tedwester.convo.ui.components.ConvoSheetHeader
 import tedwester.convo.ui.components.rememberConvoSheetController
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.ConvoFieldTokens
@@ -372,59 +368,40 @@ internal fun QuickSettingsAddPickerSheet(
         controller = sheet,
         onDismissRequest = onDismiss,
         useDialog = true,
-        sheetHeightFraction = 0.75f,
+        contentScrollable = true,
         contentHorizontalPadding = 20.dp,
-        contentVerticalPadding = 8.dp,
+        contentVerticalPadding = 10.dp,
         consumeSheetClicks = false,
+        title = "Add to dock",
+        titleBottomSpacing = 8.dp,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .fillMaxHeight(),
-        ) {
-            ConvoSheetHeader(
-                title = "Add to dock",
-                onClose = { sheet.dismiss(scope, onDismiss) },
-            )
+        Text(
+            text = "Choose a shortcut for the dock on your chat list.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+        )
 
-            Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
+        if (remaining.isEmpty()) {
             Text(
-                text = "Choose a shortcut for the dock on your chat list.",
+                text = "Everything available is already in the dock.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(vertical = 8.dp),
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                if (remaining.isEmpty()) {
-                    Text(
-                        text = "Everything available is already in the dock.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(vertical = 8.dp),
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                remaining.forEach { descriptor ->
+                    QuickSettingPickerRow(
+                        descriptor = descriptor,
+                        onClick = { addAndDismiss(descriptor.id) },
                     )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        remaining.forEach { descriptor ->
-                            QuickSettingPickerRow(
-                                descriptor = descriptor,
-                                onClick = { addAndDismiss(descriptor.id) },
-                            )
-                        }
-                    }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
