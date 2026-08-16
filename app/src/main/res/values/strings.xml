@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Convo</string>
+    <string name="notif_generating_title">Generating reply…</string>
+    <string name="notif_generating_title_multi">Generating %1$d replies…</string>
+    <string name="notif_generating_text">Convo is working in the background</string>
+    <string name="notif_ready_title">Reply ready</string>
+    <string name="notif_ready_text">%1$s finished generating</string>
+</resources>
