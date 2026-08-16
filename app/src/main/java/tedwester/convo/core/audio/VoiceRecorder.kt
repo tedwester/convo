@@ -5,10 +5,6 @@ import android.media.MediaRecorder
 import android.os.Build
 import java.io.File
 
-/**
- * Thin wrapper around [MediaRecorder] that captures AAC/M4A from the mic and
- * exposes live amplitude samples for waveform UI.
- */
 class VoiceRecorder(private val context: Context) {
 
     data class Recording(

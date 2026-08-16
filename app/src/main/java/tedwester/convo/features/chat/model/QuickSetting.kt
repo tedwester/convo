@@ -5,11 +5,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.painter.Painter
 import tedwester.convo.ui.icons.ConvoIcons
 
-/**
- * Stable string IDs for every setting that can be pinned to the chat-list
- * quick-settings dock. New settings should add an [id] here and register a
- * descriptor in [availableQuickSettings].
- */
 object QuickSettingIds {
     const val NEW_CHAT = "new_chat"
     const val BIOMETRIC_LOCK = "biometric_lock"
@@ -20,26 +15,17 @@ object QuickSettingIds {
     const val CREDITS = "credits"
 }
 
-/**
- * How a quick-setting button behaves when tapped.
- */
 enum class QuickSettingKind {
-    /** Flips a boolean (e.g. web search on/off). */
+
     Toggle,
 
-    /** Cycles through a small set of values (e.g. voice mode). */
     Cycle,
 
-    /** Opens a picker modal (e.g. model selection). */
     Picker,
 
-    /** Fires a one-shot action with no persisted value to display. */
     Action,
 }
 
-/**
- * Live, renderable state for a dock button.
- */
 sealed interface QuickSettingState {
     @Immutable
     data class Toggle(val on: Boolean) : QuickSettingState
@@ -54,10 +40,6 @@ sealed interface QuickSettingState {
     data class Action(val enabled: Boolean = true) : QuickSettingState
 }
 
-/**
- * Static description of an eligible quick setting — id, icon, label, kind.
- * Used by the settings page to list what the user can add to the dock.
- */
 @Immutable
 class QuickSettingDescriptor(
     val id: String,
@@ -67,11 +49,6 @@ class QuickSettingDescriptor(
     val icon: @Composable () -> Painter,
 )
 
-/**
- * A resolved quick setting bound to live state + a tap callback, ready to render
- * in the dock. Built by the host that owns the underlying state (ChatState /
- * preference stores).
- */
 @Immutable
 class QuickSetting(
     val id: String,
@@ -82,11 +59,6 @@ class QuickSetting(
     val onTap: () -> Unit,
 )
 
-/**
- * The full catalogue of settings the user can put in the dock. Add new entries
- * here as the settings page grows — the dock and the settings picker both
- * read from this list.
- */
 @Composable
 fun availableQuickSettings(): List<QuickSettingDescriptor> = listOf(
     QuickSettingDescriptor(
@@ -140,7 +112,6 @@ fun availableQuickSettings(): List<QuickSettingDescriptor> = listOf(
     ),
 )
 
-/** Looks up a descriptor by id, or null if it was removed from the catalogue. */
 @Composable
 fun quickSettingDescriptor(id: String): QuickSettingDescriptor? =
     availableQuickSettings().firstOrNull { it.id == id }

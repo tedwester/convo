@@ -3,11 +3,6 @@ package tedwester.convo.features.chat.data
 import android.content.Context
 import android.content.SharedPreferences
 
-/**
- * Persists the selected TTS voice id per OpenRouter model.
- *
- * A missing entry means "use the model default" ([OpenRouterModel.defaultVoiceId]).
- */
 class TtsVoicePreferencesStore(context: Context) {
 
     private val prefs: SharedPreferences =

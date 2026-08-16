@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat
+package tedwester.convo.ui.chat
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -97,7 +97,6 @@ internal fun ProjectsIdleHeader(
     }
 }
 
-/** Matches [ChatSearchModal] search header geometry for identical field width. */
 @Composable
 internal fun ProjectsSearchHeader(
     query: String,
@@ -302,9 +301,6 @@ internal fun ProjectRow(
     }
 }
 
-/**
- * Bottom pull-up sheet matching the shared [ConvoBottomSheet] chrome.
- */
 @Composable
 internal fun CreateProjectSheet(
     existingNames: List<String>,
@@ -392,4 +388,3 @@ internal fun CreateProjectSheet(
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
-

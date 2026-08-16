@@ -1,8 +1,7 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import tedwester.convo.core.network.model.ModelListQuery
 import tedwester.convo.core.network.model.OpenRouterModel
-
 
 enum class ModelInputFilter(val label: String, val apiValue: String) {
     Vision("Vision", "image"),
@@ -130,10 +129,8 @@ private fun Set<ModelAuthorBadge>.toAuthorParam(): String? =
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (contains(value)) this - value else this + value
 
-/** Smallest non-zero prompt $/M sent to OpenRouter to exclude free tiers from cheapest sort. */
 private const val CHEAPEST_MIN_PRICE = 1e-9
 
-/** Average of prompt + completion price in $/M tokens, or null when unknown. */
 private val OpenRouterModel.averagePricePerMillion: Double?
     get() {
         val prompt = pricing?.prompt?.toDoubleOrNull()?.times(1_000_000.0)
@@ -146,7 +143,6 @@ private val OpenRouterModel.averagePricePerMillion: Double?
         }
     }
 
-/** Nulls always sort last regardless of direction. */
 private fun <T : Comparable<T>> nullsLastComparator(
     selector: (OpenRouterModel) -> T?,
     ascending: Boolean,
@@ -191,7 +187,6 @@ enum class ModelAuthorBadge(val label: String, val slug: String) {
     NVIDIA("NVIDIA", "nvidia"),
 }
 
-/** OpenRouter `category` query values — see ModelsGetParametersCategory in their API. */
 enum class ModelCategoryBadge(val label: String, val apiValue: String) {
     Programming("Coding", "programming"),
     Roleplay("Roleplay", "roleplay"),

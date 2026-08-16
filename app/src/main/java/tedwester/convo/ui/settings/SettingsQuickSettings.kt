@@ -339,10 +339,6 @@ private fun AddQuickSettingButton(enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-/**
- * Bottom pull-up for choosing a dock shortcut. Uses the same [ConvoBottomSheet]
- * setup as AttachmentOptionsModal, ReasoningSettingsModal, etc.
- */
 @Composable
 internal fun QuickSettingsAddPickerSheet(
     currentConfig: QuickSettingsConfig,

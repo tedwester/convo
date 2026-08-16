@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +22,6 @@ import com.mikepenz.markdown.model.rememberMarkdownState
 import tedwester.convo.ui.theme.AssistantSerifFamily
 import tedwester.convo.ui.theme.convoAssistantTextColor
 
-/** Text-only markdown. Images are rendered by [AssistantTurnText] via Coil. */
 @Composable
 internal fun AssistantMarkdown(
     content: String,

@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyListState
@@ -6,10 +6,8 @@ import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.first
 import kotlin.math.abs
 
-/** Shared “at bottom” threshold used by follow logic and the scroll-to-bottom FAB. */
 internal const val VisualBottomThresholdPx = 120
 
-/** Shared “at top” threshold used by the scroll-to-top FAB. */
 internal const val VisualTopThresholdPx = 120
 
 internal const val PinSettleThresholdPx = 2

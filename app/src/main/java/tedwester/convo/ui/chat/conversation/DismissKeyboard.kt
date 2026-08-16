@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.conversation
+package tedwester.convo.ui.chat.conversation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -13,11 +13,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.delay
 import tedwester.convo.ui.input.rememberDismissKeyboard
 
-/** @see tedwester.convo.ui.input.rememberDismissKeyboard */
 @Composable
 fun rememberDismissKeyboard(): () -> Unit = tedwester.convo.ui.input.rememberDismissKeyboard()
 
-/** Clears focus when the activity pauses or resumes so the IME is not restored. */
 @Composable
 fun DismissKeyboardOnLifecycle() {
     val dismissKeyboard = rememberDismissKeyboard()

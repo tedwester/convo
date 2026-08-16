@@ -35,12 +35,6 @@ val ConvoToggleHeight = 31.dp
 private val ConvoToggleThumbSize = 27.dp
 private val ConvoTogglePadding = 2.dp
 
-/**
- * Pill toggle matching the Convo design system — grey when off, white when on.
- *
- * Springs slightly on press and gives light haptic feedback, consistent with
- * [ConvoButton] and [ConvoIconButton].
- */
 @Composable
 fun ConvoToggle(
     checked: Boolean,

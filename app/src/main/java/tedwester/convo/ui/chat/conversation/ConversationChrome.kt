@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.conversation
+package tedwester.convo.ui.chat.conversation
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -25,15 +25,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** Clear band between floating chrome and scrollable message content. */
 val ConversationChromeMessageGap = 8.dp
 
 private val TopFadeTail = 12.dp
 
-/** How far the bottom scrim rises above the composer into the chat. */
 private val BottomFadeRise = 36.dp
 
-/** Matches new-chat content timing so scrims ease with the message fade. */
 private const val ChromeFadeMs = 280
 
 private fun topChromeGradient(background: Color, chromeFraction: Float): Brush {
@@ -69,10 +66,6 @@ private fun bottomChromeGradient(background: Color, riseEnd: Float): Brush {
     )
 }
 
-/**
- * Top controls floating over a soft vertical fade into the conversation.
- * Fade is painted taller than the measured chrome so it does not push layout.
- */
 @Composable
 fun ConversationTopChrome(
     background: Color,
@@ -130,10 +123,6 @@ fun ConversationTopChrome(
     }
 }
 
-/**
- * Bottom fade from well above the floating composer down to the screen bottom,
- * wrapping around the input box. Composer draws on top of the gradient.
- */
 @Composable
 fun ConversationBottomChrome(
     background: Color,

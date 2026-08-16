@@ -183,10 +183,6 @@ private fun Modifier.horizontalScrollEdgeFades(
     }
 }
 
-/**
- * Vertically scrollable column with scroll-linked top/bottom edge fades,
- * matching the conversation list chrome behavior.
- */
 @Composable
 fun ScrollColumnWithEdgeFades(
     background: Color,
@@ -242,10 +238,6 @@ fun ScrollColumnWithEdgeFades(
     }
 }
 
-/**
- * Lazy vertical list with scroll-linked top/bottom edge fades, for long scrollable
- * content inside bottom sheets (e.g. model picker).
- */
 @Composable
 fun LazyColumnWithEdgeFades(
     background: Color,
@@ -307,12 +299,6 @@ fun LazyColumnWithEdgeFades(
     }
 }
 
-/**
- * Horizontally scrollable row with scroll-linked start/end edge fades.
- *
- * Uses a tighter fade band than vertical lists so compact chip rows do not get
- * washed out in the middle of the viewport.
- */
 @Composable
 fun ScrollRowWithEdgeFades(
     background: Color,

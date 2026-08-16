@@ -27,10 +27,6 @@ import tedwester.convo.features.chat.data.VoicePreferencesStore
 import tedwester.convo.ui.chat.ChatScreen
 import tedwester.convo.ui.settings.SettingsScreen
 
-/**
- * Authenticated app shell: chat experience plus global overlays (settings).
- * Keeps feature screens decoupled — [ChatScreen] never imports settings UI directly.
- */
 @Composable
 fun AppShell(
     apiKey: String,

@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,9 +31,6 @@ import tedwester.convo.ui.components.rememberConvoSheetController
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.ConvoModalTokens
 
-/**
- * Bottom-sheet attachment picker built on [ConvoBottomSheet].
- */
 @Composable
 fun AttachmentOptionsModal(
     onImageClick: () -> Unit,

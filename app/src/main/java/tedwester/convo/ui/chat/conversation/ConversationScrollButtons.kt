@@ -45,10 +45,6 @@ private val GapBetweenScrollButtons = 8.dp
 private const val HideBottomThresholdPx = 80
 private const val HideTopThresholdPx = 80
 
-/**
- * Bottom-right scroll FABs. The top button sits above the bottom one when it is
- * visible; otherwise it animates down to the bottom slot.
- */
 @Composable
 fun ConversationScrollButtons(
     listState: LazyListState,

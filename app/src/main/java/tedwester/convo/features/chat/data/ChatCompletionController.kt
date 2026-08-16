@@ -40,7 +40,6 @@ enum class ChatRunStatus {
     CompletedUnread,
 }
 
-
 data class CompletionUpdate(
     val chatId: String,
     val messages: List<ChatMessage>,
@@ -76,7 +75,6 @@ data class SpecialGenerationOutcome(
     val attachments: List<ChatAttachment> = emptyList(),
     val success: Boolean = true,
 )
-
 
 class ChatCompletionController(
     private val app: ConvoApp,
@@ -149,7 +147,6 @@ class ChatCompletionController(
         }
         refreshForegroundService()
     }
-
 
     fun start(request: CompletionRequest): Long {
         val session = replaceSession(

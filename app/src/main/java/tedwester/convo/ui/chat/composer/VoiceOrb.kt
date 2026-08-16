@@ -37,7 +37,6 @@ internal val VoiceOrbGlowSize = 140.dp
 
 internal val VoiceOrbBottomGap = 10.dp
 
-
 internal val VoiceOrbSlotHeight = VoiceOrbGlowSize + VoiceOrbBottomGap
 
 internal val VoiceOrbSlotAnimation = spring<Dp>(
@@ -60,7 +59,6 @@ private val CloudFallbackColors = listOf(
 
 private const val GLOW_ALPHA = 0.45f
 private val GlowColor = Color(0xFF5659DC)
-
 
 @Composable
 internal fun VoiceOrb(

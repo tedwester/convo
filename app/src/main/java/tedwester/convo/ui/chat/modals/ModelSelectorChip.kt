@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -38,13 +38,6 @@ import tedwester.convo.ui.theme.ConvoTheme
 import tedwester.convo.ui.theme.DarkChatBox
 import tedwester.convo.ui.theme.LightChatBox
 
-/**
- * Floating model picker chip for the chat top bar.
- *
- * Outer ring → gap → filled inner pill (secondary / chat-box color), so it
- * reads as a floating selector. Long names ellipsize so menu / new-chat
- * actions keep their padding.
- */
 @Composable
 fun ModelSelectorChip(
     modelName: String?,

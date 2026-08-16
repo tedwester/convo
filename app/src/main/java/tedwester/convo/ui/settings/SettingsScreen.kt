@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.settings
+package tedwester.convo.ui.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -90,9 +90,6 @@ private const val HelpPageAnimMs = 300
 private const val ModelFetchRetryMs = 2_000L
 private const val OpenRouterLogsUrl = "https://openrouter.ai/logs"
 
-/**
- * Full-screen settings overlay — fade only, matching chat search presentation.
- */
 @Composable
 fun SettingsScreen(
     apiKey: String,

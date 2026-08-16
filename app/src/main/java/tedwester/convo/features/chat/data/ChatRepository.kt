@@ -13,15 +13,6 @@ import tedwester.convo.features.chat.model.WebSearchStep
 import java.io.File
 import java.util.UUID
 
-/**
- * Local-first chat persistence using JSON files under the app's private
- * `filesDir/chats` folder. No network, no account — survives process death.
- *
- * Layout:
- * - `index.json` — ordered chat metadata
- * - `{chatId}.json` — messages for that chat
- * - SharedPreferences — last active chat id
- */
 class ChatRepository(context: Context) {
 
     private val appContext = context.applicationContext
@@ -157,9 +148,9 @@ class ChatRepository(context: Context) {
         modelId: String? = null,
         modelName: String? = null,
         systemMessage: String? = null,
-        /** When false, background completions won't steal the active chat id. */
+
         setActive: Boolean = true,
-        /** Explicit activity time (e.g. redo) — bumps recency without retimestamping messages. */
+
         activityAt: Long? = null,
     ): Chat? {
         val chats = listChats().toMutableList()
@@ -458,7 +449,6 @@ class ChatRepository(context: Context) {
         }
     }
 
-    /** Preserves empty entries so reasoning stays index-aligned with variants. */
     private fun parseStringList(array: JSONArray?): List<String> {
         if (array == null || array.length() == 0) return emptyList()
         return buildList {
@@ -468,7 +458,6 @@ class ChatRepository(context: Context) {
         }
     }
 
-    /** Preserves null entries so durations stay index-aligned with variants. */
     private fun parseLongNullableList(array: JSONArray?): List<Long?> {
         if (array == null || array.length() == 0) return emptyList()
         return buildList {

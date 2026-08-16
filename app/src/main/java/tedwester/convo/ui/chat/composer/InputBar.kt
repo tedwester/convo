@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.composer
+package tedwester.convo.ui.chat.composer
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -89,7 +89,6 @@ private val HintControlFadeOut = tween<Float>(
     easing = FastOutSlowInEasing,
 )
 
-/** ~6 lines of bodyLarge before the composer text scrolls internally. */
 private const val ComposerMaxLines = 6
 
 private val ComposerExpandSpring = spring<IntSize>(
@@ -182,13 +181,6 @@ private fun ComposerTextInput(
     )
 }
 
-/**
- * Floating chat composer.
- *
- * Empty input shows a mic waveform when the model supports voice; otherwise a
- * send button. With text or attachments, shows send. While in a voice turn,
- * the cloud orb sits above the box (listening, transcribing, or waiting).
- */
 @Composable
 fun InputBar(
     value: String,

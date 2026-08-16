@@ -32,10 +32,6 @@ internal fun ChatState.textHistory(): List<ChatMessageDto> =
         )
     }
 
-/**
- * Build OpenRouter history from local turns, re-encoding any image attachments
- * so regenerate / multi-turn vision keeps the original files.
- */
 internal suspend fun ChatState.buildApiHistory(beforeAssistantIndex: Int? = null): List<ChatMessageDto> =
     buildApiHistoryFrom(messages.toList(), beforeAssistantIndex)
 

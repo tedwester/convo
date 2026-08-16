@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.conversation
+package tedwester.convo.ui.chat.conversation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row

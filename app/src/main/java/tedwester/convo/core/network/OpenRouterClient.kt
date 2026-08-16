@@ -39,17 +39,6 @@ import tedwester.convo.core.AppMetadata
 import tedwester.convo.features.chat.model.ReasoningEffort
 import java.util.concurrent.TimeUnit
 
-/**
- * Concrete [OpenRouterApi] implementation built on OkHttp.
- *
- * Requests run on [Dispatchers.IO] via [withContext] so callers never block the
- * main thread. JSON is parsed with the platform `org.json` library to avoid
- * adding an extra serialization dependency.
- *
- * Fetched model listings are cached in memory for a short window so repeatedly
- * opening the model picker feels instant instead of hitting the network each
- * time. Cache entries are keyed by [ModelListQuery] so filter badges stay correct.
- */
 class OpenRouterClient(
     initialReadTimeoutMinutes: Int = DEFAULT_READ_TIMEOUT_MINUTES,
 ) : OpenRouterApi {
@@ -628,10 +617,6 @@ class OpenRouterClient(
             )
         }
 
-    /**
-     * Account-level purchased/used credits from `GET /api/v1/credits`.
-     * Returns nulls if the endpoint is unavailable for this key.
-     */
     private fun fetchAccountCredits(apiKey: String): Pair<Double?, Double?> {
         val request = Request.Builder()
             .url(BASE_URL + "/api/v1/credits")
@@ -759,10 +744,6 @@ class OpenRouterClient(
         }
     }
 
-    /**
-     * Tags every OpenRouter request with app attribution headers so usage is
-     * credited to Convo on openrouter.ai.
-     */
     private class AppAttributionInterceptor : Interceptor {
         override fun intercept(chain: Interceptor.Chain): Response {
             val request = chain.request().newBuilder()

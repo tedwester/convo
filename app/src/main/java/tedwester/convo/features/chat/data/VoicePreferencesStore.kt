@@ -4,46 +4,32 @@ import android.content.Context
 import android.content.SharedPreferences
 import tedwester.convo.core.network.model.OpenRouterModel
 
-/**
- * Behaviour when a speech-output (TTS / voice) model is selected. The setting
- * applies to typed messages, transcribed voice notes, and redos alike.
- */
 enum class VoiceTtsMode {
-    /** Speak the user's words (typed text or transcript) in the model's voice. */
+
     SpeakMyWords,
 
-    /** Generate a chat-model reply, then have the TTS model speak that reply. */
     Conversation,
 }
 
 data class VoicePreferences(
     val mode: VoiceTtsMode = VoiceTtsMode.SpeakMyWords,
-    /** STT model slug used to transcribe the recording. */
+
     val transcriptionModelId: String = DEFAULT_TRANSCRIPTION_MODEL,
-    /** Chat model slug used to generate a reply in [VoiceTtsMode.Conversation]. */
+
     val replyModelId: String = DEFAULT_REPLY_MODEL,
-    /**
-     * Default for new prompts: open the voice script instead of the audio player.
-     * Snapshotted onto each assistant turn; later toggles don't rewrite older replies.
-     * Users can still switch with the type button in response controls.
-     */
+
     val showVoiceRepliesAsTextFirst: Boolean = false,
-    /** Start playback when a new voice reply arrives (latest unplayed turn only). */
+
     val autoPlayVoiceReplies: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_TRANSCRIPTION_MODEL = "openai/whisper-large-v3"
         const val DEFAULT_REPLY_MODEL = "openai/gpt-4o-mini"
 
-        /** Base instructions for the reply model in [VoiceTtsMode.Conversation]. */
         const val CONVERSATION_REPLY_SYSTEM_MESSAGE =
             "Optimize for verbal conversation, keep your reply to about 100 words and stay concise. " +
                 "Do not use markdown — your response will be spoken aloud in a voice conversation."
 
-        /**
-         * System prompt for the model that writes the spoken reply in Conversation
-         * mode. Names the active voice model and, when different, the reply model.
-         */
         fun buildConversationReplySystemMessage(
             voiceModel: OpenRouterModel,
             replyModelId: String,
@@ -90,11 +76,6 @@ data class VoicePreferences(
         }
     }
 
-    /**
-     * True when the voice→TTS path is usable for [voiceModel]. Native audio-in
-     * models can skip the settings transcription and/or reply models when they
-     * handle those steps themselves.
-     */
     fun hasVoicePath(voiceModel: OpenRouterModel? = null): Boolean {
         val hasStt = transcriptionModelId.isNotBlank() ||
             voiceModel?.transcribesAudioNatively == true
@@ -103,17 +84,10 @@ data class VoicePreferences(
         return replyModelId.isNotBlank() || voiceModel?.usesIntegratedConversationReply == true
     }
 
-    /**
-     * True when the voice→TTS path is usable with no model context (settings only).
-     */
     val hasVoicePath: Boolean
         get() = hasVoicePath(voiceModel = null)
 }
 
-/**
- * Persists [VoicePreferences] (a small, app-wide set of options governing the
- * voice→TTS flow) via SharedPreferences.
- */
 class VoicePreferencesStore(context: Context) {
 
     private val prefs: SharedPreferences =

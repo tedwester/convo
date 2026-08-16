@@ -10,9 +10,6 @@ import tedwester.convo.ui.chat.modals.ModelInputFilter
 import tedwester.convo.ui.chat.modals.ModelOutputFilter
 import tedwester.convo.ui.chat.modals.ModelSortBadge
 
-/**
- * Persists model-picker filter badges per chat id.
- */
 class ChatModelFilterStore(context: Context) {
 
     private val prefs: SharedPreferences =

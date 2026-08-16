@@ -1,4 +1,4 @@
-﻿package tedwester.convo
+package tedwester.convo
 
 import android.Manifest
 import android.content.Intent

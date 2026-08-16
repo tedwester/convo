@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -185,4 +185,3 @@ internal fun rememberModelSkeletonPulse(): Float {
     )
     return alpha
 }
-

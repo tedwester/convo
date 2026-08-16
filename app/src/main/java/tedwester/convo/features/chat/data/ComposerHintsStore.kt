@@ -3,10 +3,6 @@ package tedwester.convo.features.chat.data
 import android.content.Context
 import android.content.SharedPreferences
 
-/**
- * One-shot first-run callouts on the composer. Shown after the API key is
- * saved on the entrance screen.
- */
 class ComposerHintsStore(context: Context) {
 
     private val prefs: SharedPreferences =

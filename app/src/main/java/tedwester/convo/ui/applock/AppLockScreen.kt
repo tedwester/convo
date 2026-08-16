@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.applock
+package tedwester.convo.ui.applock
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background

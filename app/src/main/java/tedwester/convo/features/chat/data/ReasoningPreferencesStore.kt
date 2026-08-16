@@ -5,9 +5,6 @@ import android.content.SharedPreferences
 import tedwester.convo.features.chat.model.ReasoningEffort
 import tedwester.convo.features.chat.model.ReasoningPreferences
 
-/**
- * Persists [ReasoningPreferences] per OpenRouter model id.
- */
 class ReasoningPreferencesStore(context: Context) {
 
     private val prefs: SharedPreferences =

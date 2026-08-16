@@ -1,8 +1,5 @@
 package tedwester.convo.features.chat.model
 
-/**
- * A single web page cited from an OpenRouter [WebSearchStep].
- */
 data class WebSearchCitation(
     val url: String,
     val title: String,
@@ -10,14 +7,11 @@ data class WebSearchCitation(
     val publishedDate: String = "",
 )
 
-/**
- * One web search the model invoked during a turn (query + resulting sources).
- */
 data class WebSearchStep(
     val id: String,
     val query: String = "",
     val citations: List<WebSearchCitation> = emptyList(),
-    /** True while OpenRouter is still executing this search. */
+
     val isSearching: Boolean = false,
 )
 
@@ -27,7 +21,6 @@ internal fun domainFromUrl(url: String): String =
     }.getOrDefault("")
         .ifBlank { url }
 
-/** All unique citations across search steps (stable order). */
 internal fun List<WebSearchStep>.allCitations(): List<WebSearchCitation> {
     val seen = mutableSetOf<String>()
     return buildList {
@@ -39,7 +32,6 @@ internal fun List<WebSearchStep>.allCitations(): List<WebSearchCitation> {
     }
 }
 
-/** Favicon URL for a citation page (used in the search timeline). */
 internal fun faviconUrlFor(url: String): String {
     val domain = domainFromUrl(url)
     if (domain.isBlank()) return url

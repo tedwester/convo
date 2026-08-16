@@ -83,13 +83,6 @@ private val FractionSpring = spring<Float>(
 
 private enum class GestureKind { Drag, Tap, Cancel }
 
-/**
- * Discrete request-timeout control for Settings (1–45 minutes).
- *
- * Follows the finger while dragging, springs to the nearest minute on release,
- * and ticks haptically on each step. Horizontal-slop aware so it coexists with
- * the settings page's vertical scroll.
- */
 @Composable
 fun RequestTimeoutSlider(
     minutes: Int,
@@ -366,12 +359,6 @@ private fun tickHaptic(view: View) {
     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
 }
 
-/**
- * Classifies the gesture after the initial down:
- * - mostly horizontal past slop → drag
- * - lift before slop → tap
- * - mostly vertical past slop → cancel (parent scroll wins)
- */
 private suspend fun AwaitPointerEventScope.awaitGestureKind(
     down: PointerInputChange,
 ): GestureKind {

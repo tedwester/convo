@@ -54,10 +54,6 @@ private val HintScreenMargin = 12.dp
 private val HintBubbleWidth = 236.dp
 private val HintAnchorGap = 6.dp
 
-/**
- * First-run callout anchored under the model selector chip in the top bar.
- * The caret points up at the chip; tap / outside / back dismisses it.
- */
 @Composable
 fun ModelSelectorHintAnchor(
     show: Boolean,

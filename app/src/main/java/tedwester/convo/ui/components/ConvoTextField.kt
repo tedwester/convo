@@ -43,10 +43,6 @@ import tedwester.convo.ui.theme.convoFieldFill
 import tedwester.convo.ui.theme.convoFieldOutline
 import tedwester.convo.ui.theme.convoFieldPlaceholder
 
-/**
- * Shared filled text field — modal-matched fill (`#1E1D1B` dark), hairline outline,
- * compact Inter type with recessed placeholders.
- */
 @Composable
 fun ConvoTextField(
     value: String,
@@ -62,9 +58,9 @@ fun ConvoTextField(
     leadingIconPainter: Painter? = null,
     focusRequester: FocusRequester? = null,
     shape: Shape = RoundedCornerShape(ConvoFieldTokens.CornerRadius),
-    /** Fades placeholder + typed text (not leading icon). */
+
     textAlpha: Float = 1f,
-    /** When set, the field is read-only and opens a picker on tap. */
+
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {

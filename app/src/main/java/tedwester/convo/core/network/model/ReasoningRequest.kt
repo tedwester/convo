@@ -4,9 +4,6 @@ import org.json.JSONObject
 import tedwester.convo.features.chat.model.ReasoningEffort
 import tedwester.convo.features.chat.model.ReasoningPreferences
 
-/**
- * OpenRouter `reasoning` object built from user prefs + model capabilities.
- */
 data class ReasoningRequest(
     val effort: String,
     val exclude: Boolean,
@@ -18,10 +15,7 @@ data class ReasoningRequest(
         }
 
     companion object {
-        /**
-         * Build a request for [model] from [prefs], or null when the model does
-         * not support reasoning (caller should omit the parameter entirely).
-         */
+
         fun from(model: OpenRouterModel, prefs: ReasoningPreferences): ReasoningRequest? {
             if (!model.supportsReasoning) return null
             val enabled = prefs.enabled || model.requiresMandatoryReasoning

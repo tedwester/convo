@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -43,9 +43,6 @@ import tedwester.convo.ui.components.ConvoBottomSheet
 import tedwester.convo.ui.components.ConvoToggle
 import tedwester.convo.ui.components.rememberConvoSheetController
 
-/**
- * Bottom sheet for per-model reasoning effort and stream-thinking settings.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReasoningSettingsModal(

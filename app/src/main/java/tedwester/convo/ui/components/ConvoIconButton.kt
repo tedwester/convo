@@ -28,16 +28,11 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** Header circular controls (search / back / settings / close). */
 val ConvoIconButtonSize = 48.dp
-/** ~48% of [ConvoIconButtonSize] so the glyph has room inside the ring. */
+
 val ConvoIconGlyphSize = 22.dp
 val ConvoIconButtonGap = 10.dp
 
-/**
- * Circular icon control matching the reference chips:
- * subtle fill, thin outline ring, and a simple brighter fill on press.
- */
 @Composable
 fun ConvoIconButton(
     painter: Painter,
@@ -181,7 +176,6 @@ private fun ConvoIconButtonChrome(
     }
 }
 
-/** Circular icon control with a custom icon slot (e.g. animated drawables). */
 @Composable
 fun ConvoIconButton(
     onClick: () -> Unit,
@@ -217,7 +211,6 @@ fun ConvoIconButton(
     }
 }
 
-/** Convenience overload for Material / Compose [ImageVector] icons. */
 @Composable
 fun ConvoIconButton(
     icon: ImageVector,

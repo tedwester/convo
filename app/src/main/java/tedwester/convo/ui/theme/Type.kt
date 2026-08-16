@@ -8,10 +8,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import tedwester.convo.R
 
-/**
- * Inter — used for every text style in the app.
- * Light, consistent weights for an elegant feel.
- */
 val InterFontFamily = FontFamily(
     Font(R.font.inter_regular, FontWeight.Normal),
     Font(R.font.inter_medium, FontWeight.Medium),
@@ -19,7 +15,6 @@ val InterFontFamily = FontFamily(
     Font(R.font.inter_bold, FontWeight.Bold),
 )
 
-/** System serif — used for assistant message body / markdown. */
 val AssistantSerifFamily = FontFamily.Serif
 
 val Typography = Typography(

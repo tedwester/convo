@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -42,17 +42,6 @@ import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
 
-/**
- * Scrollable message list.
- *
- * Scroll policy (kept intentionally simple):
- * - Open / switch chat → pin to bottom once (+ brief layout settle).
- * - Send / regenerate / FAB → enable follow and pin.
- * - User scrolls up → disable follow until FAB or a new send.
- * - While following, only nudge on new reply tokens — not thinking expand/collapse or layout noise.
- * - When not following, compensate for tail-row growth at the bottom so streaming thinking
- *   doesn't re-anchor the list and trap scroll / header taps.
- */
 @Composable
 fun MessageList(
     messages: List<ChatMessage>,
@@ -362,7 +351,6 @@ fun MessageList(
     }
 }
 
-/** [LazyListState] seeded toward the last row; [MessageList] pins after layout. */
 @Composable
 fun bottomAnchoredListState(messageCount: Int): LazyListState {
     val lastIndex = (messageCount - 1).coerceAtLeast(0)

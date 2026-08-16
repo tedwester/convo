@@ -45,9 +45,6 @@ import tedwester.convo.ui.theme.ConvoModalTokens
 
 private const val VoiceSelectorSheetHeightFraction = 0.63f
 
-/**
- * Bottom sheet for choosing a TTS voice on speech-output models.
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VoiceSelectorModal(

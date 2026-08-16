@@ -1,97 +1,67 @@
 package tedwester.convo.features.chat.model
 
-/**
- * Who produced a given [ChatMessage].
- */
 enum class MessageAuthor {
     User,
     Assistant,
 }
 
-/**
- * A single message within a chat conversation.
- *
- * Assistant turns may hold multiple [variants] (redo / swipe). [content] mirrors
- * the active variant while idle; while streaming it holds in-flight text.
- * [reasoning] / [reasoningVariants] hold the thinking trace for the same index.
- * [thoughtDurationMs] / [thoughtDurationVariants] hold elapsed thinking time likewise.
- * [webSearchSteps] / [webSearchStepVariants] hold web search timelines per variant.
- */
 data class ChatMessage(
     val id: Long,
     val author: MessageAuthor,
     val content: String,
     val timestamp: Long = 0L,
-    /** True when this bubble represents a recorded voice turn. */
+
     val isVoice: Boolean = false,
-    /** Images / files sent with this turn. */
+
     val attachments: List<ChatAttachment> = emptyList(),
-    /** Attachments aligned with [variants] (e.g. per-redo TTS audio). */
+
     val attachmentVariants: List<List<ChatAttachment>> = emptyList(),
-    /** All response texts for this turn (including stopped / error attempts). */
+
     val variants: List<String> = emptyList(),
-    /** Which [variants] entry is active (ignored while [isStreaming]). */
+
     val variantIndex: Int = 0,
-    /** True while tokens are still arriving from the model. Not persisted. */
+
     val isStreaming: Boolean = false,
-    /** Live / active thinking trace for this assistant turn. */
+
     val reasoning: String = "",
-    /** Thinking traces aligned with [variants] (same length when present). */
+
     val reasoningVariants: List<String> = emptyList(),
-    /** Elapsed thinking time in milliseconds for the active variant, when known. */
+
     val thoughtDurationMs: Long? = null,
-    /** Thinking durations aligned with [variants] (same length when present). */
+
     val thoughtDurationVariants: List<Long?> = emptyList(),
-    /** True when generation was cancelled while the model was still thinking. */
+
     val stoppedWhileThinking: Boolean = false,
-    /**
-     * Whether this turn was started with streamed thinking enabled.
-     * Snapshotted at request start; not affected by later preference changes.
-     */
+
     val expectStreamedThinking: Boolean = false,
-    /**
-     * [android.os.SystemClock.elapsedRealtime] when thinking began for the in-flight
-     * variant. Live streaming only; not persisted.
-     */
+
     val thinkingStartedAtElapsed: Long? = null,
-    /**
-     * In-flight shimmer label (e.g. "Generating audio…"). Live only; not persisted.
-     * [content] stays empty until the real reply (or spoken text) is ready.
-     */
+
     val statusLabel: String? = null,
-    /** Live / active web search steps for this assistant turn. */
+
     val webSearchSteps: List<WebSearchStep> = emptyList(),
-    /** Web search timelines aligned with [variants]. */
+
     val webSearchStepVariants: List<List<WebSearchStep>> = emptyList(),
-    /** Whether this turn was started with web search enabled. */
+
     val expectWebSearch: Boolean = false,
-    /**
-     * Snapshotted when this assistant turn started: open the voice script
-     * instead of the audio player. Later setting changes don't rewrite older turns.
-     */
+
     val showVoiceAsTextFirst: Boolean = false,
-    /**
-     * True after this turn's audio has autoplayed (or started autoplaying).
-     * Persisted so leaving and re-entering the chat cannot replay it.
-     */
+
     val voiceAutoPlayed: Boolean = false,
 ) {
-    /** Variants to page through; falls back to [content] for legacy rows. */
+
     fun savedVariants(): List<String> {
         if (variants.isNotEmpty()) return variants
         return content.takeIf { it.isNotBlank() }?.let { listOf(it) } ?: emptyList()
     }
 
-    /** Attachment sets aligned with [savedVariants]; falls back to [attachments]. */
     fun savedAttachmentVariants(): List<List<ChatAttachment>> {
         if (attachmentVariants.isNotEmpty()) return attachmentVariants
         return attachments.takeIf { it.isNotEmpty() }?.let { listOf(it) } ?: emptyList()
     }
 
-    /** Attachments for the active variant (or the in-flight generation). */
     fun activeAttachments(): List<ChatAttachment> = attachmentsAt(variantIndex)
 
-    /** Attachments saved for [index] (idle multi-variant paging). */
     fun attachmentsAt(index: Int): List<ChatAttachment> {
         if (isStreaming) return attachments
         val saved = savedAttachmentVariants()
@@ -99,10 +69,8 @@ data class ChatMessage(
         return attachments.takeIf { index == variantIndex } ?: emptyList()
     }
 
-    /** Spoken / visible text that Copy should use. */
     fun copyableText(): String = copyableTextAt(variantIndex)
 
-    /** Copyable text for a saved variant index. */
     fun copyableTextAt(index: Int): String {
         if (isStreaming) return ""
         val text = bodyTextAt(index)
@@ -110,10 +78,8 @@ data class ChatMessage(
         return text.trim()
     }
 
-    /** Active variant text (or in-flight stream), including errors / stopped status. */
     fun activeBodyText(): String = bodyTextAt(variantIndex)
 
-    /** Body text for a saved variant index. */
     fun bodyTextAt(index: Int): String {
         if (isStreaming) return content
         return savedVariants().getOrNull(index) ?: content
@@ -126,10 +92,6 @@ data class ChatMessage(
 
     fun hasVideoAttachment(): Boolean = activeAttachments().any { it.isVideo }
 
-    /**
-     * True when the bubble should show media only (audio player / images / video),
-     * not body text. Errors, stopped, and empty-response status always stay visible.
-     */
     fun hidesGeneratedBody(): Boolean = hidesGeneratedBodyAt(variantIndex)
 
     fun hidesGeneratedBodyAt(index: Int): Boolean {
@@ -150,7 +112,6 @@ data class ChatMessage(
             else -> 0
         }
 
-    /** 1-based index shown in the "2/3" pager label. */
     val pagerIndex: Int
         get() = when {
             isStreaming -> variants.size + 1
@@ -159,7 +120,6 @@ data class ChatMessage(
             else -> 0
         }
 
-    /** Thinking text for the active variant (or live stream). */
     fun activeReasoning(): String {
         if (isStreaming) return reasoning
         if (reasoningVariants.isNotEmpty()) {
@@ -170,7 +130,6 @@ data class ChatMessage(
         return reasoning
     }
 
-    /** Elapsed thinking time for the active variant (or live stream). */
     fun activeThoughtDuration(): Long? {
         if (isStreaming) return thoughtDurationMs
         if (thoughtDurationVariants.isNotEmpty()) {
@@ -181,7 +140,6 @@ data class ChatMessage(
         return thoughtDurationMs
     }
 
-    /** Web search timeline for the active variant (or live stream). */
     fun activeWebSearchSteps(): List<WebSearchStep> {
         if (isStreaming) return webSearchSteps
         if (webSearchStepVariants.isNotEmpty()) {
@@ -192,7 +150,6 @@ data class ChatMessage(
         return webSearchSteps
     }
 
-    /** Text sent to the API for this assistant turn. */
     fun apiContent(): String {
         val active = variants.getOrNull(variantIndex) ?: content
         if (!isAssistantStatusContent(active)) return active
@@ -203,7 +160,6 @@ data class ChatMessage(
 internal const val STOPPED_RESPONSE_TEXT = "You stopped the response."
 internal const val EMPTY_RESPONSE_TEXT = "The model returned an empty response."
 
-/** Settle a streaming assistant turn the moment the user hits stop. */
 internal fun ChatMessage.asStopped(): ChatMessage {
     if (!isStreaming) return this
     val isSpecial = statusLabel != null ||

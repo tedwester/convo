@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.onboarding
+package tedwester.convo.ui.onboarding
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -62,9 +62,6 @@ import tedwester.convo.ui.input.ConvoKeyboardOptions
 import tedwester.convo.ui.input.rememberDismissKeyboard
 import tedwester.convo.ui.icons.ConvoIcons
 
-/**
- * First-run screen: verify and save an OpenRouter API key.
- */
 @Composable
 fun OnboardingScreen(
     api: OpenRouterApi,

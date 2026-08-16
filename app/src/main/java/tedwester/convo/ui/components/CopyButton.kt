@@ -39,10 +39,6 @@ private enum class CopyIconState {
     Copied,
 }
 
-/**
- * Copy action with a brief success state: smoothly morphs into circle-check,
- * holds for a moment, then returns to the copy icon.
- */
 @Composable
 fun CopyButton(
     onCopy: () -> Unit,

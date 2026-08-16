@@ -167,10 +167,6 @@ internal suspend fun ChatState.transcribeRecordingImpl(
     }
 }
 
-/**
- * Transcription-only model flow: show the user's recording as a voice bubble,
- * then stream the transcription through the special-generation pipeline.
- */
 internal fun ChatState.sendTranscriptionVoiceImpl(
     audioBytes: ByteArray,
     format: String,
@@ -212,11 +208,6 @@ private suspend fun ChatState.sendTranscriptionVoiceBody(
     runTranscriptionCompletion(model, audioBytes, format)
 }
 
-/**
- * Cancel an in-flight assistant turn when a live voice conversation ends.
- * Keeps any partial reply; settles an empty streaming placeholder as a
- * stopped turn so the user sees the usual "You stopped the response." message.
- */
 internal fun ChatState.interruptInFlightImpl() {
     if (!isRunning) return
 
@@ -277,10 +268,6 @@ internal fun ChatState.stopImpl() {
     persist()
 }
 
-/**
- * Redo an assistant turn: drop every message after its user prompt, keep
- * prior variants on this turn, and stream a new response.
- */
 internal fun ChatState.regenerateImpl(messageId: Long) {
     if (isRunning) return
     val model = selectedModel ?: return

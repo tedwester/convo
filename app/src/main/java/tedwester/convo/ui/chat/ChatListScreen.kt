@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat
+package tedwester.convo.ui.chat
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -82,7 +82,6 @@ private val SectionAnimSpec = tween<Float>(ChatSectionAnimMs, easing = FastOutSl
 private val SectionSizeAnimSpec: FiniteAnimationSpec<IntSize> =
     tween(ChatSectionAnimMs, easing = FastOutSlowInEasing)
 
-/** Fade + height from the top so sections don't stretch from the center. */
 private val SectionEnter: EnterTransition =
     fadeIn(SectionAnimSpec) +
         expandVertically(animationSpec = SectionSizeAnimSpec, expandFrom = Alignment.Top)
@@ -90,9 +89,6 @@ private val SectionExit: ExitTransition =
     fadeOut(SectionAnimSpec) +
         shrinkVertically(animationSpec = SectionSizeAnimSpec, shrinkTowards = Alignment.Top)
 
-/**
- * Full-screen chat history page, opened from the top-left menu.
- */
 @Composable
 fun ChatListScreen(
     chats: List<Chat>,
@@ -425,4 +421,3 @@ fun ChatListScreen(
         }
     }
 }
-

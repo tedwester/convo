@@ -23,9 +23,6 @@ import tedwester.convo.ui.components.rememberConvoSheetController
 private fun formatModelSlug(id: String): String =
     id.substringAfterLast('/').ifBlank { id }.replace('-', ' ')
 
-/**
- * Bottom sheet for voice mode and related model pickers — same controls as Settings.
- */
 @Composable
 fun VoiceModeModal(
     voicePreferences: VoicePreferences,

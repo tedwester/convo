@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -6,12 +6,6 @@ import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
 
-/**
- * Chat turn renderer.
- *
- * User turns: compact grey bubble, fully rounded.
- * Assistant turns: full-width markdown with variant swipe + response controls.
- */
 @Composable
 fun ChatBubble(
     message: ChatMessage,

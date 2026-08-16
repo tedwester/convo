@@ -11,10 +11,6 @@ import androidx.core.app.NotificationManagerCompat
 import tedwester.convo.MainActivity
 import tedwester.convo.R
 
-/**
- * Notification channels + helpers for ongoing generation (FGS) and
- * "reply ready" alerts when a completion finishes in the background.
- */
 object ChatNotifications {
 
     const val EXTRA_OPEN_CHAT_ID = "tedwester.convo.OPEN_CHAT_ID"

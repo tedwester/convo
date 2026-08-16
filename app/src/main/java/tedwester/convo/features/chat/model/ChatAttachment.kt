@@ -1,11 +1,8 @@
 package tedwester.convo.features.chat.model
 
-/**
- * A file or image attached to a chat turn (or pending in the composer).
- */
 data class ChatAttachment(
     val id: String,
-    /** Absolute path inside app storage. */
+
     val path: String,
     val mimeType: String?,
     val displayName: String,

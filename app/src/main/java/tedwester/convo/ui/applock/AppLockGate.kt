@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.applock
+package tedwester.convo.ui.applock
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -18,16 +18,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import tedwester.convo.core.security.AppLockManager
 
-/** Matches [ConversationScreen] new-chat message exit. */
 private const val LockRevealExitMs = 260
-/** Matches new-chat empty-state enter. */
+
 private const val LockRevealEnterMs = 380
 private const val LockRevealEnterDelayMs = 90
 
-/**
- * Keeps [content] mounted while showing [AppLockScreen] on top when [locked].
- * Unlock uses the same fade + slide timing as starting a new chat.
- */
 @Composable
 fun AppLockGate(
     locked: Boolean,

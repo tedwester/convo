@@ -42,13 +42,6 @@ import androidx.compose.ui.unit.dp
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.ConvoShapes
 
-/**
- * Solid, rounded primary button for the Convo design system.
- *
- * Springs slightly on press and gives light haptic feedback. Defaults to a
- * clean white surface with dark label text — no accent gradients.
- * When [enabled] is false, the fill mutes to a disabled grey.
- */
 @Composable
 fun ConvoButton(
     text: String,

@@ -67,12 +67,6 @@ private val WaveformGap = 1.6.dp
 private const val PlayedAlpha = 0.82f
 private const val UnplayedAlpha = 0.22f
 
-/**
- * Inline audio player for a locally-saved audio attachment (TTS output or
- * recorded voice). Uses [MediaPlayer] prepared on demand; released on
- * disposal. Playback is scrubbed on the decoded waveform — no background
- * playback; it stops if the composable leaves the composition.
- */
 @Composable
 internal fun AudioPlaybackRow(
     path: String,

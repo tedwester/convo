@@ -29,16 +29,6 @@ internal data class ExtractedWaveform(
 
 private val cache = LruCache<String, ExtractedWaveform>(48)
 
-/**
- * Peak-envelope bars for a local audio file, used by the inline playback
- * waveform. Results are cached by path. Falls back to a quiet placeholder
- * if the file can't be decoded.
- *
- * Decoding uses a software codec and an in-memory copy so it never contends
- * with [android.media.MediaPlayer] for the hardware decoder or the file.
- * [ExtractedWaveform.durationMs] is counted from decoded PCM so MP3 files
- * without a Xing header still report their true length.
- */
 internal fun extractAudioWaveform(
     path: String,
     barCount: Int = DefaultBarCount,
@@ -185,10 +175,6 @@ private fun decodeWaveform(path: String, barCount: Int): ExtractedWaveform {
     }
 }
 
-/**
- * Prefer a software decoder so waveform extraction cannot steal the hardware
- * audio decoder [android.media.MediaPlayer] is using for playback.
- */
 private fun createSoftwareDecoder(mime: String): MediaCodec {
     val software = MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.firstOrNull { info ->
         !info.isEncoder &&

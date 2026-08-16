@@ -6,10 +6,6 @@ import tedwester.convo.features.chat.model.WebSearchCitation
 import tedwester.convo.features.chat.model.WebSearchStep
 import tedwester.convo.features.chat.model.domainFromUrl
 
-/**
- * Accumulates OpenRouter web-search tool calls and [url_citation] annotations
- * from chat-completion SSE chunks into a timeline of [WebSearchStep]s.
- */
 internal class WebSearchStreamParser {
     private val toolCallBuffers = mutableMapOf<Int, StringBuilder>()
     private val toolCallIds = mutableMapOf<Int, String>()

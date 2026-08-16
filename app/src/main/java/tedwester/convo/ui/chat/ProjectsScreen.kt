@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat
+package tedwester.convo.ui.chat
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent

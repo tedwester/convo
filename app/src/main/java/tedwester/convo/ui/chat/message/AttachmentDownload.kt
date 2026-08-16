@@ -11,10 +11,6 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Opens the system share sheet for a locally-stored audio attachment.
- * Returns `false` when the file is missing or can't be shared.
- */
 internal fun shareAudioAttachment(context: Context, attachment: ChatAttachment): Boolean =
     shareAttachment(context, attachment, "Share voice message")
 
@@ -48,11 +44,6 @@ internal suspend fun saveAudioAttachmentToDownloads(
     attachment: ChatAttachment,
 ): Boolean = saveAttachmentToDownloads(context, attachment)
 
-/**
- * Saves a locally-stored attachment to the user's Downloads folder
- * (under `Download/Convo/`) via [MediaStore]. Returns `true` on success.
- * Requires API 29+ (Q) for [MediaStore.Downloads] with a relative path.
- */
 internal suspend fun saveAttachmentToDownloads(
     context: Context,
     attachment: ChatAttachment,

@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -78,10 +78,6 @@ private fun selectedChatHighlight(): Color {
     }
 }
 
-/**
- * Full-screen chat search overlay — fade only, no dialog window motion.
- * Header: [back] [search field], matching the ring → gap → fill language.
- */
 @Composable
 fun ChatSearchModal(
     chats: List<Chat>,

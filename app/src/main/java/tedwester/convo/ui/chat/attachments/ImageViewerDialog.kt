@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.attachments
+package tedwester.convo.ui.chat.attachments
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,9 +28,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import tedwester.convo.features.chat.model.ChatAttachment
 
-/**
- * Full-screen viewer for a local chat attachment image. Tap backdrop or close to dismiss.
- */
 @Composable
 fun ImageViewerDialog(
     attachment: ChatAttachment,

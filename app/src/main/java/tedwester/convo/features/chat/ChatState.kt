@@ -1,4 +1,4 @@
-﻿package tedwester.convo.features.chat
+package tedwester.convo.features.chat
 
 import androidx.compose.runtime.Composable
 import tedwester.convo.core.network.OpenRouterApi

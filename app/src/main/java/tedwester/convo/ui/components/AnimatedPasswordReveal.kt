@@ -9,15 +9,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 
-/** Duration shared with [PasswordVisibilityToggle] eye-slash animation. */
 const val PasswordRevealAnimMs = 320
 
-/**
- * Animated password masking state — use with [ConvoTextField] when toggling secret visibility.
- *
- * @param visible `true` when the plain text should be shown.
- * @param animateReveal when `false` (empty field / placeholder only), skip the text fade.
- */
 @Composable
 fun rememberAnimatedPasswordReveal(
     visible: Boolean,

@@ -6,10 +6,6 @@ import tedwester.convo.core.network.model.ModelReasoningConfig
 import tedwester.convo.core.network.model.StreamDelta
 import tedwester.convo.features.chat.model.ReasoningEffort
 
-/**
- * Shared JSON parsing helpers for [OpenRouterClient].
- * Kept separate so the client file stays focused on HTTP orchestration.
- */
 internal fun extractContentText(raw: Any?): String = when (raw) {
     null, JSONObject.NULL -> ""
     is String -> raw
@@ -59,10 +55,6 @@ internal fun stringListFrom(array: JSONArray?): List<String> {
     }
 }
 
-/**
- * OpenRouter reports `supported_voices` as either an array of strings or an
- * array of objects (with `name`/`voice_name`/`id`). Normalize to voice ids.
- */
 internal fun parseSupportedVoices(raw: Any?): List<String> {
     val array = raw as? JSONArray ?: return emptyList()
     return buildList {

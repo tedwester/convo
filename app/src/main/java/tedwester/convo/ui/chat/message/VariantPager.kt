@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -40,7 +40,7 @@ import kotlin.math.max
 
 internal const val PagerAnimMs = 220
 internal const val HighlightAnimMs = 200
-/** Last measured heights per assistant turn variant — avoids layout collapse on swap. */
+
 private object VariantHeightCache {
     private val heights = mutableMapOf<Pair<Long, Int>, Int>()
 
@@ -51,11 +51,6 @@ private object VariantHeightCache {
     }
 }
 
-/**
- * Horizontal slide/fade pager shared by text, media, and voice variant pages.
- *
- * Only the incoming and outgoing pages are composed mid-swipe.
- */
 @Composable
 internal fun VariantPagerLayout(
     messageId: Long,

@@ -33,14 +33,6 @@ import tedwester.convo.features.chat.model.ReasoningPreferences
 import tedwester.convo.ui.chat.modals.ModelFilterState
 import kotlin.math.min
 
-/**
- * Holds all mutable UI state for the chat screen and drives the conversation
- * with OpenRouter, persisting chats locally via [ChatRepository].
- *
- * Streaming and special (TTS / image / video) jobs are owned by
- * [ChatCompletionController] so they survive leaving a chat, opening the
- * list, or locking the app.
- */
 @Stable
 class ChatState(
     internal val apiKey: String,
@@ -93,7 +85,6 @@ class ChatState(
     )
         internal set
 
-    /** Selected TTS voice id for the current model; null means model default. */
     var selectedTtsVoice by mutableStateOf(
         selectedModel?.let { loadTtsVoice(it) },
     )
@@ -102,25 +93,18 @@ class ChatState(
     var systemMessage by mutableStateOf("")
         internal set
 
-    /** Model picker filter badges for the current chat (persisted per chat id). */
     var modelSelectorFilters by mutableStateOf(ModelFilterState())
         internal set
 
     var isReady by mutableStateOf(false)
         internal set
 
-    /** Running / completed-unread markers for the chat list. */
     var runStatuses by mutableStateOf<Map<String, ChatRunStatus>>(emptyMap())
         internal set
 
-    /**
-     * Bumped whenever turns are removed from the live list (regenerate truncate,
-     * chat clear, etc.). UI uses this to drop overlays and skip broken exit animations.
-     */
     var messageListRevision by mutableStateOf(0)
         internal set
 
-    /** Drives cross-fade transitions when opening, switching, or clearing chats. */
     var conversationSessionId by mutableStateOf(0)
         internal set
 
@@ -133,7 +117,6 @@ class ChatState(
         ),
     )
 
-    /** Matches [ChatCompletionController] session snapshots applied to [messages]. */
     internal var activeCompletionSessionId: Long = 0L
 
     internal fun bumpMessageListRevision() {
@@ -183,7 +166,6 @@ class ChatState(
         pendingAttachments.clear()
     }
 
-    /** Load chat and project lists from disk without opening a conversation. */
     fun bootstrap() {
         completions.viewingChatId = currentChatId
         scope.launch {
@@ -281,10 +263,6 @@ class ChatState(
         }
     }
 
-    /**
-     * Replace [messages] without creating a transient empty list when both sides
-     * have rows. This keeps chat-switch transitions visually stable.
-     */
     internal fun replaceMessages(next: List<ChatMessage>) {
         if (messages.isEmpty() || next.isEmpty()) {
             if (messages.isNotEmpty()) {
@@ -336,16 +314,6 @@ class ChatState(
         isRunning = completions.isRunning(currentChatId)
     }
 
-    /**
-     * Re-sync [messages] with the controller's live session for [chatId] (or
-     * disk if no session is active), then re-align [activeCompletionSessionId]
-     * and [isRunning]. Called when re-entering a conversation so a reply that
-     * finished while the user was away (whose final [CompletionUpdate] was
-     * dropped by [observeCompletions] because the chat wasn't current) is not
-     * left as a stale empty streaming placeholder. Applies uniformly to text,
-     * image, video, and audio/speech generation because they all flow through
-     * [ChatCompletionController].
-     */
     internal fun reconcileWithController(chatId: String?) {
         if (chatId == null) return
         if (chatId != currentChatId) return
@@ -365,7 +333,6 @@ class ChatState(
         }
     }
 
-    /** Reconcile the currently open chat with the controller (no-op if none). */
     fun reconcile() = reconcileWithController(currentChatId)
 
     internal fun persist(bumpRecency: Boolean = false) {

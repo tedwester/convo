@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 
-/** Matches [ChromeFadeMs] and [PlaceholderFadeMs] for a unified new-chat feel. */
 const val ConversationTransitionMs = 280
 
 private const val ConversationSlideFraction = 0.035f

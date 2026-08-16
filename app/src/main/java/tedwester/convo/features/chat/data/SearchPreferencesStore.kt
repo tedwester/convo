@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 data class SearchPreferences(
-    /** When true, the composer search toggle stays on after sending a message. */
+
     val persistAfterPrompt: Boolean = true,
 )
 

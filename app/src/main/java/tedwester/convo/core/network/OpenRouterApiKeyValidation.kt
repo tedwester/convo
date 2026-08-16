@@ -1,9 +1,5 @@
 package tedwester.convo.core.network
 
-/**
- * Lightweight format checks for OpenRouter API keys before hitting the network.
- * Server verification via [OpenRouterApi.fetchModels] remains the source of truth.
- */
 object OpenRouterApiKeyValidation {
 
     private const val PREFIX = "sk-or-v1-"

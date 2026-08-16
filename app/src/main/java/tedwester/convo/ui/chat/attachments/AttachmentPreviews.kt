@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.attachments
+package tedwester.convo.ui.chat.attachments
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.background
@@ -42,7 +42,6 @@ import coil.compose.SubcomposeAsyncImage
 import tedwester.convo.features.chat.model.ChatAttachment
 import java.io.File
 
-/** Decode a local image scaled down for a thumbnail — avoids full-res main-thread decode. */
 internal fun decodeSampledBitmap(
     path: String,
     reqWidth: Int,

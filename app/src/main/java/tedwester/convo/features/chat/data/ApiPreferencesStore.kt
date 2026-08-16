@@ -4,9 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 
 data class ApiPreferences(
-    /** How long to wait for an AI response before terminating the request (1–45 minutes). */
+
     val requestTimeoutMinutes: Int = DEFAULT_REQUEST_TIMEOUT_MINUTES,
-    /** Upper bound on completion tokens sent to OpenRouter. Higher values may increase cost. */
+
     val maxTokens: Int = DEFAULT_MAX_TOKENS,
 ) {
     companion object {

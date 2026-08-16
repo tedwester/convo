@@ -4,11 +4,11 @@ import android.content.Context
 import android.content.SharedPreferences
 
 data class ComposerPreferences(
-    /** When true, the mic dictation button appears in the chat composer. */
+
     val showDictationButton: Boolean = true,
-    /** When true, a floating button appears to jump to the latest messages. */
+
     val showScrollToBottomButton: Boolean = true,
-    /** When true, a floating button appears to jump to the start of the chat. */
+
     val showScrollToTopButton: Boolean = true,
 )
 

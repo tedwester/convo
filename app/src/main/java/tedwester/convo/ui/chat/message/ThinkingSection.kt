@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -46,21 +46,12 @@ import tedwester.convo.ui.components.ScrollColumnWithEdgeFades
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.AssistantSerifFamily
 
-/** Max height the expanded thinking pane can occupy before it scrolls internally. */
 private val ThinkingPaneMaxHeight = 280.dp
-/** Edge-fade band height for the thinking pane (tighter than the chat list). */
+
 private val ThinkingPaneFadeHeight = 24.dp
-/** If the user is within this many px of the bottom, keep them pinned while streaming. */
+
 private const val ThinkingPaneFollowThresholdPx = 32
 
-/**
- * Collapsible thinking header + body for assistant turns.
- *
- * While actively thinking (streaming, no reply content yet) the label uses the
- * same shimmer as [GeneratingResponseLabel]. The expanded reasoning text is
- * static grey and lives in a bounded, internally scrollable pane with top/bottom
- * edge fades — it never grows the chat list like a reply does.
- */
 @Composable
 internal fun ThinkingSection(
     sectionKey: Any,

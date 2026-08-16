@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat
+package tedwester.convo.ui.chat
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -67,11 +67,6 @@ internal fun selectedChatHighlight(): Color {
     }
 }
 
-/**
- * Custom header matching the reference layout:
- * [settings] [title] ........ [search] [back]
- * with equal circle sizes and tight 8dp gaps between paired actions.
- */
 @Composable
 internal fun ChatListHeader(
     title: String,
@@ -473,4 +468,3 @@ internal fun formatRelativeTime(epochMs: Long): String {
         }
     }
 }
-

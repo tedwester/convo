@@ -15,9 +15,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import tedwester.convo.ui.icons.ConvoIcons
 
-/**
- * Read-only field that opens a picker — same shell as [ConvoTextField].
- */
 @Composable
 fun ConvoPickerField(
     label: String,

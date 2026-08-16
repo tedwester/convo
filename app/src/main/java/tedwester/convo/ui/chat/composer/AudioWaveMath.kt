@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.composer
+package tedwester.convo.ui.chat.composer
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -15,12 +15,8 @@ import kotlin.math.sin
 internal val ActionButtonSize = 36.dp
 internal val ActionIconSize = 18.dp
 
-/** Per-bar phase offsets so motion doesn't read as one uniform wave. */
 internal fun barPhaseOffset(index: Int): Float = index * 1.21f + index * index * 0.07f
 
-/**
- * Blend of three out-of-sync sine layers — long before the pattern obviously repeats.
- */
 internal fun layeredWave(slow: Float, mid: Float, fast: Float, barOffset: Float): Float {
     val wave =
         sin(slow + barOffset) * 0.5f +

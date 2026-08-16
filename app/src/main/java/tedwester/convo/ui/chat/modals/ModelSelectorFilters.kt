@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -190,4 +190,3 @@ internal fun FilterBadge(
             .padding(horizontal = 10.dp, vertical = 5.dp),
     )
 }
-

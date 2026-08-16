@@ -5,9 +5,6 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 
-/**
- * Wraps [BiometricPrompt] for app-lock unlock and settings enrollment.
- */
 class AppLockManager(private val activity: FragmentActivity) {
 
     private val allowedAuthenticators =

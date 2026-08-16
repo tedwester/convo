@@ -10,10 +10,6 @@ import tedwester.convo.ui.input.ConvoKeyboardOptions
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.ConvoFieldTokens
 
-/**
- * Shared search field — Lucide search leading icon + pill corners.
- * Used by projects top bar, chat search, and model selector.
- */
 @Composable
 fun ConvoSearchField(
     value: String,

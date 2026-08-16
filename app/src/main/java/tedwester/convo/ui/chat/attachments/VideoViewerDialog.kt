@@ -29,10 +29,6 @@ import androidx.compose.ui.window.DialogProperties
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.ui.icons.ConvoIcons
 
-/**
- * Full-screen player for a locally-saved generated video. Tap the clip to
- * pause/resume; close or tap the backdrop to dismiss.
- */
 @Composable
 fun VideoViewerDialog(
     attachment: ChatAttachment,

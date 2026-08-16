@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -7,12 +7,6 @@ import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.EMPTY_RESPONSE_TEXT
 import tedwester.convo.features.chat.model.isAssistantStatusContent
 
-/**
- * Assistant turn body text for streaming or single-variant turns.
- *
- * Multi-variant paging (text, voice, image, video) lives in [VariantPagerLayout]
- * via [AssistantMessage].
- */
 @Composable
 internal fun VariantBody(
     message: ChatMessage,

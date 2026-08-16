@@ -29,10 +29,6 @@ fun convoRingColor(): Color {
     }
 }
 
-/**
- * Outer ring → filled gap → inner fill. [gapColor] should match the page
- * background so the ring inset is not transparent.
- */
 fun Modifier.convoRingGapSurface(
     outerShape: Shape,
     innerShape: Shape,

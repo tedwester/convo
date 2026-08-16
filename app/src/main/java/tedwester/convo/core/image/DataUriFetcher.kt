@@ -10,7 +10,6 @@ import coil.fetch.SourceResult
 import coil.request.Options
 import okio.Buffer
 
-/** Coil fetcher for `data:image/...;base64,...` (matched as [Uri], not String). */
 class DataUriFetcher(
     private val dataUri: String,
     private val options: Options,

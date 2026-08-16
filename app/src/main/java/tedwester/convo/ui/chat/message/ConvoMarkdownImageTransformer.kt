@@ -13,15 +13,6 @@ import com.mikepenz.markdown.model.ImageData
 import com.mikepenz.markdown.model.ImageTransformer
 import com.mikepenz.markdown.model.PlaceholderConfig
 
-/**
- * Coil-backed markdown images.
- *
- * The default inline image placeholder reserves the full message width and a fixed
- * height, which leaves a wide empty band around images whose aspect ratio does not
- * match that box. We size the placeholder to the image's real aspect ratio (capped
- * to the column) and render with [ContentScale.Fit] so the image sits flush in its
- * slot instead of floating in empty space.
- */
 internal object ConvoMarkdownImageTransformer : ImageTransformer {
 
     @Composable

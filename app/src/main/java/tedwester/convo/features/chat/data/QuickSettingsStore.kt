@@ -4,16 +4,11 @@ import android.content.Context
 import android.content.SharedPreferences
 import tedwester.convo.features.chat.model.QuickSettingIds
 
-/**
- * Persisted, ordered list of quick-setting IDs shown in the chat-search dock.
- *
- * The order of [items] is the left-to-right order of the dock buttons.
- */
 data class QuickSettingsConfig(
     val items: List<String> = DEFAULT_ITEMS,
 ) {
     companion object {
-        /** Defaults: lock and credits on the left, new chat in the center, keep-search on the right. */
+
         val DEFAULT_ITEMS: List<String> = listOf(
             QuickSettingIds.BIOMETRIC_LOCK,
             QuickSettingIds.CREDITS,
@@ -21,17 +16,12 @@ data class QuickSettingsConfig(
             QuickSettingIds.KEEP_SEARCH_ON,
         )
 
-        /** Maximum number of quick-setting slots the dock can hold. */
         const val MAX_ITEMS = 5
     }
 }
 
 private val RetiredQuickSettingItems = setOf("web_search", "reasoning", "model")
 
-/**
- * Persists [QuickSettingsConfig] via SharedPreferences, mirroring the other
- * small preference stores (`VoicePreferencesStore`, `SearchPreferencesStore`).
- */
 class QuickSettingsStore(context: Context) {
 
     private val prefs: SharedPreferences =

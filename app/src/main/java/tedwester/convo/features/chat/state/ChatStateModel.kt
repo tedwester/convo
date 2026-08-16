@@ -80,7 +80,6 @@ internal fun ChatState.updateModelSelectorFiltersImpl(state: ModelFilterState) {
     }
 }
 
-/** Warm the model cache and replace a restored stub with full capability flags. */
 internal suspend fun ChatState.refreshSelectedModelMetadata() {
     val current = selectedModel ?: return
     val hasModalities =

@@ -34,13 +34,10 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 
-/** Slow continuous revolution — calm, not frantic. */
 private const val HintRingRevolveMs = 2600
 
-/** Angular reach of the soft glow on either side of its peak (degrees). */
 private const val GlowHalfWidthDegrees = 70f
 
-/** Segments used to render the soft, fading gradient around the ring. */
 private const val SegmentCount = 64
 
 enum class HintRingOutline {
@@ -48,10 +45,6 @@ enum class HintRingOutline {
     Capsule,
 }
 
-/**
- * Hint-tour ring: a dim outline with a soft glow that drifts around it
- * continuously. Fades in when highlighted and fades out when the hint moves on.
- */
 @Composable
 fun Modifier.hintHighlightRing(
     highlighted: Boolean,
@@ -122,7 +115,6 @@ fun Modifier.hintHighlightRing(
     }
 }
 
-/** Composer buttons — circular 36 dp controls. */
 @Composable
 fun Modifier.composerHintHighlightRing(
     highlighted: Boolean,

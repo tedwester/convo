@@ -79,13 +79,6 @@ object ConvoMenuTokens {
 
 private val LocalConvoMenuDismiss = compositionLocalOf<() -> Unit> { {} }
 
-/**
- * Anchored action menu matching Convo chrome: modal fill, hairline ring,
- * soft corners, and a quiet fade/scale — no Material dropdown elevation.
- *
- * Place next to the anchor inside a [Box]. Prefer [ConvoOverflowMenu] for
- * the standard three-dot trigger.
- */
 @Composable
 fun ConvoPopupMenu(
     expanded: Boolean,
@@ -282,9 +275,6 @@ fun ConvoPopupMenuDivider(modifier: Modifier = Modifier) {
     )
 }
 
-/**
- * Standard three-dot trigger plus [ConvoPopupMenu], used on list rows.
- */
 @Composable
 fun ConvoOverflowMenu(
     expanded: Boolean,

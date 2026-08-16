@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat
+package tedwester.convo.ui.chat
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Spring
@@ -40,22 +40,16 @@ import tedwester.convo.ui.chat.conversation.ConversationScreen
 import tedwester.convo.ui.chat.conversation.DismissKeyboardOnLifecycle
 import kotlin.math.abs
 
-/** px/s — fling past this snaps open/closed regardless of midpoint. */
 private const val PageFlingVelocity = 700f
-/** How far the chat page shifts right when the list is fully open. */
+
 private const val ChatParallaxFraction = 0.18f
 
-/** Snappy settle — higher stiffness than the old 420 spring. */
 private val PageSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
     stiffness = 1100f,
     visibilityThreshold = 0.001f,
 )
 
-/**
- * Chat navigation shell: conversation page + slide-in chat list drawer.
- * Global overlays (settings) are owned by [tedwester.convo.ui.shell.AppShell].
- */
 @Composable
 fun ChatScreen(
     apiKey: String,

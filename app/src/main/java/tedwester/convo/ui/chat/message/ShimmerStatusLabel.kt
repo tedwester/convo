@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -22,9 +22,6 @@ import tedwester.convo.ui.theme.AssistantSerifFamily
 
 internal val StatusLabelGrey = Color(0xFF9A9A9A)
 
-/**
- * Soft grey status line with a white highlight that sweeps back and forth.
- */
 @Composable
 internal fun ShimmerStatusLabel(
     text: String,

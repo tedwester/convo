@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.composer
+package tedwester.convo.ui.chat.composer
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform

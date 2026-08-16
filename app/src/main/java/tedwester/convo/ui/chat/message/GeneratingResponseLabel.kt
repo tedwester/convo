@@ -1,13 +1,10 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import tedwester.convo.features.chat.model.WebSearchStep
 
-/**
- * Soft grey status line shown while waiting for the first streamed token.
- */
 @Composable
 internal fun GeneratingResponseLabel(
     modifier: Modifier = Modifier,

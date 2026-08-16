@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.message
+package tedwester.convo.ui.chat.message
 
 import android.content.Intent
 import android.os.SystemClock
@@ -277,7 +277,6 @@ internal fun AssistantMessage(
     }
 }
 
-/** Body-only row used when a long reply is split across LazyColumn items. */
 @Composable
 internal fun AssistantBlockBody(
     text: String,
@@ -352,11 +351,6 @@ private fun rememberLiveThinkingElapsedMs(message: ChatMessage): Long? {
     return if (tracking && startedAt != null) elapsedMs else null
 }
 
-/**
- * Drives response-control opacity:
- * - hidden while streaming, then fades in when the reply finishes;
- * - fades out/in on variant swaps so the bar doesn't jump during layout.
- */
 @Composable
 private fun rememberResponseControlsAlpha(
     messageId: Long,
@@ -390,7 +384,6 @@ private fun rememberResponseControlsAlpha(
     return alpha.value
 }
 
-/** Controls-only row paired with [AssistantBlockBody] entries. */
 @Composable
 internal fun AssistantMessageActions(
     message: ChatMessage,
@@ -644,11 +637,6 @@ internal fun MessageActionButton(
     }
 }
 
-/**
- * Renders attachments carried by an assistant turn — generated images,
- * videos, and TTS audio output. Text-only assistant turns have no
- * attachments and render nothing here.
- */
 @Composable
 private fun AssistantAttachments(
     attachments: List<ChatAttachment>,

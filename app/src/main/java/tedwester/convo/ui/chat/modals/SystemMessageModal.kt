@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,9 +24,6 @@ import tedwester.convo.ui.components.ConvoTextField
 import tedwester.convo.ui.components.rememberConvoSheetController
 import tedwester.convo.ui.theme.ConvoModalTokens
 
-/**
- * Bottom-sheet editor for the chat's system message (AI instructions).
- */
 @Composable
 fun SystemMessageModal(
     initialMessage: String,

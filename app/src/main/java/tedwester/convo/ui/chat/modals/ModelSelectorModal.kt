@@ -1,4 +1,4 @@
-﻿package tedwester.convo.ui.chat.modals
+package tedwester.convo.ui.chat.modals
 
 import android.view.HapticFeedbackConstants
 import android.view.View
@@ -66,13 +66,6 @@ import java.util.Locale
 private val ModelSelectorHorizontalPadding = 20.dp
 private const val ModelFetchRetryMs = 2_000L
 
-/**
- * Bottom-sheet model picker built on [ConvoBottomSheet].
- *
- * Fetches the live OpenRouter model listing (with server-side filter/sort badges),
- * lets the user search it, and calls [onSelect] with the chosen model. Retries
- * automatically on failure while showing the loading skeleton — no offline list.
- */
 @Composable
 fun ModelSelectorModal(
     apiKey: String,
@@ -137,9 +130,6 @@ fun ModelSelectorModal(
     }
 }
 
-/**
- * A short tick + deeper click — distinct from Confirm (chip) and LongPress (attach).
- */
 private suspend fun performModelSelectHaptic(view: View) {
     view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
     delay(42)

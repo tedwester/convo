@@ -21,13 +21,6 @@ import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.EMPTY_RESPONSE_TEXT
 import tedwester.convo.features.chat.model.MessageAuthor
 
-/**
- * Speech-output reply for typed text, a transcribed voice note, or a redo.
- * Always honors the current [VoiceTtsMode]: Speak my words synthesizes
- * [userText]; Conversation generates a chat reply (with history) then
- * speaks that. Display defaults are snapshotted per turn from
- * [VoicePreferences.showVoiceRepliesAsTextFirst].
- */
 internal fun ChatState.runSpeechReply(
     model: OpenRouterModel,
     userText: String,
@@ -146,12 +139,6 @@ internal fun ChatState.runSpeechReply(
     }
 }
 
-/**
- * Transcribe a voice note via OpenRouter's STT endpoint for a
- * transcription-only model. Uses the same special-generation pipeline as
- * image / video / TTS so the assistant turn shows a live status label,
- * survives navigation, and supports stop.
- */
 internal fun ChatState.runTranscriptionCompletion(
     model: OpenRouterModel,
     audioBytes: ByteArray,
@@ -226,10 +213,6 @@ internal fun ChatState.runTranscriptionCompletion(
     }
 }
 
-/**
- * Generate images via OpenRouter's `/api/v1/images` endpoint for an
- * image-generation model. Each returned image is saved as an attachment.
- */
 internal fun ChatState.runImageCompletion(model: OpenRouterModel, prompt: String) {
     val chatId = currentChatId ?: return
     if (prompt.isBlank()) return
@@ -287,11 +270,6 @@ internal fun ChatState.runImageCompletion(model: OpenRouterModel, prompt: String
     }
 }
 
-/**
- * Generate video via OpenRouter's async `/api/v1/videos` endpoint. Attached
- * images become first/last frames (and extra style references). The returned
- * clip is saved as an attachment.
- */
 internal fun ChatState.runVideoCompletion(
     model: OpenRouterModel,
     prompt: String,

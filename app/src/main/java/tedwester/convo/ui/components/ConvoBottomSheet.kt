@@ -73,10 +73,6 @@ import tedwester.convo.ui.theme.ConvoModalTokens
 import tedwester.convo.ui.theme.ConvoTheme
 import tedwester.convo.ui.theme.convoModalSurface
 
-/**
- * Controls open / dismiss animation for [ConvoBottomSheet].
- * Call [dismiss] (or [animateClose] + await) instead of tearing the host down immediately.
- */
 class ConvoSheetController {
     var visible by mutableStateOf(false)
         private set
@@ -90,10 +86,6 @@ class ConvoSheetController {
         if (!closing) visible = true
     }
 
-    /**
-     * Hides the keyboard (when open), then starts the sheet exit animation.
-     * Returns false if a close is already in flight.
-     */
     suspend fun animateClose(): Boolean {
         if (closing) return false
         closing = true
@@ -145,21 +137,6 @@ private fun dismissKeyboardBeforeSheetExit(
 fun rememberConvoSheetController(): ConvoSheetController =
     remember { ConvoSheetController() }
 
-/**
- * Shared bottom-sheet chrome used by create-project, model selector, etc.
- *
- * Scrim fade + sheet slide share [ConvoModalTokens.AnimMs]. Sheet fill is
- * [convoModalSurface] (`#1E1D1B` in dark).
- *
- * When [title] is non-null, a standard header with title + close (X) is rendered
- * after the handle — every pull-up should pass this rather than rolling its own.
- *
- * @param useDialog wrap in a themed [Dialog] (needed when the host must sit above IME / other windows)
- * @param sheetHeightFraction optional max height as a fraction of the screen
- * @param applyImePadding lift the sheet above the keyboard
- * @param contentScrollable wrap content in a vertical scroll
- * @param title optional sheet title; shows [ConvoSheetHeader] with close on the right
- */
 @Composable
 fun ConvoBottomSheet(
     controller: ConvoSheetController,
@@ -384,12 +361,6 @@ fun ConvoSheetHandle(
     }
 }
 
-/**
- * Standard pull-up header: title on the left, close (X) on the right.
- * Prefer passing [ConvoBottomSheet]'s `title` param so this is automatic.
- * Use this directly only when the sheet needs a custom header layout
- * (e.g. edge-to-edge content with its own horizontal padding).
- */
 @Composable
 fun ConvoSheetHeader(
     title: String,

@@ -7,7 +7,6 @@ import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.features.chat.model.ConversationFrame
 import tedwester.convo.ui.chat.modals.ModelFilterState
 
-/** Apply persisted defaults when starting a new chat (default model from KeyStorage). */
 internal fun ChatState.applyNewChatDefaultsImpl() {
     isSearchEnabled = false
     val stored = keyStorage.getModel() ?: return
@@ -24,7 +23,7 @@ internal fun ChatState.applyNewChatDefaultsImpl() {
     )
     scope.launch {
         refreshSelectedModelMetadata()
-    }  
+    }
 }
 
 internal fun ChatState.openChatImpl(chatId: String) {
@@ -59,11 +58,6 @@ internal fun ChatState.openChatImpl(chatId: String) {
     }
 }
 
-/**
- * Start a fresh conversation in memory only. Nothing is written to history
- * until the first real turn ([ensureCurrentChat] on send).
- * In-flight completions on other chats keep running.
- */
 internal fun ChatState.newChatImpl() {
     completions.viewingChatId = null
     if (messages.isEmpty() && currentChatId == null) {

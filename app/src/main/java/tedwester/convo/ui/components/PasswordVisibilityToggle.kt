@@ -32,12 +32,6 @@ private const val EyeSlashAnimMs = PasswordRevealAnimMs
 private val EyeOutlinePathData =
     "M2.062,12.348a1,1 0,0 1,0 -0.696 10.75,10.75 0,0 1,19.876 0 1,1 0,0 1,0 0.696 10.75,10.75 0,0 1,-19.876 0"
 
-/**
- * Eye toggle for password fields — Lucide-style eye with an animated slash line.
- * Matches muted field icon styling ([ConvoTextField] leading icons).
- *
- * @param visible `true` when the secret text is shown (slash drawn).
- */
 @Composable
 fun PasswordVisibilityToggle(
     visible: Boolean,

@@ -45,7 +45,6 @@ import kotlinx.coroutines.delay
 import tedwester.convo.features.chat.model.QuickSetting
 import tedwester.convo.features.chat.model.QuickSettingState
 
-/** Outer dock height — slots fill this exactly. */
 private val DockHeight = 52.dp
 private val DockSlotSize = 44.dp
 private val DockSlotIconSize = 21.dp
@@ -55,10 +54,6 @@ private const val StaggerMs = 45L
 private const val EnterMs = 220
 private const val ToggleColorMs = 240
 
-/**
- * Floating bottom dock on the chat list. Width hugs its slots. Icon-only —
- * no value labels. Toggle feedback matches the chat composer chips.
- */
 @Composable
 fun QuickSettingsDock(
     quickSettings: List<QuickSetting>,

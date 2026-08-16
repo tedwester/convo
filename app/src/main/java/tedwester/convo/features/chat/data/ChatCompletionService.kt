@@ -7,11 +7,6 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.content.ContextCompat
 
-/**
- * Foreground service that keeps the process alive while one or more chat
- * completions are streaming. Networking lives in [ChatCompletionController];
- * this service only hosts the ongoing notification and elevates process priority.
- */
 class ChatCompletionService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null

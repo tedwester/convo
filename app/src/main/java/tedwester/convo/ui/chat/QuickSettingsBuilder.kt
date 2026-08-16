@@ -13,7 +13,6 @@ import tedwester.convo.features.chat.model.quickSettingDescriptor
 private fun formatModelSlug(id: String): String =
     id.substringAfterLast('/').ifBlank { id }.replace('-', ' ')
 
-/** Resolves the persisted [QuickSettingsConfig] into a live dock button list. */
 @Composable
 internal fun buildQuickSettings(
     config: QuickSettingsConfig,
