@@ -1,6 +1,7 @@
 package tedwester.convo.ui.chat.message
 
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,7 +25,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.SideEffect
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -58,7 +58,8 @@ fun MessageList(
     resumeFollowToken: Int = 0,
     userBubbleAnimOnMountToken: Int = 0,
     onRegenerate: (Long) -> Unit = {},
-    onResendUserMessage: (messageId: Long, editedText: String) -> Unit = { _, _ -> },
+    onResendUserMessage: (messageId: Long, editedText: String?) -> Unit = { _, _ -> },
+    onStartEditUserMessage: (messageId: Long) -> Unit = {},
     onVariantSwipe: (messageId: Long, delta: Int) -> Unit = { _, _ -> },
     onViewAttachment: (ChatAttachment) -> Unit = {},
     onDismissKeyboard: () -> Unit = {},
@@ -302,15 +303,6 @@ fun MessageList(
         listState.pinItemBottomIntoView(index)
     }
 
-    LaunchedEffect(selectedPromptMessageId, scrollEnabled) {
-        if (!scrollEnabled || selectedPromptMessageId <= 0) return@LaunchedEffect
-        val index = messages.indexOfFirst { it.id == selectedPromptMessageId }
-        if (index < 0) return@LaunchedEffect
-        listState.ensureItemBottomVisible(index)
-        delay(PagerAnimMs.toLong())
-        listState.ensureItemBottomVisible(index)
-    }
-
     val itemKeyPrefix = conversationKey ?: "new"
 
     key(listScopeKey) {
@@ -338,6 +330,13 @@ fun MessageList(
             ) { message ->
                 val actionsEnabled = !isRunning
                 val canRegenerate = message.author == MessageAuthor.Assistant && actionsEnabled
+                val promptBarVisible = message.author == MessageAuthor.User &&
+                    message.id == selectedPromptMessageId
+                val promptBarSlotHeight by animateDpAsState(
+                    targetValue = if (promptBarVisible) 36.dp else 0.dp,
+                    animationSpec = spring(stiffness = 420f, dampingRatio = 0.86f),
+                    label = "promptBarSlot",
+                )
                 ChatBubble(
                     message = message,
                     onRegenerate = if (canRegenerate) {
@@ -350,8 +349,7 @@ fun MessageList(
                     },
                     actionsEnabled = actionsEnabled,
                     showActions = message.author == MessageAuthor.Assistant,
-                    promptBarVisible = message.author == MessageAuthor.User &&
-                        message.id == selectedPromptMessageId,
+                    promptBarVisible = promptBarVisible,
                     onTogglePromptBar = {
                         onDismissKeyboard()
                         selectedPromptMessageId = if (selectedPromptMessageId == message.id) {
@@ -360,9 +358,13 @@ fun MessageList(
                             message.id
                         }
                     },
-                    onResend = { editedText ->
+                    onStartEdit = {
                         selectedPromptMessageId = -1L
-                        onResendUserMessage(message.id, editedText)
+                        onStartEditUserMessage(message.id)
+                    },
+                    onResend = {
+                        selectedPromptMessageId = -1L
+                        onResendUserMessage(message.id, null)
                     },
                     expectStreamedThinking = message.expectStreamedThinking && message.isStreaming,
                     userAnimToken = if (message.id == userBubbleAnimId) userBubbleAnimToken else 0,
@@ -373,7 +375,7 @@ fun MessageList(
                     onVoiceAutoPlayStarted = { onVoiceAutoPlayStarted(message.id) },
                     onVoicePlaybackFinished = onVoicePlaybackFinished,
                     onVoicePlaybackPaused = onVoicePlaybackPaused,
-                    modifier = Modifier.padding(bottom = 18.dp),
+                    modifier = Modifier.padding(bottom = 18.dp + promptBarSlotHeight),
                 )
             }
         }
