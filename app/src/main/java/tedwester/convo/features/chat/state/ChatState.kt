@@ -398,5 +398,7 @@ class ChatState(
     fun markVoiceAutoPlayed(messageId: Long) = markVoiceAutoPlayedImpl(messageId)
     fun stop() = stopImpl()
     fun regenerate(messageId: Long) = regenerateImpl(messageId)
+    fun resendUserMessage(messageId: Long, editedText: String? = null) =
+        resendUserMessageImpl(messageId, editedText)
     fun selectVariant(messageId: Long, delta: Int) = selectVariantImpl(messageId, delta)
 }

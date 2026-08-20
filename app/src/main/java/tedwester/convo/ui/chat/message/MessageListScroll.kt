@@ -95,6 +95,19 @@ internal suspend fun LazyListState.maintainVisualBottom() {
     }
 }
 
+internal suspend fun LazyListState.ensureItemBottomVisible(index: Int) {
+    if (layoutInfo.totalItemsCount <= 0) return
+    val lastIndex = layoutInfo.totalItemsCount - 1
+    val clamped = index.coerceIn(0, lastIndex)
+    awaitListLaidOut()
+    val visible = layoutInfo.visibleItemsInfo.find { it.index == clamped }
+    if (visible == null) {
+        pinItemBottomIntoView(clamped)
+        return
+    }
+    refineItemBottomIntoView(clamped)
+}
+
 internal suspend fun LazyListState.pinItemBottomIntoView(index: Int) {
     if (layoutInfo.totalItemsCount <= 0) return
     val lastIndex = layoutInfo.totalItemsCount - 1
