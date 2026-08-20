@@ -155,6 +155,13 @@ data class ChatMessage(
         if (!isAssistantStatusContent(active)) return active
         return variants.lastOrNull { !isAssistantStatusContent(it) } ?: active
     }
+
+    fun userDisplayText(): String = userDisplayTextOf(content)
+
+    fun withUserDisplayText(text: String): ChatMessage {
+        val next = mergeUserDisplayText(content, text)
+        return if (next == content) this else copy(content = next)
+    }
 }
 
 internal const val STOPPED_RESPONSE_TEXT = "You stopped the response."
@@ -238,3 +245,19 @@ internal fun isAssistantStatusContent(content: String): Boolean =
         content == EMPTY_RESPONSE_TEXT ||
         content == "Stopped." ||
         content.startsWith("⚠")
+
+internal fun userDisplayTextOf(content: String): String =
+    content.lineSequence()
+        .filterNot { line -> line.trimStart().startsWith("📎") }
+        .joinToString("\n")
+        .trim()
+
+internal fun mergeUserDisplayText(content: String, text: String): String {
+    val fileNote = content.lineSequence()
+        .filter { line -> line.trimStart().startsWith("📎") }
+        .joinToString("\n")
+        .trim()
+    return listOf(text.trim(), fileNote)
+        .filter { it.isNotBlank() }
+        .joinToString("\n")
+}

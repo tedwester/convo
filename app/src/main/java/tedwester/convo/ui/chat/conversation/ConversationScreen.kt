@@ -299,6 +299,12 @@ fun ConversationScreen(
                             chatState.regenerate(id)
                             resumeFollowToken += 1
                         },
+                        onResendUserMessage = { id, editedText ->
+                            if (!isLiveSession) return@MessageList
+                            dismissKeyboard()
+                            chatState.resendUserMessage(id, editedText)
+                            resumeFollowToken += 1
+                        },
                         onVariantSwipe = { id, delta ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()

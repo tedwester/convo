@@ -10,7 +10,6 @@ import tedwester.convo.core.network.model.ChatMessageDto
 import tedwester.convo.core.network.model.ModelKind
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.core.network.model.TranscriptionRequest
-import tedwester.convo.core.network.model.UnsupportedInput
 import tedwester.convo.features.chat.data.AttachmentStore
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.model.ChatMessage
@@ -19,7 +18,7 @@ import tedwester.convo.features.chat.model.asStopped
 import java.io.File
 
 internal fun ChatState.sendImpl() {
-    val model = selectedModel ?: return
+    if (selectedModel == null) return
     val text = input.trim()
     val attachments = pendingAttachments.toList()
     if (text.isEmpty() && attachments.isEmpty()) return
@@ -27,9 +26,7 @@ internal fun ChatState.sendImpl() {
     scope.launch {
         ensureCurrentChat()
 
-        val images = attachments.filter { it.isImage }
         val files = attachments.filterNot { it.isImage }
-
         val fileNote = if (files.isNotEmpty()) {
             files.joinToString(separator = "\n") { "📎 ${it.displayName}" }
         } else {
@@ -49,47 +46,103 @@ internal fun ChatState.sendImpl() {
         input = ""
         clearPendingAttachments()
         persist()
+        startReplyForLatestUserMessage()
+    }
+}
 
-        if (model.supportsSpeechOutput) {
-            runSpeechReply(model, text.ifBlank { displayContent })
-            return@launch
+internal fun ChatState.resendUserMessageImpl(messageId: Long, editedText: String? = null) {
+    if (isRunning) return
+    if (selectedModel == null) return
+    if (currentChatId == null) return
+    val index = messages.indexOfFirst {
+        it.id == messageId && it.author == MessageAuthor.User
+    }
+    if (index < 0) return
+
+    val existing = messages[index]
+    val updated = if (editedText != null) {
+        existing.withUserDisplayText(editedText)
+    } else {
+        existing
+    }
+    if (updated.content.isBlank() && updated.attachments.isEmpty()) return
+
+    val next = messages.getOrNull(index + 1)
+    val unchangedPrompt = updated == existing
+    if (unchangedPrompt && next != null && next.author == MessageAuthor.Assistant) {
+        regenerateImpl(next.id)
+        return
+    }
+
+    if (updated != existing) {
+        messages[index] = updated
+    }
+    if (index + 1 < messages.size) {
+        messages.removeRange(index + 1, messages.size)
+        bumpMessageListRevision()
+    }
+    persist(bumpRecency = true)
+    startReplyForLatestUserMessage()
+}
+
+internal fun ChatState.startReplyForLatestUserMessage() {
+    val model = selectedModel ?: return
+    val user = messages.lastOrNull() ?: return
+    if (user.author != MessageAuthor.User) return
+
+    val text = user.userDisplayText()
+    val attachments = user.attachments
+    val images = attachments.filter { it.isImage }
+    val files = attachments.filterNot { it.isImage }
+    val displayContent = user.content
+
+    if (model.supportsSpeechOutput) {
+        runSpeechReply(model, text.ifBlank { displayContent })
+        return
+    }
+
+    when (model.modelKind) {
+        ModelKind.ImageGen -> {
+            runImageCompletion(model, text.ifBlank { displayContent })
+            return
         }
-
-        when (model.modelKind) {
-            ModelKind.ImageGen -> {
-                runImageCompletion(model, text.ifBlank { displayContent })
-                return@launch
-            }
-            ModelKind.VideoGen -> {
-                runVideoCompletion(model, text, images)
-                return@launch
-            }
-            ModelKind.Embedding, ModelKind.Rerank -> {
-                appendUnsupportedModelWarning(
-                    model,
-                    "isn't a chat model — it can't hold a conversation.",
-                )
-                return@launch
-            }
-            ModelKind.Transcription -> {
+        ModelKind.VideoGen -> {
+            runVideoCompletion(model, text, images)
+            return
+        }
+        ModelKind.Embedding, ModelKind.Rerank -> {
+            appendUnsupportedModelWarning(
+                model,
+                "isn't a chat model — it can't hold a conversation.",
+            )
+            return
+        }
+        ModelKind.Transcription -> {
+            val recording = loadVoiceRecordingFromMessage(user)
+            if (recording != null) {
+                val (audioBytes, format) = recording
+                runTranscriptionCompletion(model, audioBytes, format)
+            } else {
                 appendUnsupportedModelWarning(
                     model,
                     "only transcribes audio. Send a voice message to use it.",
                 )
-                return@launch
             }
-            ModelKind.Chat, ModelKind.Tts -> Unit
+            return
         }
+        ModelKind.Chat, ModelKind.Tts -> Unit
+    }
 
-        if (rejectUnsupportedInputs(
-                model = model,
-                hasImages = images.isNotEmpty(),
-                hasFiles = files.isNotEmpty(),
-            )
-        ) {
-            return@launch
-        }
+    if (rejectUnsupportedInputs(
+            model = model,
+            hasImages = images.isNotEmpty(),
+            hasFiles = files.isNotEmpty(),
+        )
+    ) {
+        return
+    }
 
+    scope.launch {
         val history = buildApiHistory()
         runCompletion(model, history)
     }
@@ -505,11 +558,7 @@ internal fun ChatState.loadVoiceRecordingFromMessage(message: ChatMessage): Pair
 
 internal fun ChatState.userPromptBefore(index: Int): String? {
     return userMessageBefore(index)?.let { message ->
-        message.content.lineSequence()
-            .filterNot { it.trimStart().startsWith("📎") }
-            .joinToString("\n")
-            .trim()
-            .ifBlank { message.content }
+        message.userDisplayText().ifBlank { message.content }
     }
 }
 
