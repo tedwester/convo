@@ -6,10 +6,25 @@ import kotlinx.coroutines.withContext
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.features.chat.model.ReasoningEffort
 import tedwester.convo.features.chat.model.ReasoningPreferences
+import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.ui.chat.modals.ModelFilterState
 
 internal fun ChatState.onInputChangeImpl(value: String) {
     input = value
+}
+
+internal fun ChatState.startEditingMessageImpl(messageId: Long) {
+    if (isRunning) return
+    val message = messages.firstOrNull {
+        it.id == messageId && it.author == MessageAuthor.User
+    } ?: return
+    editingMessageId = messageId
+    input = message.userDisplayText()
+}
+
+internal fun ChatState.cancelEditingMessageImpl() {
+    editingMessageId = null
+    input = ""
 }
 
 internal fun ChatState.toggleSearchImpl() {

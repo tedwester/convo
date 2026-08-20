@@ -1,15 +1,12 @@
 package tedwester.convo.ui.chat.message
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -18,10 +15,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,23 +31,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.ui.chat.attachments.AttachmentFileBadge
 import tedwester.convo.ui.chat.attachments.AttachmentImageThumb
-import tedwester.convo.ui.input.ConvoKeyboardOptions
 
 @Composable
 internal fun UserMessage(
@@ -60,7 +51,8 @@ internal fun UserMessage(
     promptBarVisible: Boolean = false,
     actionsEnabled: Boolean = true,
     onTogglePromptBar: () -> Unit = {},
-    onResend: (editedText: String) -> Unit = {},
+    onStartEdit: () -> Unit = {},
+    onResend: () -> Unit = {},
     onViewAttachment: (ChatAttachment) -> Unit = {},
 ) {
     val dark = isSystemInDarkTheme()
@@ -107,26 +99,15 @@ internal fun UserMessage(
     }
     val slidePx = with(density) { 14.dp.toPx() }
 
-    var isEditing by remember(message.id) { mutableStateOf(false) }
-    var draft by remember(message.id) { mutableStateOf(TextFieldValue(textToShow)) }
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(promptBarVisible, message.id) {
-        if (!promptBarVisible) {
-            isEditing = false
-            draft = TextFieldValue(textToShow)
-        }
-    }
-    LaunchedEffect(textToShow, isEditing) {
-        if (!isEditing) draft = TextFieldValue(textToShow)
-    }
-    LaunchedEffect(isEditing) {
-        if (isEditing) {
-            runCatching { focusRequester.requestFocus() }
-        }
-    }
-
     val toggleInteraction = remember { MutableInteractionSource() }
+    val promptBarAlpha by animateFloatAsState(
+        targetValue = if (promptBarVisible) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "promptBarAlpha",
+    )
 
     Row(
         modifier = modifier
@@ -146,16 +127,18 @@ internal fun UserMessage(
     ) {
         Column(
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier
-                .widthIn(max = 300.dp)
-                .clickable(
-                    enabled = !isEditing,
-                    interactionSource = toggleInteraction,
-                    indication = null,
-                    onClick = onTogglePromptBar,
-                ),
+            modifier = Modifier.widthIn(max = 300.dp),
         ) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .clickable(
+                        interactionSource = toggleInteraction,
+                        indication = null,
+                        onClick = onTogglePromptBar,
+                    ),
+            ) {
             if (images.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     images.take(4).forEach { attachment ->
@@ -180,47 +163,21 @@ internal fun UserMessage(
                 }
             }
 
-            if (textToShow.isNotBlank() || isEditing) {
+            if (textToShow.isNotBlank()) {
                 val bubbleShape = RoundedCornerShape(14.dp)
                 Box(
                     modifier = Modifier
-                        .widthIn(min = if (isEditing) 120.dp else 0.dp)
                         .clip(bubbleShape)
                         .background(bubbleGrey)
-                        .then(
-                            if (isEditing) {
-                                Modifier.border(
-                                    width = 1.dp,
-                                    color = onBubble.copy(alpha = 0.28f),
-                                    shape = bubbleShape,
-                                )
-                            } else {
-                                Modifier
-                            },
-                        )
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                 ) {
-                    val textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = onBubble,
-                        fontWeight = FontWeight.ExtraLight,
+                    Text(
+                        text = textToShow,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            color = onBubble,
+                            fontWeight = FontWeight.ExtraLight,
+                        ),
                     )
-                    if (isEditing) {
-                        BasicTextField(
-                            value = draft,
-                            onValueChange = { draft = it },
-                            textStyle = textStyle,
-                            cursorBrush = SolidColor(onBubble),
-                            keyboardOptions = ConvoKeyboardOptions.Text,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester),
-                        )
-                    } else {
-                        Text(
-                            text = textToShow,
-                            style = textStyle,
-                        )
-                    }
                 }
             }
 
@@ -231,45 +188,22 @@ internal fun UserMessage(
                 )
             }
 
-            AnimatedVisibility(
-                visible = promptBarVisible,
-                enter = fadeIn(tween(PagerAnimMs, easing = FastOutSlowInEasing)) +
-                    expandVertically(
-                        expandFrom = Alignment.Top,
-                        animationSpec = tween(PagerAnimMs, easing = FastOutSlowInEasing),
-                    ),
-                exit = fadeOut(tween(PagerAnimMs / 2, easing = FastOutSlowInEasing)) +
-                    shrinkVertically(
-                        shrinkTowards = Alignment.Top,
-                        animationSpec = tween(PagerAnimMs / 2, easing = FastOutSlowInEasing),
-                    ),
-            ) {
-                val draftText = draft.text.trim()
+            if (promptBarAlpha > 0.01f) {
                 UserPromptControls(
-                    copyEnabled = draftText.isNotBlank(),
+                    copyEnabled = textToShow.isNotBlank(),
                     editEnabled = actionsEnabled,
                     resendEnabled = actionsEnabled &&
-                        (draftText.isNotBlank() || message.attachments.isNotEmpty()),
-                    isEditing = isEditing,
+                        (textToShow.isNotBlank() || message.attachments.isNotEmpty()),
                     onCopy = {
-                        if (draftText.isNotBlank()) {
-                            clipboard.setText(AnnotatedString(draftText))
+                        if (textToShow.isNotBlank()) {
+                            clipboard.setText(AnnotatedString(textToShow))
                         }
                     },
-                    onEdit = {
-                        if (isEditing) {
-                            isEditing = false
-                            draft = TextFieldValue(textToShow)
-                        } else {
-                            draft = TextFieldValue(
-                                text = textToShow,
-                                selection = TextRange(textToShow.length),
-                            )
-                            isEditing = true
-                        }
-                    },
-                    onResend = { onResend(draft.text) },
+                    onEdit = onStartEdit,
+                    onResend = onResend,
+                    modifier = Modifier.graphicsLayer { alpha = promptBarAlpha },
                 )
+            }
             }
         }
     }

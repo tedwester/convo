@@ -51,65 +51,7 @@ class ChatRepository(context: Context) {
             val array = JSONArray(file.readText())
             buildList {
                 for (i in 0 until array.length()) {
-                    val obj = array.getJSONObject(i)
-                    val variants = parseVariants(obj.optJSONArray("variants"))
-                    val variantIndex = obj.optInt("variantIndex", 0)
-                    val thoughtDurationMs = if (obj.has("thoughtDurationMs") && !obj.isNull("thoughtDurationMs")) {
-                        obj.optLong("thoughtDurationMs")
-                    } else {
-                        null
-                    }
-                    val thoughtDurationVariants = parseLongNullableList(
-                        obj.optJSONArray("thoughtDurationVariants"),
-                    ).ifEmpty {
-                        if (thoughtDurationMs != null && variants.isNotEmpty()) {
-                            List(variants.size) { index ->
-                                if (index == variantIndex) thoughtDurationMs else null
-                            }
-                        } else {
-                            emptyList()
-                        }
-                    }
-                    val attachments = parseAttachments(obj.optJSONArray("attachments"))
-                    val attachmentVariants = parseAttachmentVariants(
-                        obj.optJSONArray("attachmentVariants"),
-                    ).ifEmpty {
-                        if (attachments.isNotEmpty() && variants.isNotEmpty()) {
-                            List(variants.size) { index ->
-                                if (index == variantIndex) attachments else emptyList()
-                            }
-                        } else {
-                            emptyList()
-                        }
-                    }
-                    add(
-                        ChatMessage(
-                            id = obj.optLong("id"),
-                            author = if (obj.optString("author") == "assistant") {
-                                MessageAuthor.Assistant
-                            } else {
-                                MessageAuthor.User
-                            },
-                            content = obj.optString("content"),
-                            timestamp = obj.optLong("timestamp"),
-                            isVoice = obj.optBoolean("isVoice", false),
-                            attachments = attachments,
-                            attachmentVariants = attachmentVariants,
-                            variants = variants,
-                            variantIndex = variantIndex,
-                            reasoning = obj.optString("reasoning"),
-                            reasoningVariants = parseStringList(obj.optJSONArray("reasoningVariants")),
-                            thoughtDurationMs = thoughtDurationMs,
-                            thoughtDurationVariants = thoughtDurationVariants,
-                            webSearchSteps = parseWebSearchSteps(obj.optJSONArray("webSearchSteps")),
-                            webSearchStepVariants = parseWebSearchStepVariants(
-                                obj.optJSONArray("webSearchStepVariants"),
-                            ),
-                            stoppedWhileThinking = obj.optBoolean("stoppedWhileThinking", false),
-                            showVoiceAsTextFirst = obj.optBoolean("showVoiceAsTextFirst", false),
-                            voiceAutoPlayed = obj.optBoolean("voiceAutoPlayed", false),
-                        ),
-                    )
+                    add(messageFromJson(array.getJSONObject(i)))
                 }
             }
         }.getOrDefault(emptyList())
@@ -306,89 +248,168 @@ class ChatRepository(context: Context) {
     private fun writeMessages(chatId: String, messages: List<ChatMessage>) {
         val array = JSONArray()
         messages.forEach { message ->
-            array.put(
-                JSONObject().apply {
-                    put("id", message.id)
-                    put(
-                        "author",
-                        if (message.author == MessageAuthor.Assistant) "assistant" else "user",
-                    )
-                    put("content", message.content)
-                    put("timestamp", message.timestamp)
-                    put("isVoice", message.isVoice)
-                    if (message.reasoning.isNotBlank()) {
-                        put("reasoning", message.reasoning)
-                    }
-                    if (message.reasoningVariants.isNotEmpty()) {
-                        put(
-                            "reasoningVariants",
-                            JSONArray().apply { message.reasoningVariants.forEach { put(it) } },
-                        )
-                    }
-                    message.thoughtDurationMs?.let { put("thoughtDurationMs", it) }
-                    if (message.thoughtDurationVariants.isNotEmpty()) {
-                        put(
-                            "thoughtDurationVariants",
-                            JSONArray().apply {
-                                message.thoughtDurationVariants.forEach { duration ->
-                                    if (duration == null) {
-                                        put(JSONObject.NULL)
-                                    } else {
-                                        put(duration)
-                                    }
-                                }
-                            },
-                        )
-                    }
-                    if (message.stoppedWhileThinking) {
-                        put("stoppedWhileThinking", true)
-                    }
-                    if (message.showVoiceAsTextFirst) {
-                        put("showVoiceAsTextFirst", true)
-                    }
-                    if (message.voiceAutoPlayed) {
-                        put("voiceAutoPlayed", true)
-                    }
-                    if (message.webSearchSteps.isNotEmpty()) {
-                        put("webSearchSteps", webSearchStepsToJson(message.webSearchSteps))
-                    }
-                    if (message.webSearchStepVariants.isNotEmpty()) {
-                        put(
-                            "webSearchStepVariants",
-                            JSONArray().apply {
-                                message.webSearchStepVariants.forEach { steps ->
-                                    put(webSearchStepsToJson(steps))
-                                }
-                            },
-                        )
-                    }
-                    if (message.variants.isNotEmpty()) {
-                        put(
-                            "variants",
-                            JSONArray().apply { message.variants.forEach { put(it) } },
-                        )
-                        put("variantIndex", message.variantIndex)
-                    }
-                    if (message.attachments.isNotEmpty()) {
-                        put(
-                            "attachments",
-                            attachmentsToJson(message.attachments),
-                        )
-                    }
-                    if (message.attachmentVariants.isNotEmpty()) {
-                        put(
-                            "attachmentVariants",
-                            JSONArray().apply {
-                                message.attachmentVariants.forEach { variant ->
-                                    put(attachmentsToJson(variant))
-                                }
-                            },
-                        )
-                    }
-                },
-            )
+            array.put(messageToJson(message))
         }
         messageFile(chatId).writeText(array.toString())
+    }
+
+    private fun messageToJson(message: ChatMessage): JSONObject =
+        JSONObject().apply {
+            put("id", message.id)
+            put(
+                "author",
+                if (message.author == MessageAuthor.Assistant) "assistant" else "user",
+            )
+            put("content", message.content)
+            put("timestamp", message.timestamp)
+            put("isVoice", message.isVoice)
+            if (message.reasoning.isNotBlank()) {
+                put("reasoning", message.reasoning)
+            }
+            if (message.reasoningVariants.isNotEmpty()) {
+                put(
+                    "reasoningVariants",
+                    JSONArray().apply { message.reasoningVariants.forEach { put(it) } },
+                )
+            }
+            message.thoughtDurationMs?.let { put("thoughtDurationMs", it) }
+            if (message.thoughtDurationVariants.isNotEmpty()) {
+                put(
+                    "thoughtDurationVariants",
+                    JSONArray().apply {
+                        message.thoughtDurationVariants.forEach { duration ->
+                            if (duration == null) {
+                                put(JSONObject.NULL)
+                            } else {
+                                put(duration)
+                            }
+                        }
+                    },
+                )
+            }
+            if (message.stoppedWhileThinking) {
+                put("stoppedWhileThinking", true)
+            }
+            if (message.showVoiceAsTextFirst) {
+                put("showVoiceAsTextFirst", true)
+            }
+            if (message.voiceAutoPlayed) {
+                put("voiceAutoPlayed", true)
+            }
+            if (message.webSearchSteps.isNotEmpty()) {
+                put("webSearchSteps", webSearchStepsToJson(message.webSearchSteps))
+            }
+            if (message.webSearchStepVariants.isNotEmpty()) {
+                put(
+                    "webSearchStepVariants",
+                    JSONArray().apply {
+                        message.webSearchStepVariants.forEach { steps ->
+                            put(webSearchStepsToJson(steps))
+                        }
+                    },
+                )
+            }
+            if (message.variants.isNotEmpty()) {
+                put(
+                    "variants",
+                    JSONArray().apply { message.variants.forEach { put(it) } },
+                )
+                put("variantIndex", message.variantIndex)
+            }
+            if (message.attachments.isNotEmpty()) {
+                put(
+                    "attachments",
+                    attachmentsToJson(message.attachments),
+                )
+            }
+            if (message.attachmentVariants.isNotEmpty()) {
+                put(
+                    "attachmentVariants",
+                    JSONArray().apply {
+                        message.attachmentVariants.forEach { variant ->
+                            put(attachmentsToJson(variant))
+                        }
+                    },
+                )
+            }
+            if (message.variantContinuations.isNotEmpty()) {
+                put(
+                    "variantContinuations",
+                    JSONArray().apply {
+                        message.variantContinuations.forEach { branch ->
+                            put(
+                                JSONArray().apply {
+                                    branch.forEach { continuation ->
+                                        put(messageToJson(continuation))
+                                    }
+                                },
+                            )
+                        }
+                    },
+                )
+            }
+        }
+
+    private fun messageFromJson(obj: JSONObject): ChatMessage {
+        val variants = parseVariants(obj.optJSONArray("variants"))
+        val variantIndex = obj.optInt("variantIndex", 0)
+        val thoughtDurationMs = if (obj.has("thoughtDurationMs") && !obj.isNull("thoughtDurationMs")) {
+            obj.optLong("thoughtDurationMs")
+        } else {
+            null
+        }
+        val thoughtDurationVariants = parseLongNullableList(
+            obj.optJSONArray("thoughtDurationVariants"),
+        ).ifEmpty {
+            if (thoughtDurationMs != null && variants.isNotEmpty()) {
+                List(variants.size) { index ->
+                    if (index == variantIndex) thoughtDurationMs else null
+                }
+            } else {
+                emptyList()
+            }
+        }
+        val attachments = parseAttachments(obj.optJSONArray("attachments"))
+        val attachmentVariants = parseAttachmentVariants(
+            obj.optJSONArray("attachmentVariants"),
+        ).ifEmpty {
+            if (attachments.isNotEmpty() && variants.isNotEmpty()) {
+                List(variants.size) { index ->
+                    if (index == variantIndex) attachments else emptyList()
+                }
+            } else {
+                emptyList()
+            }
+        }
+        return ChatMessage(
+            id = obj.optLong("id"),
+            author = if (obj.optString("author") == "assistant") {
+                MessageAuthor.Assistant
+            } else {
+                MessageAuthor.User
+            },
+            content = obj.optString("content"),
+            timestamp = obj.optLong("timestamp"),
+            isVoice = obj.optBoolean("isVoice", false),
+            attachments = attachments,
+            attachmentVariants = attachmentVariants,
+            variants = variants,
+            variantIndex = variantIndex,
+            reasoning = obj.optString("reasoning"),
+            reasoningVariants = parseStringList(obj.optJSONArray("reasoningVariants")),
+            thoughtDurationMs = thoughtDurationMs,
+            thoughtDurationVariants = thoughtDurationVariants,
+            webSearchSteps = parseWebSearchSteps(obj.optJSONArray("webSearchSteps")),
+            webSearchStepVariants = parseWebSearchStepVariants(
+                obj.optJSONArray("webSearchStepVariants"),
+            ),
+            stoppedWhileThinking = obj.optBoolean("stoppedWhileThinking", false),
+            showVoiceAsTextFirst = obj.optBoolean("showVoiceAsTextFirst", false),
+            voiceAutoPlayed = obj.optBoolean("voiceAutoPlayed", false),
+            variantContinuations = parseVariantContinuations(
+                obj.optJSONArray("variantContinuations"),
+            ),
+        )
     }
 
     private fun messageFile(chatId: String): File = File(root, "$chatId.json")
@@ -438,6 +459,22 @@ class ChatRepository(context: Context) {
             description = obj.optString("description"),
             createdAt = obj.optLong("createdAt"),
         )
+
+    private fun parseVariantContinuations(array: JSONArray?): List<List<ChatMessage>> {
+        if (array == null || array.length() == 0) return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val branchArray = array.optJSONArray(i) ?: continue
+                add(
+                    buildList {
+                        for (j in 0 until branchArray.length()) {
+                            add(messageFromJson(branchArray.getJSONObject(j)))
+                        }
+                    },
+                )
+            }
+        }
+    }
 
     private fun parseVariants(array: JSONArray?): List<String> {
         if (array == null || array.length() == 0) return emptyList()

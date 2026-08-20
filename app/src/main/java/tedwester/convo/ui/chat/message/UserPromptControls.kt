@@ -19,7 +19,6 @@ internal fun UserPromptControls(
     copyEnabled: Boolean,
     editEnabled: Boolean,
     resendEnabled: Boolean,
-    isEditing: Boolean,
     onCopy: () -> Unit,
     onEdit: () -> Unit,
     onResend: () -> Unit,
@@ -44,8 +43,8 @@ internal fun UserPromptControls(
             onCopy = onCopy,
         )
         MessageActionButton(
-            painter = if (isEditing) ConvoIcons.X() else ConvoIcons.SquarePen(),
-            contentDescription = if (isEditing) "Cancel edit" else "Edit",
+            painter = ConvoIcons.SquarePen(),
+            contentDescription = "Edit",
             enabled = editEnabled,
             onClick = onEdit,
         )

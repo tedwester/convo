@@ -305,9 +305,14 @@ fun ConversationScreen(
                             chatState.resendUserMessage(id, editedText)
                             resumeFollowToken += 1
                         },
+                        onStartEditUserMessage = { id ->
+                            if (!isLiveSession) return@MessageList
+                            chatState.startEditingMessage(id)
+                        },
                         onVariantSwipe = { id, delta ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()
+                            chatState.cancelEditingMessage()
                             chatState.selectVariant(id, delta)
                             variantSwipeMessageId = id
                             variantSwipeToken += 1
@@ -434,6 +439,11 @@ fun ConversationScreen(
                         dismissKeyboard()
                         chatState.send()
                     }
+                },
+                isEditingMessage = chatState.editingMessageId != null,
+                onCancelEdit = {
+                    dismissKeyboard()
+                    chatState.cancelEditingMessage()
                 },
                 onOpenAttachOptions = {
                     if (pendingAttachmentOptions || showAttachmentOptions) return@InputBar

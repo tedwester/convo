@@ -230,10 +230,17 @@ fun InputBar(
     showComposerHints: Boolean = false,
     onComposerHintsFinished: () -> Unit = {},
     micOnlyMode: Boolean = false,
+    isEditingMessage: Boolean = false,
+    onCancelEdit: () -> Unit = {},
 ) {
     val dark = isSystemInDarkTheme()
     val boxColor = if (dark) DarkChatBox else LightChatBox
-    val canSend = !micOnlyMode && (value.isNotBlank() || attachments.isNotEmpty())
+    val editingBarColor = if (dark) Color(0xFF262524) else Color(0xFFD4D8E0)
+    val canSend = !micOnlyMode && (
+        isEditingMessage ||
+            value.isNotBlank() ||
+            attachments.isNotEmpty()
+        )
     val outerRadius = ConvoRingGapTokens.ComposerOuterRadius
     val ringGap = ConvoRingGapTokens.Gap
     val outerShape = RoundedCornerShape(outerRadius)
@@ -358,17 +365,48 @@ fun InputBar(
                     animationSpec = ComposerExpandSpring,
                     alignment = Alignment.BottomCenter,
                 )
-                .heightIn(min = 96.dp)
                 .convoRingGapSurface(
                     outerShape = outerShape,
                     innerShape = innerShape,
-                    fillColor = boxColor,
+                    fillColor = pageBackground,
                     gapColor = pageBackground,
                     ringColor = ringColor,
                     ringGap = ringGap,
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                ),
         ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (isEditingMessage) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(editingBarColor)
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Editing message",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = if (dark) Color(0xFF9AA3B1) else Color(0xFF5A6472),
+                            ),
+                        )
+                        ConvoIconButton(
+                            painter = ConvoIcons.X(),
+                            contentDescription = "Cancel edit",
+                            onClick = onCancelEdit,
+                            size = 28.dp,
+                            iconSize = 14.dp,
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = if (isEditingMessage) 84.dp else 96.dp)
+                        .background(boxColor)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -581,6 +619,8 @@ fun InputBar(
                         .matchParentSize()
                         .graphicsLayer { alpha = dictationProgress },
                 )
+            }
+                }
             }
         }
     }

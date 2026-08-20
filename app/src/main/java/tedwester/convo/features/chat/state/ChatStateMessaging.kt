@@ -15,10 +15,25 @@ import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.features.chat.model.asStopped
+import tedwester.convo.features.chat.model.ensureVariantContinuations
+import tedwester.convo.features.chat.model.withActiveVariantFields
 import java.io.File
 
 internal fun ChatState.sendImpl() {
     if (selectedModel == null) return
+    val editingId = editingMessageId
+    if (editingId != null) {
+        val text = input.trim()
+        val message = messages.firstOrNull {
+            it.id == editingId && it.author == MessageAuthor.User
+        }
+        if (message != null && (text.isNotBlank() || message.attachments.isNotEmpty())) {
+            editingMessageId = null
+            input = ""
+            resendUserMessageImpl(editingId, text)
+        }
+        return
+    }
     val text = input.trim()
     val attachments = pendingAttachments.toList()
     if (text.isEmpty() && attachments.isEmpty()) return
@@ -321,6 +336,38 @@ internal fun ChatState.stopImpl() {
     persist()
 }
 
+internal fun ChatState.saveTailToVariantContinuation(assistantIndex: Int) {
+    if (assistantIndex !in messages.indices) return
+    val message = messages[assistantIndex]
+    val currentTail = if (assistantIndex + 1 < messages.size) {
+        messages.subList(assistantIndex + 1, messages.size).toList()
+    } else {
+        emptyList()
+    }
+    if (currentTail.isEmpty() && message.variantContinuations.isEmpty()) return
+    val variantCount = message.savedVariants().size.coerceAtLeast(1)
+    val continuations = message.ensureVariantContinuations(variantCount).toMutableList()
+    continuations[message.variantIndex.coerceIn(0, variantCount - 1)] = currentTail
+    messages[assistantIndex] = message.copy(variantContinuations = continuations)
+}
+
+internal fun ChatState.removeTailAfter(index: Int) {
+    if (index + 1 < messages.size) {
+        messages.removeRange(index + 1, messages.size)
+        bumpMessageListRevision()
+    }
+}
+
+internal fun ChatState.prepareVariantContinuationForNewVariant(assistantIndex: Int, priorVariantCount: Int) {
+    if (assistantIndex !in messages.indices) return
+    val message = messages[assistantIndex]
+    val continuations = message.ensureVariantContinuations(priorVariantCount + 1).toMutableList()
+    if (continuations.size <= priorVariantCount) {
+        continuations.add(emptyList())
+    }
+    messages[assistantIndex] = message.copy(variantContinuations = continuations)
+}
+
 internal fun ChatState.regenerateImpl(messageId: Long) {
     if (isRunning) return
     val model = selectedModel ?: return
@@ -336,11 +383,11 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
     if (model.supportsSpeechOutput) {
         val prompt = userPromptBefore(index) ?: return
         val existing = messages[index]
-        if (index + 1 < messages.size) {
-            messages.removeRange(index + 1, messages.size)
-            bumpMessageListRevision()
-        }
+        saveTailToVariantContinuation(index)
+        removeTailAfter(index)
         val priorVariants = existing.savedVariants()
+        prepareVariantContinuationForNewVariant(index, priorVariants.size)
+        val savedContinuations = messages[index].variantContinuations
         messages[index] = existing.copy(
             content = "",
             attachments = emptyList(),
@@ -348,6 +395,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             variants = priorVariants,
             attachmentVariants = existing.savedAttachmentVariants(),
             variantIndex = priorVariants.size.coerceAtLeast(0),
+            variantContinuations = savedContinuations,
             showVoiceAsTextFirst = snapshotShowVoiceAsTextFirst(),
             voiceAutoPlayed = false,
         )
@@ -364,7 +412,8 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
     when (model.modelKind) {
         ModelKind.ImageGen -> {
             val prompt = userPromptBefore(index) ?: return
-            if (index + 1 < messages.size) messages.removeRange(index + 1, messages.size)
+            saveTailToVariantContinuation(index)
+            removeTailAfter(index)
             messages.removeAt(index)
             bumpMessageListRevision()
             persist(bumpRecency = true)
@@ -376,7 +425,8 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             val prompt = userPromptBefore(index).orEmpty()
             val images = userTurn.attachments.filter { it.isImage }
             if (prompt.isBlank() && images.isEmpty()) return
-            if (index + 1 < messages.size) messages.removeRange(index + 1, messages.size)
+            saveTailToVariantContinuation(index)
+            removeTailAfter(index)
             messages.removeAt(index)
             bumpMessageListRevision()
             persist(bumpRecency = true)
@@ -388,11 +438,11 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             val recording = loadVoiceRecordingFromMessage(userTurn) ?: return
             val (audioBytes, format) = recording
             val existing = messages[index]
-            if (index + 1 < messages.size) {
-                messages.removeRange(index + 1, messages.size)
-                bumpMessageListRevision()
-            }
+            saveTailToVariantContinuation(index)
+            removeTailAfter(index)
             val priorVariants = existing.savedVariants()
+            prepareVariantContinuationForNewVariant(index, priorVariants.size)
+            val savedContinuations = messages[index].variantContinuations
             messages[index] = existing.copy(
                 content = "",
                 attachments = emptyList(),
@@ -400,6 +450,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
                 statusLabel = "Transcribing…",
                 variants = priorVariants,
                 variantIndex = priorVariants.size.coerceAtLeast(0),
+                variantContinuations = savedContinuations,
                 thinkingStartedAtElapsed = null,
             )
             persist(bumpRecency = true)
@@ -416,11 +467,10 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
     }
 
     val existing = messages[index]
-    if (index + 1 < messages.size) {
-        messages.removeRange(index + 1, messages.size)
-        bumpMessageListRevision()
-    }
+    saveTailToVariantContinuation(index)
+    removeTailAfter(index)
     val prior = existing.savedVariants()
+    prepareVariantContinuationForNewVariant(index, prior.size)
     val priorReasoning = if (existing.reasoningVariants.isNotEmpty()) {
         existing.reasoningVariants
     } else if (existing.reasoning.isNotBlank() && prior.isNotEmpty()) {
@@ -459,6 +509,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
         attachmentVariants = existing.savedAttachmentVariants(),
         reasoningVariants = priorReasoning,
         variantIndex = prior.size.coerceAtLeast(0),
+        variantContinuations = messages[index].variantContinuations,
     )
     persist(bumpRecency = true)
     scope.launch {
@@ -480,31 +531,31 @@ internal fun ChatState.selectVariantImpl(messageId: Long, delta: Int) {
     if (message.isStreaming) return
     val saved = message.savedVariants()
     if (saved.size <= 1) return
-    val next = (message.variantIndex + delta).coerceIn(0, saved.lastIndex)
-    if (next == message.variantIndex) return
-    val reasoningForVariant = message.reasoningVariants.getOrNull(next)
-        ?: message.reasoning.takeIf { next == message.variantIndex }
-        ?: ""
-    val thoughtDurationForVariant = message.thoughtDurationVariants.getOrNull(next)
-        ?: message.thoughtDurationMs.takeIf { next == message.variantIndex }
-    val webSearchForVariant = message.webSearchStepVariants.getOrNull(next)
-        ?: message.webSearchSteps.takeIf { next == message.variantIndex }
-        ?: emptyList()
-    val attachmentsForVariant = message.savedAttachmentVariants().getOrNull(next)
-        ?: message.attachments.takeIf { next == message.variantIndex }
-        ?: emptyList()
-    messages[index] = message.copy(
-        content = saved[next],
-        attachments = attachmentsForVariant,
-        reasoning = reasoningForVariant,
-        thoughtDurationMs = thoughtDurationForVariant,
-        webSearchSteps = webSearchForVariant,
-        variantIndex = next,
-        variants = message.variants.ifEmpty { saved },
-        attachmentVariants = message.attachmentVariants.ifEmpty {
-            message.savedAttachmentVariants()
-        },
-    )
+    val oldVariant = message.variantIndex
+    val next = (oldVariant + delta).coerceIn(0, saved.lastIndex)
+    if (next == oldVariant) return
+
+    val currentTail = if (index + 1 < messages.size) {
+        messages.subList(index + 1, messages.size).toList()
+    } else {
+        emptyList()
+    }
+    val continuations = message.ensureVariantContinuations(saved.size).toMutableList()
+    continuations[oldVariant] = currentTail
+    val restoredTail = continuations.getOrElse(next) { emptyList() }
+
+    messages[index] = message
+        .copy(variantContinuations = continuations)
+        .withActiveVariantFields(next)
+
+    if (index + 1 < messages.size) {
+        messages.removeRange(index + 1, messages.size)
+        bumpMessageListRevision()
+    }
+    if (restoredTail.isNotEmpty()) {
+        messages.addAll(restoredTail)
+        bumpMessageListRevision()
+    }
     persist()
 }
 

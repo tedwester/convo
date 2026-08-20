@@ -72,6 +72,9 @@ class ChatState(
     var input by mutableStateOf("")
         internal set
 
+    var editingMessageId by mutableStateOf<Long?>(null)
+        internal set
+
     val pendingAttachments = mutableStateListOf<ChatAttachment>()
 
     var isRunning by mutableStateOf(false)
@@ -244,6 +247,7 @@ class ChatState(
         activeCompletionSessionId = 0L
         currentId = 0L
         input = ""
+        editingMessageId = null
         clearPendingAttachments()
         systemMessage = ""
         modelSelectorFilters = ModelFilterState()
@@ -299,6 +303,7 @@ class ChatState(
         replaceMessages(loadedMessages)
         currentId = loadedMessages.maxOfOrNull { it.id } ?: 0L
         input = ""
+        editingMessageId = null
         clearPendingAttachments()
         if (chat.modelId != null && selectedModel?.id != chat.modelId) {
             applySelectedModel(
@@ -372,6 +377,8 @@ class ChatState(
     fun assignChatToProject(chatId: String, projectId: String?) =
         assignChatToProjectImpl(chatId, projectId)
     fun onInputChange(value: String) = onInputChangeImpl(value)
+    fun startEditingMessage(messageId: Long) = startEditingMessageImpl(messageId)
+    fun cancelEditingMessage() = cancelEditingMessageImpl()
     fun toggleSearch() = toggleSearchImpl()
     fun toggleReasoning() = toggleReasoningImpl()
     fun setReasoningEffort(effort: ReasoningEffort) =
