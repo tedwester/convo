@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.SideEffect
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -57,6 +58,7 @@ fun MessageList(
     resumeFollowToken: Int = 0,
     userBubbleAnimOnMountToken: Int = 0,
     onRegenerate: (Long) -> Unit = {},
+    onResendUserMessage: (messageId: Long, editedText: String) -> Unit = { _, _ -> },
     onVariantSwipe: (messageId: Long, delta: Int) -> Unit = { _, _ -> },
     onViewAttachment: (ChatAttachment) -> Unit = {},
     onDismissKeyboard: () -> Unit = {},
@@ -93,6 +95,7 @@ fun MessageList(
     var lastHandledVariantSwipeToken by remember { mutableIntStateOf(0) }
     var lastHandledResumeFollowToken by remember { mutableIntStateOf(0) }
     var lastHandledMountAnimToken by remember { mutableIntStateOf(0) }
+    var selectedPromptMessageId by remember(listScopeKey) { mutableLongStateOf(-1L) }
 
     fun attachToBottom() {
         followBottom = true
@@ -299,6 +302,15 @@ fun MessageList(
         listState.pinItemBottomIntoView(index)
     }
 
+    LaunchedEffect(selectedPromptMessageId, scrollEnabled) {
+        if (!scrollEnabled || selectedPromptMessageId <= 0) return@LaunchedEffect
+        val index = messages.indexOfFirst { it.id == selectedPromptMessageId }
+        if (index < 0) return@LaunchedEffect
+        listState.ensureItemBottomVisible(index)
+        delay(PagerAnimMs.toLong())
+        listState.ensureItemBottomVisible(index)
+    }
+
     val itemKeyPrefix = conversationKey ?: "new"
 
     key(listScopeKey) {
@@ -309,7 +321,10 @@ fun MessageList(
                 .clipToBounds()
                 .alpha(if (settledToBottom) 1f else 0f)
                 .pointerInput(onDismissKeyboard) {
-                    detectTapGestures(onTap = { onDismissKeyboard() })
+                    detectTapGestures(onTap = {
+                        onDismissKeyboard()
+                        selectedPromptMessageId = -1L
+                    })
                 }
                 .nestedScroll(scrollConnection),
             contentPadding = contentPadding,
@@ -335,6 +350,20 @@ fun MessageList(
                     },
                     actionsEnabled = actionsEnabled,
                     showActions = message.author == MessageAuthor.Assistant,
+                    promptBarVisible = message.author == MessageAuthor.User &&
+                        message.id == selectedPromptMessageId,
+                    onTogglePromptBar = {
+                        onDismissKeyboard()
+                        selectedPromptMessageId = if (selectedPromptMessageId == message.id) {
+                            -1L
+                        } else {
+                            message.id
+                        }
+                    },
+                    onResend = { editedText ->
+                        selectedPromptMessageId = -1L
+                        onResendUserMessage(message.id, editedText)
+                    },
                     expectStreamedThinking = message.expectStreamedThinking && message.isStreaming,
                     userAnimToken = if (message.id == userBubbleAnimId) userBubbleAnimToken else 0,
                     onViewAttachment = onViewAttachment,

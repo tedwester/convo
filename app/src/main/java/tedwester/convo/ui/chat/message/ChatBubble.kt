@@ -14,6 +14,9 @@ fun ChatBubble(
     onVariantSwipe: (delta: Int) -> Unit = {},
     actionsEnabled: Boolean = true,
     showActions: Boolean = true,
+    promptBarVisible: Boolean = false,
+    onTogglePromptBar: () -> Unit = {},
+    onResend: (editedText: String) -> Unit = {},
     userAnimToken: Int = 0,
     expectStreamedThinking: Boolean = false,
     onViewAttachment: (ChatAttachment) -> Unit = {},
@@ -28,6 +31,10 @@ fun ChatBubble(
         UserMessage(
             message = message,
             animToken = userAnimToken,
+            promptBarVisible = promptBarVisible,
+            actionsEnabled = actionsEnabled,
+            onTogglePromptBar = onTogglePromptBar,
+            onResend = onResend,
             onViewAttachment = onViewAttachment,
             modifier = modifier,
         )
