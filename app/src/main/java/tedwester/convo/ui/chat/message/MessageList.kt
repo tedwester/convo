@@ -93,7 +93,6 @@ fun MessageList(
 
     var lastPulsedCount by remember { mutableIntStateOf(messages.size) }
     var following by remember { mutableStateOf(false) }
-    var settleToEndOnStop by remember { mutableStateOf(false) }
     var settledToEnd by remember { mutableStateOf(false) }
     val followingRef = remember { object { var value = false } }
     val userInterruptedRef = remember { object { var value = false } }
@@ -103,28 +102,22 @@ fun MessageList(
     var lastHandledMountAnimToken by remember { mutableIntStateOf(0) }
     var selectedPromptMessageId by remember { mutableLongStateOf(-1L) }
     var viewportHeightPx by remember { mutableIntStateOf(0) }
+    var maintainingEnd by remember { mutableStateOf(false) }
     var lastUserHeightPx by remember { mutableIntStateOf(0) }
     var lastAssistantHeightPx by remember { mutableIntStateOf(0) }
     var measuredUserId by remember { mutableLongStateOf(-1L) }
     var measuredAssistantId by remember { mutableLongStateOf(-1L) }
-    var lastSeenStreamingId by remember { mutableLongStateOf(-1L) }
-    var filledViewport by remember { mutableStateOf(false) }
 
     val density = LocalDensity.current
     val topPaddingPx = with(density) { contentPadding.calculateTopPadding().toPx() }
     val bottomPaddingPx = with(density) { contentPadding.calculateBottomPadding().toPx() }
-    val visibleViewportPx = (viewportHeightPx - topPaddingPx - bottomPaddingPx).coerceAtLeast(0f)
-    val rawSpacerPx = endSpacerPx(
+    val spacerPx = endSpacerPx(
         viewportHeightPx = viewportHeightPx,
         topPaddingPx = topPaddingPx,
         bottomPaddingPx = bottomPaddingPx,
         lastUserHeightPx = lastUserHeightPx,
         lastAssistantHeightPx = lastAssistantHeightPx,
-    )
-    val turnFillsPage = visibleViewportPx > 0f && (
-        rawSpacerPx <= 0f || lastAssistantHeightPx >= visibleViewportPx
-    )
-    val spacerPx = if (filledViewport) 1f else rawSpacerPx.coerceAtLeast(1f)
+    ).coerceAtLeast(1f)
     val spacerDp = with(density) { spacerPx.toDp() }
 
     val nowStreaming = isRunning || streamingTailId != null
@@ -134,7 +127,6 @@ fun MessageList(
     val detachFollow = rememberUpdatedState {
         following = false
         followingRef.value = false
-        settleToEndOnStop = false
         userInterruptedRef.value = true
     }
     val messagesState = rememberUpdatedState(messages)
@@ -142,29 +134,15 @@ fun MessageList(
     val trailingUserIdState = rememberUpdatedState(trailingUserId)
 
     SideEffect {
-        var resetTurn = false
         if (trailingUserId != measuredUserId) {
             measuredUserId = trailingUserId
-            filledViewport = false
-            resetTurn = true
         }
         if (trailingAssistantId != measuredAssistantId) {
             measuredAssistantId = trailingAssistantId
             lastAssistantHeightPx = 0
-            filledViewport = false
-            resetTurn = true
         }
         if (trailingAssistantId < 0) {
             lastAssistantHeightPx = 0
-        }
-        val streamId = streamingTailId ?: -1L
-        if (streamId > 0L && streamId != lastSeenStreamingId) {
-            lastSeenStreamingId = streamId
-            filledViewport = false
-            resetTurn = true
-        }
-        if (!resetTurn && turnFillsPage) {
-            filledViewport = true
         }
     }
 
@@ -175,6 +153,7 @@ fun MessageList(
     val scrollConnection = remember(onDismissKeyboard, scrollEnabled) {
         object : NestedScrollConnection {
             private fun onUserScroll(deltaY: Float) {
+                if (maintainingEnd) return
                 if (!scrollEnabled || abs(deltaY) < 0.5f) return
                 onDismissKeyboard()
                 detachFollow.value()
@@ -237,13 +216,11 @@ fun MessageList(
         following = isRunningState.value ||
             messagesState.value.lastOrNull()?.isStreaming == true
         followingRef.value = following
-        settleToEndOnStop = following
         settledToEnd = true
-        listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
+        listState.jumpToEnd()
         following = isRunningState.value ||
             messagesState.value.lastOrNull()?.isStreaming == true
         followingRef.value = following
-        settleToEndOnStop = following
     }
 
     LaunchedEffect(scrollToEndToken, scrollEnabled) {
@@ -257,7 +234,6 @@ fun MessageList(
         if (streamingNow) {
             following = true
             followingRef.value = true
-            settleToEndOnStop = true
         }
         listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
     }
@@ -274,7 +250,6 @@ fun MessageList(
                 userInterruptedRef.value = false
                 following = true
                 followingRef.value = true
-                settleToEndOnStop = true
                 listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
             }
     }
@@ -286,11 +261,13 @@ fun MessageList(
         }
     }
 
+    var wasStreaming by remember { mutableStateOf(false) }
     LaunchedEffect(nowStreaming, scrollEnabled) {
-        if (!scrollEnabled || nowStreaming) return@LaunchedEffect
-        if (!settleToEndOnStop) return@LaunchedEffect
-        settleToEndOnStop = false
-        listState.jumpToEnd()
+        if (!scrollEnabled) return@LaunchedEffect
+        if (wasStreaming && !nowStreaming) {
+            listState.jumpToEnd()
+        }
+        wasStreaming = nowStreaming
     }
 
     val bottomPaddingState = remember { mutableFloatStateOf(bottomPaddingPx) }
@@ -325,7 +302,12 @@ fun MessageList(
             .distinctUntilChanged()
             .collect {
                 if (!followingRef.value || listState.isScrollInProgress) return@collect
-                listState.maintainEnd()
+                maintainingEnd = true
+                try {
+                    listState.maintainEnd()
+                } finally {
+                    maintainingEnd = false
+                }
             }
     }
 

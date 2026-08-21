@@ -270,11 +270,7 @@ fun ConversationScreen(
 
             if (hasFrameMessages) {
                 key(activeSession, conversationKey) {
-                    val initialIndex = displayMessages.indexOfLast { it.author == MessageAuthor.User }
-                        .let { index ->
-                            if (index >= 0) index
-                            else (displayMessages.size - 1).coerceAtLeast(0)
-                        }
+                    val initialIndex = (displayMessages.size - 1).coerceAtLeast(0)
                     val listState = rememberConversationListState(initialIndex)
                     SideEffect {
                         if (isLiveSession) {

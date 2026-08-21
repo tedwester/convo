@@ -192,7 +192,6 @@ fun ScrollColumnWithEdgeFades(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     verticalArrangement: Arrangement.Vertical = Arrangement.Top,
     nestedScrollConnection: NestedScrollConnection? = null,
-    userScrollEnabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollState = state
@@ -231,7 +230,7 @@ fun ScrollColumnWithEdgeFades(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(scrollState, enabled = userScrollEnabled)
+                .verticalScroll(scrollState)
                 .padding(contentPadding),
             verticalArrangement = verticalArrangement,
             content = content,
