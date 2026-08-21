@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.ScrollState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -136,6 +136,7 @@ internal fun ThinkingSection(
                 webSearchSteps = webSearchSteps,
                 showSearchTimeline = showSearchTimeline,
                 streaming = shimmerHeader,
+                onInteraction = onInteraction,
             )
         }
     }
@@ -147,9 +148,11 @@ private fun ThinkingPane(
     webSearchSteps: List<WebSearchStep>,
     showSearchTimeline: Boolean,
     streaming: Boolean,
+    onInteraction: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
     val background = MaterialTheme.colorScheme.background
+    val onInteractionState = rememberUpdatedState(onInteraction)
 
     var userDetached by remember { mutableStateOf(false) }
 
@@ -158,6 +161,7 @@ private fun ThinkingPane(
             private fun onUserScroll(deltaY: Float) {
                 if (abs(deltaY) < 0.5f) return
                 userDetached = true
+                onInteractionState.value()
             }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -171,7 +175,7 @@ private fun ThinkingPane(
                 source: NestedScrollSource,
             ): Offset {
                 if (source == NestedScrollSource.UserInput) onUserScroll(consumed.y)
-                if (available.y == 0f) return Offset.Zero
+                if (streaming || available.y == 0f) return Offset.Zero
 
                 val atTop = scrollState.value <= 0
                 val atBottom = scrollState.value >= scrollState.maxValue
@@ -199,7 +203,8 @@ private fun ThinkingPane(
             .heightIn(max = ThinkingPaneMaxHeight),
         fadeHeight = ThinkingPaneFadeHeight,
         state = scrollState,
-        nestedScrollConnection = nestedScrollConnection,
+        nestedScrollConnection = if (streaming) null else nestedScrollConnection,
+        userScrollEnabled = !streaming,
         contentPadding = PaddingValues(
             top = 2.dp,
             bottom = 4.dp,

@@ -10,11 +10,21 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 
-internal const val VisualTopThresholdPx = 120
+internal const val VisualTopThresholdPx = 160
 
 internal const val EndSettleThresholdPx = 2
 
-internal const val EndVisibleThresholdPx = 24
+/** Scroll-up distance from latest messages before the scroll-to-bottom FAB appears. */
+internal const val EndVisibleThresholdPx = 180
+
+/** Distance from latest messages where the scroll-to-bottom FAB hides again. */
+internal const val EndHideThresholdPx = 48
+
+/** Scroll-up distance from latest messages before the scroll-to-top FAB may appear. */
+internal const val TopShowFromEndThresholdPx = 120
+
+/** Distance from latest messages where the scroll-to-top FAB hides again. */
+internal const val TopHideAtEndThresholdPx = 64
 
 private const val MaxScrollByDeltaPx = 2_000_000f
 private const val JumpToEndMaxPasses = 12

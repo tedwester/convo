@@ -28,8 +28,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import tedwester.convo.ui.chat.message.EndSettleThresholdPx
+import tedwester.convo.ui.chat.message.EndHideThresholdPx
 import tedwester.convo.ui.chat.message.EndVisibleThresholdPx
+import tedwester.convo.ui.chat.message.TopHideAtEndThresholdPx
+import tedwester.convo.ui.chat.message.TopShowFromEndThresholdPx
 import tedwester.convo.ui.chat.message.VisualTopThresholdPx
 import tedwester.convo.ui.chat.message.animateToStart
 import tedwester.convo.ui.chat.message.isAtEnd
@@ -44,7 +46,7 @@ internal val ButtonSize = 40.dp
 private val IconSize = 20.dp
 private val GapBetweenScrollButtons = 8.dp
 
-private const val HideTopThresholdPx = 80
+private const val HideTopThresholdPx = 100
 
 @Composable
 fun ConversationScrollButtons(
@@ -63,15 +65,19 @@ fun ConversationScrollButtons(
 
     LaunchedEffect(listState) {
         snapshotFlow {
-            val away = !listState.isAtVisualTop(VisualTopThresholdPx)
-            val near = listState.isAtVisualTop(HideTopThresholdPx)
-            away to near
+            val scrolledUpFromBottom = !listState.isAtEnd(TopShowFromEndThresholdPx)
+            val backAtBottom = listState.isAtEnd(TopHideAtEndThresholdPx)
+            val awayFromTop = !listState.isAtVisualTop(VisualTopThresholdPx)
+            val nearTop = listState.isAtVisualTop(HideTopThresholdPx)
+            scrolledUpFromBottom to backAtBottom to (awayFromTop to nearTop)
         }
             .distinctUntilChanged()
-            .collect { (away, near) ->
+            .collect { (fromBottom, fromTop) ->
+                val (scrolledUpFromBottom, backAtBottom) = fromBottom
+                val (awayFromTop, nearTop) = fromTop
                 topScrolledAway = when {
-                    away -> true
-                    near -> false
+                    backAtBottom || nearTop -> false
+                    scrolledUpFromBottom && awayFromTop -> true
                     else -> topScrolledAway
                 }
             }
@@ -80,7 +86,7 @@ fun ConversationScrollButtons(
     LaunchedEffect(listState) {
         snapshotFlow {
             val away = !listState.isAtEnd(EndVisibleThresholdPx)
-            val near = listState.isAtEnd(EndSettleThresholdPx)
+            val near = listState.isAtEnd(EndHideThresholdPx)
             away to near
         }
             .distinctUntilChanged()
