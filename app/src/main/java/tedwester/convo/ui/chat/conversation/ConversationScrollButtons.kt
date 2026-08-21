@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import tedwester.convo.ui.chat.message.EndSettleThresholdPx
 import tedwester.convo.ui.chat.message.EndVisibleThresholdPx
 import tedwester.convo.ui.chat.message.VisualTopThresholdPx
+import tedwester.convo.ui.chat.message.animateToStart
 import tedwester.convo.ui.chat.message.isAtEnd
 import tedwester.convo.ui.chat.message.isAtVisualTop
 import tedwester.convo.ui.components.ConvoIconButton
@@ -125,8 +126,7 @@ fun ConversationScrollButtons(
                 painter = ConvoIcons.ChevronUp(),
                 contentDescription = "Scroll to start of chat",
                 onClick = {
-                    scope.launch { listState.scrollToItem(0) }
-                    topScrolledAway = false
+                    scope.launch { listState.animateToStart() }
                 },
                 size = ButtonSize,
                 iconSize = IconSize,

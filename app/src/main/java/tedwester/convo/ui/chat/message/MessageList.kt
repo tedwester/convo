@@ -26,7 +26,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -37,8 +36,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
@@ -97,6 +94,7 @@ fun MessageList(
     var lastPulsedCount by remember { mutableIntStateOf(messages.size) }
     var following by remember { mutableStateOf(false) }
     var settledToEnd by remember { mutableStateOf(false) }
+    val followingRef = remember { object { var value = false } }
     val userInterruptedRef = remember { object { var value = false } }
     var userBubbleAnimId by remember { mutableLongStateOf(-1L) }
     var userBubbleAnimToken by remember { mutableIntStateOf(0) }
@@ -108,7 +106,6 @@ fun MessageList(
     var lastAssistantHeightPx by remember { mutableIntStateOf(0) }
     var measuredUserId by remember { mutableLongStateOf(-1L) }
     var measuredAssistantId by remember { mutableLongStateOf(-1L) }
-    var wasStreaming by remember { mutableStateOf(false) }
 
     val density = LocalDensity.current
     val topPaddingPx = with(density) { contentPadding.calculateTopPadding().toPx() }
@@ -122,9 +119,13 @@ fun MessageList(
     ).coerceAtLeast(1f)
     val spacerDp = with(density) { spacerPx.toDp() }
 
-    val followingState = rememberUpdatedState(following)
+    val nowStreaming = isRunning || streamingTailId != null
+    val activelyFollowing = following && nowStreaming
+    followingRef.value = activelyFollowing
+
     val detachFollow = rememberUpdatedState {
         following = false
+        followingRef.value = false
         userInterruptedRef.value = true
     }
     val messagesState = rememberUpdatedState(messages)
@@ -209,18 +210,15 @@ fun MessageList(
             settledToEnd = true
             return@LaunchedEffect
         }
-        following = isRunningState.value || streamingTailId != null
-        settledToEnd = false
-        withTimeoutOrNull(400) {
-            snapshotFlow { viewportHeightPx to lastUserHeightPx }
-                .first { (viewport, userHeight) ->
-                    viewport > 0 && (trailingUserIdState.value < 0 || userHeight > 0)
-                }
-        }
-        listState.jumpToEnd()
+        userInterruptedRef.value = false
         following = isRunningState.value ||
             messagesState.value.lastOrNull()?.isStreaming == true
+        followingRef.value = following
         settledToEnd = true
+        listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
+        following = isRunningState.value ||
+            messagesState.value.lastOrNull()?.isStreaming == true
+        followingRef.value = following
     }
 
     LaunchedEffect(scrollToEndToken, scrollEnabled) {
@@ -231,7 +229,10 @@ fun MessageList(
         userInterruptedRef.value = false
         val streamingNow = isRunningState.value ||
             messagesState.value.lastOrNull()?.isStreaming == true
-        if (streamingNow) following = true
+        if (streamingNow) {
+            following = true
+            followingRef.value = true
+        }
         listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
     }
 
@@ -246,25 +247,15 @@ fun MessageList(
                 if (userId < 0 || userId == previous || previous < 0) return@collect
                 userInterruptedRef.value = false
                 following = true
+                followingRef.value = true
                 listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
             }
     }
 
-    val nowStreaming = isRunning || streamingTailId != null
-    LaunchedEffect(nowStreaming) {
-        if (wasStreaming && !nowStreaming) {
+    SideEffect {
+        if (!nowStreaming && following) {
             following = false
-        }
-        wasStreaming = nowStreaming
-    }
-
-    LaunchedEffect(streamingTailId, scrollEnabled) {
-        if (!scrollEnabled || streamingTailId == null || followingState.value) {
-            return@LaunchedEffect
-        }
-        listState.awaitListLaidOut()
-        if (listState.isAtEnd(EndVisibleThresholdPx)) {
-            following = true
+            followingRef.value = false
         }
     }
 
@@ -278,14 +269,14 @@ fun MessageList(
                 val delta = newPad - lastPad
                 if (delta == 0f) return@collect
                 lastPad = newPad
-                if (followingState.value || listState.isAtEnd()) {
+                if (followingRef.value) {
                     listState.scrollBy(delta)
                 }
             }
     }
 
-    LaunchedEffect(following, scrollEnabled) {
-        if (!scrollEnabled || !following) return@LaunchedEffect
+    LaunchedEffect(activelyFollowing, scrollEnabled) {
+        if (!scrollEnabled || !activelyFollowing) return@LaunchedEffect
         snapshotFlow {
             val info = listState.layoutInfo
             val last = messagesState.value.lastOrNull()
@@ -299,7 +290,7 @@ fun MessageList(
         }
             .distinctUntilChanged()
             .collect {
-                if (!followingState.value || listState.isScrollInProgress) return@collect
+                if (!followingRef.value || listState.isScrollInProgress) return@collect
                 listState.maintainEnd()
             }
     }
@@ -312,7 +303,6 @@ fun MessageList(
             .fillMaxSize()
             .onSizeChanged { viewportHeightPx = it.height }
             .clipToBounds()
-            .alpha(if (settledToEnd) 1f else 0f)
             .pointerInput(onDismissKeyboard) {
                 detectTapGestures(onTap = {
                     onDismissKeyboard()

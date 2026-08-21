@@ -29,7 +29,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -40,17 +39,15 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.flow.distinctUntilChanged
 import tedwester.convo.features.chat.model.WebSearchStep
 import tedwester.convo.ui.components.ScrollColumnWithEdgeFades
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.AssistantSerifFamily
+import kotlin.math.abs
 
 private val ThinkingPaneMaxHeight = 280.dp
 
 private val ThinkingPaneFadeHeight = 24.dp
-
-private const val ThinkingPaneFollowThresholdPx = 32
 
 @Composable
 internal fun ThinkingSection(
@@ -159,7 +156,8 @@ private fun ThinkingPane(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             private fun onUserScroll(deltaY: Float) {
-                if (deltaY > 0f) userDetached = true
+                if (abs(deltaY) < 0.5f) return
+                userDetached = true
             }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -185,17 +183,6 @@ private fun ThinkingPane(
                 }
             }
         }
-    }
-
-    LaunchedEffect(scrollState) {
-        snapshotFlow {
-            if (scrollState.maxValue <= 0) true
-            else scrollState.value >= scrollState.maxValue - ThinkingPaneFollowThresholdPx
-        }
-            .distinctUntilChanged()
-            .collect { atBottom ->
-                if (atBottom) userDetached = false
-            }
     }
 
     val contentMarker = reasoning.length to webSearchSteps.size

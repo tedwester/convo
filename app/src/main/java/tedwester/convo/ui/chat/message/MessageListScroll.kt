@@ -1,10 +1,13 @@
 package tedwester.convo.ui.chat.message
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.abs
 
 internal const val VisualTopThresholdPx = 120
@@ -15,7 +18,17 @@ internal const val EndVisibleThresholdPx = 24
 
 private const val MaxScrollByDeltaPx = 2_000_000f
 private const val JumpToEndMaxPasses = 12
-private const val AnimateToEndMaxPasses = 8
+private const val AnimateScrollMaxPasses = 8
+private const val MinScrollMs = 320
+private const val MaxScrollMs = 900
+
+/** Fast start, then ease into the destination. */
+internal val ChatScrollEasing = CubicBezierEasing(0.12f, 0.0f, 0.0f, 1.0f)
+
+internal fun chatScrollDurationMs(distancePx: Float): Int {
+    val abs = abs(distancePx)
+    return (260f + abs * 0.28f).toInt().coerceIn(MinScrollMs, MaxScrollMs)
+}
 
 internal fun LazyListState.isAtEnd(thresholdPx: Int = EndSettleThresholdPx): Boolean {
     val info = layoutInfo
@@ -60,6 +73,24 @@ internal fun LazyListState.distanceToEndPx(): Float {
     return tailBelowViewport + itemsRemaining * typicalSize
 }
 
+internal fun LazyListState.distanceToStartPx(): Float {
+    val info = layoutInfo
+    if (info.totalItemsCount == 0) return 0f
+    if (!canScrollBackward) return 0f
+
+    val visualTop = info.viewportStartOffset + info.beforeContentPadding
+    val visible = info.visibleItemsInfo
+    if (visible.isEmpty()) return Float.MAX_VALUE / 4f
+
+    val firstVisible = visible.first()
+    val intoFirst = (visualTop - firstVisible.offset).toFloat().coerceAtLeast(0f)
+    if (firstVisible.index == 0) return intoFirst
+
+    val typicalSize = visible.maxOf { it.size }.toFloat().coerceAtLeast(1f) +
+        info.mainAxisItemSpacing
+    return intoFirst + firstVisible.index * typicalSize
+}
+
 internal fun endSpacerPx(
     viewportHeightPx: Int,
     topPaddingPx: Float,
@@ -86,6 +117,10 @@ private suspend fun LazyListState.awaitLayoutTick() {
         .first { it != token }
 }
 
+private suspend fun LazyListState.awaitLayoutTickOrTimeout() {
+    withTimeoutOrNull(48) { awaitLayoutTick() }
+}
+
 internal suspend fun LazyListState.maintainEnd() {
     val distance = distanceToEndPx()
     if (abs(distance) > 0.5f && abs(distance) < MaxScrollByDeltaPx) {
@@ -103,27 +138,77 @@ internal suspend fun LazyListState.jumpToEnd(maxPasses: Int = JumpToEndMaxPasses
             scrollBy(distance)
         }
         if (isAtEnd()) return
-        awaitLayoutTick()
+        awaitLayoutTickOrTimeout()
     }
 }
 
+private suspend fun LazyListState.animateAlong(
+    distancePx: Float,
+    shouldAbort: () -> Boolean,
+) {
+    val clamped = distancePx.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
+    if (abs(clamped) <= EndSettleThresholdPx) return
+    animateScrollBy(
+        clamped,
+        tween(
+            durationMillis = chatScrollDurationMs(clamped),
+            easing = ChatScrollEasing,
+        ),
+    )
+    if (shouldAbort()) return
+    awaitLayoutTickOrTimeout()
+}
+
 internal suspend fun LazyListState.animateToEnd(
-    maxPasses: Int = AnimateToEndMaxPasses,
+    maxPasses: Int = AnimateScrollMaxPasses,
     shouldAbort: () -> Boolean = { false },
 ) {
     awaitListLaidOut()
-    var animated = false
+    var first = true
     repeat(maxPasses) {
         if (shouldAbort() || isAtEnd()) return
         val distance = distanceToEndPx()
         if (abs(distance) <= EndSettleThresholdPx) return
         val clamped = distance.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
-        if (!animated) {
-            animateScrollBy(clamped)
-            animated = true
+        if (first) {
+            animateAlong(clamped, shouldAbort)
+            first = false
+        } else if (abs(clamped) > EndVisibleThresholdPx) {
+            animateScrollBy(
+                clamped,
+                tween(durationMillis = 180, easing = ChatScrollEasing),
+            )
         } else {
             scrollBy(clamped)
-            awaitLayoutTick()
+            return
         }
+        if (shouldAbort()) return
+    }
+}
+
+internal suspend fun LazyListState.animateToStart(
+    maxPasses: Int = AnimateScrollMaxPasses,
+    shouldAbort: () -> Boolean = { false },
+) {
+    awaitListLaidOut()
+    var first = true
+    repeat(maxPasses) {
+        if (shouldAbort() || !canScrollBackward) return
+        val distance = -distanceToStartPx()
+        if (abs(distance) <= EndSettleThresholdPx) return
+        val clamped = distance.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
+        if (first) {
+            animateAlong(clamped, shouldAbort)
+            first = false
+        } else if (abs(clamped) > EndVisibleThresholdPx) {
+            animateScrollBy(
+                clamped,
+                tween(durationMillis = 180, easing = ChatScrollEasing),
+            )
+        } else {
+            scrollBy(clamped)
+            return
+        }
+        if (shouldAbort() || !canScrollBackward) return
     }
 }
