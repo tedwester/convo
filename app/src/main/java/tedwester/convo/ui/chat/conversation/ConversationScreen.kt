@@ -281,6 +281,7 @@ fun ConversationScreen(
                         messages = displayMessages,
                         listState = listState,
                         conversationKey = conversationKey,
+                        autoScrollEnabled = isLiveSession,
                         isRunning = chatState.isRunning && isLiveSession,
                         scrollToEndToken = if (isLiveSession) scrollToEndToken else 0,
                         userBubbleAnimOnMountToken = if (isLiveSession) userBubbleAnimOnMountToken else 0,

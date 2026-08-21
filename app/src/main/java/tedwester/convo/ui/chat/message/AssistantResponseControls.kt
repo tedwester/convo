@@ -86,7 +86,7 @@ internal fun AssistantResponseControls(
             if (hasAudio && onToggleVoiceDisplay != null) {
                 MessageActionButton(
                     painter = if (showVoiceAsText) {
-                        ConvoIcons.TypeOutline()
+                        ConvoIcons.Speech()
                     } else {
                         ConvoIcons.Type()
                     },

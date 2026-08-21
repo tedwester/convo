@@ -28,7 +28,6 @@ internal const val TopHideAtEndThresholdPx = 64
 
 private const val MaxScrollByDeltaPx = 2_000_000f
 private const val JumpToEndMaxPasses = 12
-private const val AnimateScrollMaxPasses = 8
 private const val MinScrollMs = 320
 private const val MaxScrollMs = 900
 
@@ -170,55 +169,31 @@ private suspend fun LazyListState.animateAlong(
 }
 
 internal suspend fun LazyListState.animateToEnd(
-    maxPasses: Int = AnimateScrollMaxPasses,
     shouldAbort: () -> Boolean = { false },
 ) {
     awaitListLaidOut()
-    var first = true
-    repeat(maxPasses) {
-        if (shouldAbort() || isAtEnd()) return
-        val distance = distanceToEndPx()
-        if (abs(distance) <= EndSettleThresholdPx) return
-        val clamped = distance.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
-        if (first) {
-            animateAlong(clamped, shouldAbort)
-            first = false
-        } else if (abs(clamped) > EndVisibleThresholdPx) {
-            animateScrollBy(
-                clamped,
-                tween(durationMillis = 180, easing = ChatScrollEasing),
-            )
-        } else {
-            scrollBy(clamped)
-            return
-        }
-        if (shouldAbort()) return
+    val distance = distanceToEndPx()
+    if (abs(distance) <= EndSettleThresholdPx) return
+    val clamped = distance.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
+    animateAlong(clamped, shouldAbort)
+    if (shouldAbort()) return
+    val remaining = distanceToEndPx()
+    if (abs(remaining) > EndSettleThresholdPx) {
+        scrollBy(remaining)
     }
 }
 
 internal suspend fun LazyListState.animateToStart(
-    maxPasses: Int = AnimateScrollMaxPasses,
     shouldAbort: () -> Boolean = { false },
 ) {
     awaitListLaidOut()
-    var first = true
-    repeat(maxPasses) {
-        if (shouldAbort() || !canScrollBackward) return
-        val distance = -distanceToStartPx()
-        if (abs(distance) <= EndSettleThresholdPx) return
-        val clamped = distance.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
-        if (first) {
-            animateAlong(clamped, shouldAbort)
-            first = false
-        } else if (abs(clamped) > EndVisibleThresholdPx) {
-            animateScrollBy(
-                clamped,
-                tween(durationMillis = 180, easing = ChatScrollEasing),
-            )
-        } else {
-            scrollBy(clamped)
-            return
-        }
-        if (shouldAbort() || !canScrollBackward) return
+    val distance = -distanceToStartPx()
+    if (abs(distance) <= EndSettleThresholdPx) return
+    val clamped = distance.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
+    animateAlong(clamped, shouldAbort)
+    if (shouldAbort() || !canScrollBackward) return
+    val remaining = -distanceToStartPx()
+    if (abs(remaining) > EndSettleThresholdPx) {
+        scrollBy(remaining)
     }
 }

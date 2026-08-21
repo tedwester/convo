@@ -51,6 +51,7 @@ fun MessageList(
     listState: LazyListState,
     conversationKey: Any? = null,
     scrollEnabled: Boolean = true,
+    autoScrollEnabled: Boolean = true,
     isRunning: Boolean = false,
     scrollToEndToken: Int = 0,
     userBubbleAnimOnMountToken: Int = 0,
@@ -111,16 +112,15 @@ fun MessageList(
     val density = LocalDensity.current
     val topPaddingPx = with(density) { contentPadding.calculateTopPadding().toPx() }
     val bottomPaddingPx = with(density) { contentPadding.calculateBottomPadding().toPx() }
+    val nowStreaming = isRunning || streamingTailId != null
     val spacerPx = endSpacerPx(
         viewportHeightPx = viewportHeightPx,
         topPaddingPx = topPaddingPx,
         bottomPaddingPx = bottomPaddingPx,
         lastUserHeightPx = lastUserHeightPx,
         lastAssistantHeightPx = lastAssistantHeightPx,
-    ).coerceAtLeast(1f)
+    ).let { if (nowStreaming) it.coerceAtLeast(1f) else it.coerceAtLeast(0f) }
     val spacerDp = with(density) { spacerPx.toDp() }
-
-    val nowStreaming = isRunning || streamingTailId != null
     val activelyFollowing = following && nowStreaming
     followingRef.value = activelyFollowing
 
@@ -207,8 +207,8 @@ fun MessageList(
         }
     }
 
-    LaunchedEffect(conversationKey, scrollEnabled) {
-        if (!scrollEnabled || messages.isEmpty()) {
+    LaunchedEffect(conversationKey, autoScrollEnabled) {
+        if (!autoScrollEnabled || messages.isEmpty()) {
             settledToEnd = true
             return@LaunchedEffect
         }
@@ -223,8 +223,8 @@ fun MessageList(
         followingRef.value = following
     }
 
-    LaunchedEffect(scrollToEndToken, scrollEnabled) {
-        if (!scrollEnabled || scrollToEndToken == lastHandledScrollToEndToken) {
+    LaunchedEffect(scrollToEndToken, autoScrollEnabled) {
+        if (!autoScrollEnabled || scrollToEndToken <= lastHandledScrollToEndToken) {
             return@LaunchedEffect
         }
         lastHandledScrollToEndToken = scrollToEndToken
@@ -238,8 +238,8 @@ fun MessageList(
         listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
     }
 
-    LaunchedEffect(conversationKey, scrollEnabled) {
-        if (!scrollEnabled) return@LaunchedEffect
+    LaunchedEffect(conversationKey, autoScrollEnabled) {
+        if (!autoScrollEnabled) return@LaunchedEffect
         var previousUserId = trailingUserIdState.value
         snapshotFlow { trailingUserIdState.value }
             .distinctUntilChanged()
@@ -262,8 +262,8 @@ fun MessageList(
     }
 
     var wasStreaming by remember { mutableStateOf(false) }
-    LaunchedEffect(nowStreaming, scrollEnabled) {
-        if (!scrollEnabled) return@LaunchedEffect
+    LaunchedEffect(nowStreaming, autoScrollEnabled) {
+        if (!autoScrollEnabled) return@LaunchedEffect
         if (wasStreaming && !nowStreaming) {
             listState.jumpToEnd()
         }
@@ -272,8 +272,8 @@ fun MessageList(
 
     val bottomPaddingState = remember { mutableFloatStateOf(bottomPaddingPx) }
     bottomPaddingState.floatValue = bottomPaddingPx
-    LaunchedEffect(conversationKey, scrollEnabled) {
-        if (!scrollEnabled) return@LaunchedEffect
+    LaunchedEffect(conversationKey, autoScrollEnabled) {
+        if (!autoScrollEnabled) return@LaunchedEffect
         var lastPad = bottomPaddingState.floatValue
         snapshotFlow { bottomPaddingState.floatValue }
             .collect { newPad ->
@@ -286,8 +286,8 @@ fun MessageList(
             }
     }
 
-    LaunchedEffect(activelyFollowing, scrollEnabled) {
-        if (!scrollEnabled || !activelyFollowing) return@LaunchedEffect
+    LaunchedEffect(activelyFollowing, autoScrollEnabled) {
+        if (!autoScrollEnabled || !activelyFollowing) return@LaunchedEffect
         snapshotFlow {
             val info = listState.layoutInfo
             val last = messagesState.value.lastOrNull()

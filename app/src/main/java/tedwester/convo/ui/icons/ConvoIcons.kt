@@ -42,6 +42,9 @@ object ConvoIcons {
     fun TypeOutline(): Painter = painterResource(R.drawable.ic_lucide_type_outline)
 
     @Composable
+    fun Speech(): Painter = painterResource(R.drawable.ic_lucide_speech)
+
+    @Composable
     fun ArrowLeft(): Painter = painterResource(R.drawable.ic_lucide_arrow_left)
 
     @Composable
