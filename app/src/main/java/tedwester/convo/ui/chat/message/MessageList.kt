@@ -4,7 +4,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -12,19 +15,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.SideEffect
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
@@ -33,14 +33,18 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
+import kotlin.math.abs
+
+private const val EndSpacerKey = "end-spacer"
 
 @Composable
 fun MessageList(
@@ -49,12 +53,9 @@ fun MessageList(
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
     listState: LazyListState,
     conversationKey: Any? = null,
-    messageListRevision: Int = 0,
     scrollEnabled: Boolean = true,
     isRunning: Boolean = false,
-    variantSwipeToken: Int = 0,
-    variantSwipeMessageId: Long = -1L,
-    resumeFollowToken: Int = 0,
+    scrollToEndToken: Int = 0,
     userBubbleAnimOnMountToken: Int = 0,
     onRegenerate: (Long) -> Unit = {},
     onResendUserMessage: (messageId: Long, editedText: String?) -> Unit = { _, _ -> },
@@ -82,58 +83,77 @@ fun MessageList(
         }
         if (latest == null || latest.voiceAutoPlayed) -1L else latest.id
     }
-    val listScopeKey = remember(conversationKey, messageListRevision) {
-        listOf(conversationKey, messageListRevision)
-    }
-    var previousCount by remember(listScopeKey) { mutableIntStateOf(messages.size) }
-    var lastPulsedCount by remember(listScopeKey) { mutableIntStateOf(messages.size) }
-    var followBottom by remember(listScopeKey) { mutableStateOf(false) }
-    var userDetached by remember(listScopeKey) { mutableStateOf(false) }
-    var settledToBottom by remember(listScopeKey) { mutableStateOf(false) }
+
+    val trailingUser = messages.lastOrNull { it.author == MessageAuthor.User }
+    val trailingUserIndex = messages.indexOfLast { it.author == MessageAuthor.User }
+    val trailingAssistant = messages.getOrNull(trailingUserIndex + 1)
+        ?.takeIf { it.author == MessageAuthor.Assistant }
+    val trailingUserId = trailingUser?.id ?: -1L
+    val trailingAssistantId = trailingAssistant?.id ?: -1L
+    val streamingTailId = messages.lastOrNull()
+        ?.takeIf { it.author == MessageAuthor.Assistant && it.isStreaming }
+        ?.id
+
+    var lastPulsedCount by remember { mutableIntStateOf(messages.size) }
+    var following by remember { mutableStateOf(false) }
+    var settledToEnd by remember { mutableStateOf(false) }
+    val userInterruptedRef = remember { object { var value = false } }
     var userBubbleAnimId by remember { mutableLongStateOf(-1L) }
     var userBubbleAnimToken by remember { mutableIntStateOf(0) }
-    var lastHandledVariantSwipeToken by remember { mutableIntStateOf(0) }
-    var lastHandledResumeFollowToken by remember { mutableIntStateOf(0) }
+    var lastHandledScrollToEndToken by remember { mutableIntStateOf(scrollToEndToken) }
     var lastHandledMountAnimToken by remember { mutableIntStateOf(0) }
-    var selectedPromptMessageId by remember(listScopeKey) { mutableLongStateOf(-1L) }
+    var selectedPromptMessageId by remember { mutableLongStateOf(-1L) }
+    var viewportHeightPx by remember { mutableIntStateOf(0) }
+    var lastUserHeightPx by remember { mutableIntStateOf(0) }
+    var lastAssistantHeightPx by remember { mutableIntStateOf(0) }
+    var measuredUserId by remember { mutableLongStateOf(-1L) }
+    var measuredAssistantId by remember { mutableLongStateOf(-1L) }
+    var wasStreaming by remember { mutableStateOf(false) }
 
-    fun attachToBottom() {
-        followBottom = true
-        userDetached = false
+    val density = LocalDensity.current
+    val topPaddingPx = with(density) { contentPadding.calculateTopPadding().toPx() }
+    val bottomPaddingPx = with(density) { contentPadding.calculateBottomPadding().toPx() }
+    val spacerPx = endSpacerPx(
+        viewportHeightPx = viewportHeightPx,
+        topPaddingPx = topPaddingPx,
+        bottomPaddingPx = bottomPaddingPx,
+        lastUserHeightPx = lastUserHeightPx,
+        lastAssistantHeightPx = lastAssistantHeightPx,
+    ).coerceAtLeast(1f)
+    val spacerDp = with(density) { spacerPx.toDp() }
+
+    val followingState = rememberUpdatedState(following)
+    val detachFollow = rememberUpdatedState {
+        following = false
+        userInterruptedRef.value = true
     }
+    val messagesState = rememberUpdatedState(messages)
+    val isRunningState = rememberUpdatedState(isRunning)
+    val trailingUserIdState = rememberUpdatedState(trailingUserId)
 
-    val scope = rememberCoroutineScope()
-    val followBottomState = rememberUpdatedState(followBottom)
-    val userDetachedState = rememberUpdatedState(userDetached)
-
-    val onUserScrollAway = rememberUpdatedState {
-        followBottom = false
-        userDetached = true
-    }
-
-    fun detachFromBottom() {
-        followBottom = false
-        userDetached = true
-    }
-
-    val onThinkingInteraction = remember(listScopeKey, listState, scope) {
-        {
-            detachFromBottom()
-            scope.launch {
-                if (listState.isAtVisualBottom(VisualBottomThresholdPx)) {
-                    listState.scrollBy(-1f)
-                }
-            }
-            Unit
+    SideEffect {
+        if (trailingUserId != measuredUserId) {
+            measuredUserId = trailingUserId
         }
+        if (trailingAssistantId != measuredAssistantId) {
+            measuredAssistantId = trailingAssistantId
+            lastAssistantHeightPx = 0
+        }
+        if (trailingAssistantId < 0) {
+            lastAssistantHeightPx = 0
+        }
+    }
+
+    val onThinkingInteraction = remember {
+        { detachFollow.value() }
     }
 
     val scrollConnection = remember(onDismissKeyboard, scrollEnabled) {
         object : NestedScrollConnection {
             private fun onUserScroll(deltaY: Float) {
-                if (!scrollEnabled || deltaY <= 0f) return
+                if (!scrollEnabled || abs(deltaY) < 0.5f) return
                 onDismissKeyboard()
-                onUserScrollAway.value()
+                detachFollow.value()
             }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -160,7 +180,7 @@ fun MessageList(
         if (!scrollEnabled) return@SideEffect
         var pulseId = -1L
 
-        if (settledToBottom && userBubbleAnimOnMountToken > lastHandledMountAnimToken) {
+        if (settledToEnd && userBubbleAnimOnMountToken > lastHandledMountAnimToken) {
             lastHandledMountAnimToken = userBubbleAnimOnMountToken
             pulseId = messages.lastOrNull { it.author == MessageAuthor.User }?.id ?: -1L
         }
@@ -184,32 +204,73 @@ fun MessageList(
         }
     }
 
-    LaunchedEffect(listScopeKey, scrollEnabled) {
+    LaunchedEffect(conversationKey, scrollEnabled) {
         if (!scrollEnabled || messages.isEmpty()) {
-            settledToBottom = true
+            settledToEnd = true
             return@LaunchedEffect
         }
-        userDetached = false
-        followBottom = false
-        settledToBottom = false
-        listState.pinToVisualBottomUntilSettled()
-        settledToBottom = true
+        following = isRunningState.value || streamingTailId != null
+        settledToEnd = false
+        withTimeoutOrNull(400) {
+            snapshotFlow { viewportHeightPx to lastUserHeightPx }
+                .first { (viewport, userHeight) ->
+                    viewport > 0 && (trailingUserIdState.value < 0 || userHeight > 0)
+                }
+        }
+        listState.jumpToEnd()
+        following = isRunningState.value ||
+            messagesState.value.lastOrNull()?.isStreaming == true
+        settledToEnd = true
     }
 
-    LaunchedEffect(resumeFollowToken, scrollEnabled) {
-        if (!scrollEnabled || resumeFollowToken == 0) return@LaunchedEffect
-        if (resumeFollowToken == lastHandledResumeFollowToken) return@LaunchedEffect
-        lastHandledResumeFollowToken = resumeFollowToken
-        attachToBottom()
-        listState.pinToVisualBottom()
+    LaunchedEffect(scrollToEndToken, scrollEnabled) {
+        if (!scrollEnabled || scrollToEndToken == lastHandledScrollToEndToken) {
+            return@LaunchedEffect
+        }
+        lastHandledScrollToEndToken = scrollToEndToken
+        userInterruptedRef.value = false
+        val streamingNow = isRunningState.value ||
+            messagesState.value.lastOrNull()?.isStreaming == true
+        if (streamingNow) following = true
+        listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
     }
 
-    val bottomPaddingPx = with(LocalDensity.current) {
-        contentPadding.calculateBottomPadding().toPx()
+    LaunchedEffect(conversationKey, scrollEnabled) {
+        if (!scrollEnabled) return@LaunchedEffect
+        var previousUserId = trailingUserIdState.value
+        snapshotFlow { trailingUserIdState.value }
+            .distinctUntilChanged()
+            .collect { userId ->
+                val previous = previousUserId
+                previousUserId = userId
+                if (userId < 0 || userId == previous || previous < 0) return@collect
+                userInterruptedRef.value = false
+                following = true
+                listState.animateToEnd(shouldAbort = { userInterruptedRef.value })
+            }
     }
-    val bottomPaddingState = remember(listScopeKey) { mutableFloatStateOf(bottomPaddingPx) }
+
+    val nowStreaming = isRunning || streamingTailId != null
+    LaunchedEffect(nowStreaming) {
+        if (wasStreaming && !nowStreaming) {
+            following = false
+        }
+        wasStreaming = nowStreaming
+    }
+
+    LaunchedEffect(streamingTailId, scrollEnabled) {
+        if (!scrollEnabled || streamingTailId == null || followingState.value) {
+            return@LaunchedEffect
+        }
+        listState.awaitListLaidOut()
+        if (listState.isAtEnd(EndVisibleThresholdPx)) {
+            following = true
+        }
+    }
+
+    val bottomPaddingState = remember { mutableFloatStateOf(bottomPaddingPx) }
     bottomPaddingState.floatValue = bottomPaddingPx
-    LaunchedEffect(listScopeKey, scrollEnabled) {
+    LaunchedEffect(conversationKey, scrollEnabled) {
         if (!scrollEnabled) return@LaunchedEffect
         var lastPad = bottomPaddingState.floatValue
         snapshotFlow { bottomPaddingState.floatValue }
@@ -217,166 +278,128 @@ fun MessageList(
                 val delta = newPad - lastPad
                 if (delta == 0f) return@collect
                 lastPad = newPad
-                when {
-                    followBottomState.value && !userDetachedState.value ->
-                        listState.scrollBy(delta)
-                    delta > 0f -> listState.scrollBy(delta)
-                    !listState.isAtVisualBottom(PinSettleThresholdPx) ->
-                        listState.scrollBy(delta)
+                if (followingState.value || listState.isAtEnd()) {
+                    listState.scrollBy(delta)
                 }
             }
     }
 
-    LaunchedEffect(messages.size, messages.lastOrNull()?.id, scrollEnabled, isRunning) {
-        if (!scrollEnabled) return@LaunchedEffect
-        val count = messages.size
-        val prev = previousCount
-        previousCount = count
-        if (count == prev) return@LaunchedEffect
-
-        when {
-            count < prev -> {
-                attachToBottom()
-                listState.pinToVisualBottom()
-            }
-            count > prev -> {
-                attachToBottom()
-                val tailIsAssistant = messages.lastOrNull()?.author == MessageAuthor.Assistant
-                if (tailIsAssistant || isRunning) {
-                    listState.pinToVisualBottom()
-                }
-            }
-        }
-    }
-
-    val streamingTailId = messages.lastOrNull()
-        ?.takeIf { it.author == MessageAuthor.Assistant && it.isStreaming }
-        ?.id
-
-    LaunchedEffect(followBottom, scrollEnabled, streamingTailId) {
-        if (!scrollEnabled || !followBottom || streamingTailId == null) return@LaunchedEffect
-        snapshotFlow { messages.lastOrNull()?.content?.length ?: 0 }
-            .distinctUntilChanged()
-            .drop(1)
-            .collect {
-                if (!followBottomState.value || userDetachedState.value || listState.isScrollInProgress) {
-                    return@collect
-                }
-                listState.maintainVisualBottom()
-            }
-    }
-
-    LaunchedEffect(scrollEnabled, streamingTailId) {
-        if (!scrollEnabled || streamingTailId == null) return@LaunchedEffect
-        var lastTailSize = -1
+    LaunchedEffect(following, scrollEnabled) {
+        if (!scrollEnabled || !following) return@LaunchedEffect
         snapshotFlow {
-            listState.layoutInfo.visibleItemsInfo.find {
-                it.index == listState.layoutInfo.totalItemsCount - 1
-            }?.size ?: -1
+            val info = listState.layoutInfo
+            val last = messagesState.value.lastOrNull()
+            listOf(
+                info.visibleItemsInfo.sumOf { it.size },
+                info.totalItemsCount,
+                last?.content?.length ?: 0,
+                last?.reasoning?.length ?: 0,
+                last?.webSearchSteps?.size ?: 0,
+            )
         }
             .distinctUntilChanged()
-            .collect { newSize ->
-                if (newSize < 0) return@collect
-                if (lastTailSize < 0) {
-                    lastTailSize = newSize
-                    return@collect
-                }
-                val delta = newSize - lastTailSize
-                lastTailSize = newSize
-                if (delta <= 0 || listState.isScrollInProgress) return@collect
-                if (followBottomState.value && !userDetachedState.value) return@collect
-                if (listState.isAtVisualBottom(VisualBottomThresholdPx)) {
-                    listState.scrollBy(-delta.toFloat())
-                }
+            .collect {
+                if (!followingState.value || listState.isScrollInProgress) return@collect
+                listState.maintainEnd()
             }
-    }
-
-    LaunchedEffect(variantSwipeToken, variantSwipeMessageId, messages.size) {
-        if (!scrollEnabled) return@LaunchedEffect
-        if (variantSwipeToken == 0 || variantSwipeToken == lastHandledVariantSwipeToken) {
-            return@LaunchedEffect
-        }
-        lastHandledVariantSwipeToken = variantSwipeToken
-        val index = messages.indexOfFirst { it.id == variantSwipeMessageId }
-        if (index < 0) return@LaunchedEffect
-        listState.pinItemBottomIntoView(index)
     }
 
     val itemKeyPrefix = conversationKey ?: "new"
 
-    key(listScopeKey) {
-        LazyColumn(
-            state = listState,
-            modifier = modifier
-                .fillMaxSize()
-                .clipToBounds()
-                .alpha(if (settledToBottom) 1f else 0f)
-                .pointerInput(onDismissKeyboard) {
-                    detectTapGestures(onTap = {
-                        onDismissKeyboard()
-                        selectedPromptMessageId = -1L
-                    })
-                }
-                .nestedScroll(scrollConnection),
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(0.dp),
-            userScrollEnabled = scrollEnabled,
-        ) {
-            items(
-                items = messages,
-                key = { "$itemKeyPrefix:${it.id}" },
-                contentType = { it.author.name },
-            ) { message ->
-                val actionsEnabled = !isRunning
-                val canRegenerate = message.author == MessageAuthor.Assistant && actionsEnabled
-                val promptBarVisible = message.author == MessageAuthor.User &&
-                    message.id == selectedPromptMessageId
-                ChatBubble(
-                    message = message,
-                    onRegenerate = if (canRegenerate) {
-                        { onRegenerate(message.id) }
-                    } else {
-                        null
-                    },
-                    onVariantSwipe = { delta ->
-                        if (actionsEnabled) onVariantSwipe(message.id, delta)
-                    },
-                    actionsEnabled = actionsEnabled,
-                    showActions = message.author == MessageAuthor.Assistant,
-                    promptBarVisible = promptBarVisible,
-                    onTogglePromptBar = {
-                        onDismissKeyboard()
-                        selectedPromptMessageId = if (selectedPromptMessageId == message.id) {
-                            -1L
-                        } else {
-                            message.id
-                        }
-                    },
-                    onStartEdit = {
-                        selectedPromptMessageId = -1L
-                        onStartEditUserMessage(message.id)
-                    },
-                    expectStreamedThinking = message.expectStreamedThinking && message.isStreaming,
-                    userAnimToken = if (message.id == userBubbleAnimId) userBubbleAnimToken else 0,
-                    onViewAttachment = onViewAttachment,
-                    onThinkingInteraction = onThinkingInteraction,
-                    autoPlayVoiceReplies = message.id == autoPlayMessageId,
-                    playbackStopToken = playbackStopToken,
-                    onVoiceAutoPlayStarted = { onVoiceAutoPlayStarted(message.id) },
-                    onVoicePlaybackFinished = onVoicePlaybackFinished,
-                    onVoicePlaybackPaused = onVoicePlaybackPaused,
-                    modifier = Modifier.padding(bottom = 18.dp),
-                )
+    LazyColumn(
+        state = listState,
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { viewportHeightPx = it.height }
+            .clipToBounds()
+            .alpha(if (settledToEnd) 1f else 0f)
+            .pointerInput(onDismissKeyboard) {
+                detectTapGestures(onTap = {
+                    onDismissKeyboard()
+                    selectedPromptMessageId = -1L
+                })
             }
+            .nestedScroll(scrollConnection),
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+        userScrollEnabled = scrollEnabled,
+    ) {
+        items(
+            items = messages,
+            key = { "$itemKeyPrefix:${it.id}" },
+            contentType = { it.author.name },
+        ) { message ->
+            val actionsEnabled = !isRunning
+            val canRegenerate = message.author == MessageAuthor.Assistant && actionsEnabled
+            val promptBarVisible = message.author == MessageAuthor.User &&
+                message.id == selectedPromptMessageId
+            val trackHeight = message.id == trailingUserId || message.id == trailingAssistantId
+            ChatBubble(
+                message = message,
+                onRegenerate = if (canRegenerate) {
+                    { onRegenerate(message.id) }
+                } else {
+                    null
+                },
+                onVariantSwipe = { delta ->
+                    if (actionsEnabled) onVariantSwipe(message.id, delta)
+                },
+                actionsEnabled = actionsEnabled,
+                showActions = message.author == MessageAuthor.Assistant,
+                promptBarVisible = promptBarVisible,
+                onTogglePromptBar = {
+                    onDismissKeyboard()
+                    selectedPromptMessageId = if (selectedPromptMessageId == message.id) {
+                        -1L
+                    } else {
+                        message.id
+                    }
+                },
+                onStartEdit = {
+                    selectedPromptMessageId = -1L
+                    onStartEditUserMessage(message.id)
+                },
+                expectStreamedThinking = message.expectStreamedThinking && message.isStreaming,
+                userAnimToken = if (message.id == userBubbleAnimId) userBubbleAnimToken else 0,
+                onViewAttachment = onViewAttachment,
+                onThinkingInteraction = onThinkingInteraction,
+                autoPlayVoiceReplies = message.id == autoPlayMessageId,
+                playbackStopToken = playbackStopToken,
+                onVoiceAutoPlayStarted = { onVoiceAutoPlayStarted(message.id) },
+                onVoicePlaybackFinished = onVoicePlaybackFinished,
+                onVoicePlaybackPaused = onVoicePlaybackPaused,
+                modifier = Modifier
+                    .then(
+                        if (trackHeight) {
+                            Modifier.onSizeChanged { size ->
+                                when (message.id) {
+                                    trailingUserId -> lastUserHeightPx = size.height
+                                    trailingAssistantId -> lastAssistantHeightPx = size.height
+                                }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .padding(bottom = 18.dp),
+            )
+        }
+        item(
+            key = "$itemKeyPrefix:$EndSpacerKey",
+            contentType = EndSpacerKey,
+        ) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(spacerDp),
+            )
         }
     }
 }
 
 @Composable
-fun bottomAnchoredListState(messageCount: Int): LazyListState {
-    val lastIndex = (messageCount - 1).coerceAtLeast(0)
+fun rememberConversationListState(initialFirstVisibleItemIndex: Int): LazyListState {
     return rememberLazyListState(
-        initialFirstVisibleItemIndex = lastIndex,
-        initialFirstVisibleItemScrollOffset = Int.MAX_VALUE / 2,
+        initialFirstVisibleItemIndex = initialFirstVisibleItemIndex.coerceAtLeast(0),
     )
 }

@@ -1,28 +1,27 @@
 package tedwester.convo.ui.chat.message
 
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.first
 import kotlin.math.abs
 
-internal const val VisualBottomThresholdPx = 120
-
 internal const val VisualTopThresholdPx = 120
 
-internal const val PinSettleThresholdPx = 2
-private const val MaxScrollByDeltaPx = 2_000_000f
+internal const val EndSettleThresholdPx = 2
 
-internal fun LazyListState.isAtVisualBottom(thresholdPx: Int = VisualBottomThresholdPx): Boolean {
+internal const val EndVisibleThresholdPx = 24
+
+private const val MaxScrollByDeltaPx = 2_000_000f
+private const val JumpToEndMaxPasses = 12
+private const val AnimateToEndMaxPasses = 8
+
+internal fun LazyListState.isAtEnd(thresholdPx: Int = EndSettleThresholdPx): Boolean {
     val info = layoutInfo
-    val total = info.totalItemsCount
-    if (total == 0) return true
-    val lastVisible = info.visibleItemsInfo.lastOrNull() ?: return false
-    if (lastVisible.index < total - 1) return false
-    val visualBottom = info.viewportEndOffset - info.afterContentPadding
-    val itemBottom = lastVisible.offset + lastVisible.size
-    if (!canScrollForward && lastVisible.offset >= 0) return true
-    return abs(itemBottom - visualBottom) <= thresholdPx
+    if (info.totalItemsCount == 0) return true
+    if (!canScrollForward) return true
+    return abs(distanceToEndPx()) <= thresholdPx
 }
 
 internal fun LazyListState.isAtVisualTop(thresholdPx: Int = VisualTopThresholdPx): Boolean {
@@ -37,7 +36,7 @@ internal fun LazyListState.isAtVisualTop(thresholdPx: Int = VisualTopThresholdPx
     return abs(itemTop - visualTop) <= thresholdPx
 }
 
-internal fun LazyListState.distanceToVisualBottomPx(): Float {
+internal fun LazyListState.distanceToEndPx(): Float {
     val info = layoutInfo
     val total = info.totalItemsCount
     if (total == 0) return 0f
@@ -61,17 +60,23 @@ internal fun LazyListState.distanceToVisualBottomPx(): Float {
     return tailBelowViewport + itemsRemaining * typicalSize
 }
 
+internal fun endSpacerPx(
+    viewportHeightPx: Int,
+    topPaddingPx: Float,
+    bottomPaddingPx: Float,
+    lastUserHeightPx: Int,
+    lastAssistantHeightPx: Int,
+): Float {
+    val visible = viewportHeightPx - topPaddingPx - bottomPaddingPx
+    if (visible <= 0f) return 0f
+    val turnHeight = lastUserHeightPx + lastAssistantHeightPx
+    return (visible - turnHeight).coerceAtLeast(0f)
+}
+
 internal suspend fun LazyListState.awaitListLaidOut() {
     if (layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()) return
     snapshotFlow {
         layoutInfo.totalItemsCount > 0 && layoutInfo.visibleItemsInfo.isNotEmpty()
-    }.first { it }
-}
-
-internal suspend fun LazyListState.awaitLastItemVisible() {
-    snapshotFlow {
-        val last = layoutInfo.totalItemsCount - 1
-        last >= 0 && layoutInfo.visibleItemsInfo.any { it.index == last }
     }.first { it }
 }
 
@@ -81,66 +86,44 @@ private suspend fun LazyListState.awaitLayoutTick() {
         .first { it != token }
 }
 
-internal suspend fun LazyListState.pinToVisualBottom() {
-    awaitListLaidOut()
-    val lastIndex = layoutInfo.totalItemsCount - 1
-    if (lastIndex < 0) return
-    pinItemBottomIntoView(lastIndex)
-}
-
-internal suspend fun LazyListState.maintainVisualBottom() {
-    val distance = distanceToVisualBottomPx()
-    if (abs(distance) > 0.5f) {
+internal suspend fun LazyListState.maintainEnd() {
+    val distance = distanceToEndPx()
+    if (abs(distance) > 0.5f && abs(distance) < MaxScrollByDeltaPx) {
         scrollBy(distance)
     }
 }
 
-internal suspend fun LazyListState.ensureItemBottomVisible(index: Int) {
-    if (layoutInfo.totalItemsCount <= 0) return
-    val lastIndex = layoutInfo.totalItemsCount - 1
-    val clamped = index.coerceIn(0, lastIndex)
-    awaitListLaidOut()
-    val visible = layoutInfo.visibleItemsInfo.find { it.index == clamped }
-    if (visible == null) {
-        pinItemBottomIntoView(clamped)
-        return
-    }
-    refineItemBottomIntoView(clamped)
-}
-
-internal suspend fun LazyListState.pinItemBottomIntoView(index: Int) {
-    if (layoutInfo.totalItemsCount <= 0) return
-    val lastIndex = layoutInfo.totalItemsCount - 1
-    val clamped = index.coerceIn(0, lastIndex)
-
-    awaitListLaidOut()
-    if (isAtVisualBottom(thresholdPx = PinSettleThresholdPx)) return
-
-    scrollToItem(clamped)
-    refineItemBottomIntoView(clamped)
-
-    if (isAtVisualBottom(thresholdPx = PinSettleThresholdPx)) return
-
-    val distance = distanceToVisualBottomPx()
-    if (abs(distance) > PinSettleThresholdPx && abs(distance) < MaxScrollByDeltaPx) {
-        scrollBy(distance)
-    }
-}
-
-private suspend fun LazyListState.refineItemBottomIntoView(index: Int) {
-    val item = layoutInfo.visibleItemsInfo.find { it.index == index } ?: return
-    val visualBottom = layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
-    val overflow = (item.offset + item.size) - visualBottom
-    if (abs(overflow) > PinSettleThresholdPx) {
-        scrollBy(overflow.toFloat())
-    }
-}
-
-internal suspend fun LazyListState.pinToVisualBottomUntilSettled(maxPasses: Int = 12) {
+internal suspend fun LazyListState.jumpToEnd(maxPasses: Int = JumpToEndMaxPasses) {
     awaitListLaidOut()
     repeat(maxPasses) {
-        pinToVisualBottom()
-        if (isAtVisualBottom(thresholdPx = PinSettleThresholdPx)) return
+        if (isAtEnd()) return
+        val distance = distanceToEndPx()
+        if (abs(distance) <= EndSettleThresholdPx) return
+        if (abs(distance) < MaxScrollByDeltaPx) {
+            scrollBy(distance)
+        }
+        if (isAtEnd()) return
         awaitLayoutTick()
+    }
+}
+
+internal suspend fun LazyListState.animateToEnd(
+    maxPasses: Int = AnimateToEndMaxPasses,
+    shouldAbort: () -> Boolean = { false },
+) {
+    awaitListLaidOut()
+    var animated = false
+    repeat(maxPasses) {
+        if (shouldAbort() || isAtEnd()) return
+        val distance = distanceToEndPx()
+        if (abs(distance) <= EndSettleThresholdPx) return
+        val clamped = distance.coerceIn(-MaxScrollByDeltaPx, MaxScrollByDeltaPx)
+        if (!animated) {
+            animateScrollBy(clamped)
+            animated = true
+        } else {
+            scrollBy(clamped)
+            awaitLayoutTick()
+        }
     }
 }

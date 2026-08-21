@@ -18,7 +18,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,11 +39,12 @@ import tedwester.convo.features.chat.ChatState
 import tedwester.convo.features.chat.data.ComposerPreferences
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.model.ChatAttachment
+import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.ui.chat.attachments.ImageViewerDialog
 import tedwester.convo.ui.chat.attachments.VideoViewerDialog
 import tedwester.convo.ui.chat.composer.InputBar
 import tedwester.convo.ui.chat.message.MessageList
-import tedwester.convo.ui.chat.message.bottomAnchoredListState
+import tedwester.convo.ui.chat.message.rememberConversationListState
 
 @Composable
 fun ConversationScreen(
@@ -217,9 +217,7 @@ fun ConversationScreen(
     var topChromeDp by remember { mutableStateOf(64.dp) }
     var bottomChromeDp by remember { mutableStateOf(96.dp) }
     var activeListState by remember { mutableStateOf<LazyListState?>(null) }
-    var variantSwipeToken by remember { mutableIntStateOf(0) }
-    var variantSwipeMessageId by remember { mutableLongStateOf(-1L) }
-    var resumeFollowToken by remember { mutableIntStateOf(0) }
+    var scrollToEndToken by remember { mutableIntStateOf(0) }
     var viewingAttachment by remember { mutableStateOf<ChatAttachment?>(null) }
     val applyComposerImePadding = !showModelSelector &&
         !showAttachmentOptions &&
@@ -253,11 +251,6 @@ fun ConversationScreen(
             val displayMessages = if (isLiveSession) chatState.messages else frame.messages
             val hasFrameMessages = displayMessages.isNotEmpty()
             val conversationKey = if (isLiveSession) chatState.currentChatId else frame.chatId
-            val messageListRevision = if (isLiveSession) {
-                chatState.messageListRevision
-            } else {
-                frame.messageListRevision
-            }
             var userBubbleAnimOnMountToken by remember(activeSession) { mutableIntStateOf(0) }
             var hadFrameMessages by remember(activeSession) { mutableStateOf(hasFrameMessages) }
 
@@ -276,8 +269,13 @@ fun ConversationScreen(
             }
 
             if (hasFrameMessages) {
-                key(activeSession, conversationKey, messageListRevision) {
-                    val listState = bottomAnchoredListState(displayMessages.size)
+                key(activeSession, conversationKey) {
+                    val initialIndex = displayMessages.indexOfLast { it.author == MessageAuthor.User }
+                        .let { index ->
+                            if (index >= 0) index
+                            else (displayMessages.size - 1).coerceAtLeast(0)
+                        }
+                    val listState = rememberConversationListState(initialIndex)
                     SideEffect {
                         if (isLiveSession) {
                             activeListState = listState
@@ -287,23 +285,20 @@ fun ConversationScreen(
                         messages = displayMessages,
                         listState = listState,
                         conversationKey = conversationKey,
-                        messageListRevision = messageListRevision,
                         isRunning = chatState.isRunning && isLiveSession,
-                        variantSwipeToken = if (isLiveSession) variantSwipeToken else 0,
-                        variantSwipeMessageId = if (isLiveSession) variantSwipeMessageId else -1L,
-                        resumeFollowToken = if (isLiveSession) resumeFollowToken else 0,
+                        scrollToEndToken = if (isLiveSession) scrollToEndToken else 0,
                         userBubbleAnimOnMountToken = if (isLiveSession) userBubbleAnimOnMountToken else 0,
                         onRegenerate = { id ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()
                             chatState.regenerate(id)
-                            resumeFollowToken += 1
+                            scrollToEndToken += 1
                         },
                         onResendUserMessage = { id, editedText ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()
                             chatState.resendUserMessage(id, editedText)
-                            resumeFollowToken += 1
+                            scrollToEndToken += 1
                         },
                         onStartEditUserMessage = { id ->
                             if (!isLiveSession) return@MessageList
@@ -314,8 +309,6 @@ fun ConversationScreen(
                             dismissKeyboard()
                             chatState.cancelEditingMessage()
                             chatState.selectVariant(id, delta)
-                            variantSwipeMessageId = id
-                            variantSwipeToken += 1
                         },
                         onViewAttachment = { if (isLiveSession) viewingAttachment = it },
                         onDismissKeyboard = dismissKeyboard,
@@ -438,6 +431,7 @@ fun ConversationScreen(
                     } else {
                         dismissKeyboard()
                         chatState.send()
+                        scrollToEndToken += 1
                     }
                 },
                 isEditingMessage = chatState.editingMessageId != null,
@@ -549,7 +543,7 @@ fun ConversationScreen(
                     showBottom = composerPreferences.showScrollToBottomButton,
                     hasMessages = hasMessages,
                     applyImePadding = applyComposerImePadding,
-                    onResumeFollow = { resumeFollowToken += 1 },
+                    onScrollToEnd = { scrollToEndToken += 1 },
                     modifier = Modifier.align(Alignment.BottomEnd),
                 )
             }

@@ -61,6 +61,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -129,6 +132,7 @@ private fun ComposerTextInput(
     dark: Boolean,
     textStyle: TextStyle,
     placeholder: String,
+    focusRequester: FocusRequester? = null,
 ) {
     val textFieldState = rememberTextFieldState(initialText = value)
     val status = when {
@@ -164,7 +168,14 @@ private fun ComposerTextInput(
         state = textFieldState,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp),
+            .padding(top = 6.dp)
+            .then(
+                if (focusRequester != null) {
+                    Modifier.focusRequester(focusRequester)
+                } else {
+                    Modifier
+                },
+            ),
         enabled = enabled,
         textStyle = textStyle,
         keyboardOptions = ConvoKeyboardOptions.Text,
@@ -254,6 +265,8 @@ fun InputBar(
     val pageBackground = MaterialTheme.colorScheme.background
 
     val haptics = LocalHapticFeedback.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val composerFocusRequester = remember { FocusRequester() }
     val dictationProgress by animateFloatAsState(
         targetValue = if (isDictating) 1f else 0f,
         animationSpec = tween(280, easing = FastOutSlowInEasing),
@@ -264,6 +277,11 @@ fun InputBar(
         animationSpec = tween(EditBarAnimMs, easing = FastOutSlowInEasing),
         label = "editBarProgress",
     )
+    LaunchedEffect(isEditingMessage) {
+        if (!isEditingMessage) return@LaunchedEffect
+        runCatching { composerFocusRequester.requestFocus() }
+        keyboardController?.show()
+    }
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
         color = MaterialTheme.colorScheme.onBackground,
     )
@@ -455,6 +473,7 @@ fun InputBar(
                 dark = dark,
                 textStyle = textStyle,
                 placeholder = placeholder,
+                focusRequester = composerFocusRequester,
             )
 
             Row(
