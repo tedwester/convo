@@ -71,7 +71,7 @@ fun HelpScreen(
 
                     While a reply is generating you can leave the chat, open the list, or lock the app — generation continues in the background. When it finishes, you'll see a checkmark on the chat in the list and may get a notification.
 
-                    Tap Stop in the composer to cancel an in-progress reply. Tap your own message to open a prompt bar with copy, edit, and resend. Assistant replies show copy, share, and regenerate controls.
+                    Tap Stop in the composer to cancel an in-progress reply. Tap your own message to open a prompt bar with edit and copy. Assistant replies show copy, share, and regenerate controls.
                 """.trimIndent(),
             )
 

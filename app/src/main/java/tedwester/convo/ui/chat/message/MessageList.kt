@@ -1,7 +1,5 @@
 package tedwester.convo.ui.chat.message
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -333,11 +331,6 @@ fun MessageList(
                 val canRegenerate = message.author == MessageAuthor.Assistant && actionsEnabled
                 val promptBarVisible = message.author == MessageAuthor.User &&
                     message.id == selectedPromptMessageId
-                val promptBarSlotHeight by animateDpAsState(
-                    targetValue = if (promptBarVisible) 36.dp else 0.dp,
-                    animationSpec = spring(stiffness = 420f, dampingRatio = 0.86f),
-                    label = "promptBarSlot",
-                )
                 ChatBubble(
                     message = message,
                     onRegenerate = if (canRegenerate) {
@@ -363,10 +356,6 @@ fun MessageList(
                         selectedPromptMessageId = -1L
                         onStartEditUserMessage(message.id)
                     },
-                    onResend = {
-                        selectedPromptMessageId = -1L
-                        onResendUserMessage(message.id, null)
-                    },
                     expectStreamedThinking = message.expectStreamedThinking && message.isStreaming,
                     userAnimToken = if (message.id == userBubbleAnimId) userBubbleAnimToken else 0,
                     onViewAttachment = onViewAttachment,
@@ -376,7 +365,7 @@ fun MessageList(
                     onVoiceAutoPlayStarted = { onVoiceAutoPlayStarted(message.id) },
                     onVoicePlaybackFinished = onVoicePlaybackFinished,
                     onVoicePlaybackPaused = onVoicePlaybackPaused,
-                    modifier = Modifier.padding(bottom = 18.dp + promptBarSlotHeight),
+                    modifier = Modifier.padding(bottom = 18.dp),
                 )
             }
         }

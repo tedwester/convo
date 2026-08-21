@@ -2,9 +2,7 @@ package tedwester.convo.ui.chat.message
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -38,10 +37,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.ui.chat.attachments.AttachmentFileBadge
 import tedwester.convo.ui.chat.attachments.AttachmentImageThumb
+
+private const val PromptBarAnimMs = 200
+private val PromptBarTopGap = 6.dp
 
 @Composable
 internal fun UserMessage(
@@ -52,7 +55,6 @@ internal fun UserMessage(
     actionsEnabled: Boolean = true,
     onTogglePromptBar: () -> Unit = {},
     onStartEdit: () -> Unit = {},
-    onResend: () -> Unit = {},
     onViewAttachment: (ChatAttachment) -> Unit = {},
 ) {
     val dark = isSystemInDarkTheme()
@@ -100,13 +102,10 @@ internal fun UserMessage(
     val slidePx = with(density) { 14.dp.toPx() }
 
     val toggleInteraction = remember { MutableInteractionSource() }
-    val promptBarAlpha by animateFloatAsState(
+    val promptBarProgress by animateFloatAsState(
         targetValue = if (promptBarVisible) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "promptBarAlpha",
+        animationSpec = tween(durationMillis = PromptBarAnimMs, easing = FastOutSlowInEasing),
+        label = "promptBarProgress",
     )
 
     Row(
@@ -187,23 +186,27 @@ internal fun UserMessage(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-
-            if (promptBarAlpha > 0.01f) {
-                UserPromptControls(
-                    copyEnabled = textToShow.isNotBlank(),
-                    editEnabled = actionsEnabled,
-                    resendEnabled = actionsEnabled &&
-                        (textToShow.isNotBlank() || message.attachments.isNotEmpty()),
-                    onCopy = {
-                        if (textToShow.isNotBlank()) {
-                            clipboard.setText(AnnotatedString(textToShow))
-                        }
-                    },
-                    onEdit = onStartEdit,
-                    onResend = onResend,
-                    modifier = Modifier.graphicsLayer { alpha = promptBarAlpha },
-                )
             }
+
+            if (promptBarProgress > 0f) {
+                Box(
+                    modifier = Modifier
+                        .height((PromptBarTopGap + PromptBarHeight) * promptBarProgress)
+                        .clipToBounds()
+                        .graphicsLayer { alpha = promptBarProgress },
+                ) {
+                    UserPromptControls(
+                        copyEnabled = textToShow.isNotBlank(),
+                        editEnabled = actionsEnabled,
+                        onCopy = {
+                            if (textToShow.isNotBlank()) {
+                                clipboard.setText(AnnotatedString(textToShow))
+                            }
+                        },
+                        onEdit = onStartEdit,
+                        modifier = Modifier.padding(top = PromptBarTopGap),
+                    )
+                }
             }
         }
     }

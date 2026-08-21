@@ -51,6 +51,9 @@ object ConvoIcons {
     fun SquarePen(): Painter = painterResource(R.drawable.ic_lucide_square_pen)
 
     @Composable
+    fun Pencil(): Painter = painterResource(R.drawable.ic_lucide_pencil)
+
+    @Composable
     fun CircleUser(): Painter = painterResource(R.drawable.ic_lucide_circle_user)
 
     @Composable

@@ -17,7 +17,6 @@ fun ChatBubble(
     promptBarVisible: Boolean = false,
     onTogglePromptBar: () -> Unit = {},
     onStartEdit: () -> Unit = {},
-    onResend: () -> Unit = {},
     userAnimToken: Int = 0,
     expectStreamedThinking: Boolean = false,
     onViewAttachment: (ChatAttachment) -> Unit = {},
@@ -36,7 +35,6 @@ fun ChatBubble(
             actionsEnabled = actionsEnabled,
             onTogglePromptBar = onTogglePromptBar,
             onStartEdit = onStartEdit,
-            onResend = onResend,
             onViewAttachment = onViewAttachment,
             modifier = modifier,
         )

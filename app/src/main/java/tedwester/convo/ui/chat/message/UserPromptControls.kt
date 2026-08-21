@@ -14,21 +14,21 @@ import androidx.compose.ui.unit.dp
 import tedwester.convo.ui.components.CopyButton
 import tedwester.convo.ui.icons.ConvoIcons
 
+internal val PromptBarHeight = 36.dp
+
 @Composable
 internal fun UserPromptControls(
     copyEnabled: Boolean,
     editEnabled: Boolean,
-    resendEnabled: Boolean,
     onCopy: () -> Unit,
     onEdit: () -> Unit,
-    onResend: () -> Unit,
     modifier: Modifier = Modifier,
     controlsAlpha: Float = 1f,
 ) {
     val consumeClicks = remember { MutableInteractionSource() }
     Row(
         modifier = modifier
-            .height(36.dp)
+            .height(PromptBarHeight)
             .graphicsLayer { alpha = controlsAlpha.coerceIn(0f, 1f) }
             .clickable(
                 interactionSource = consumeClicks,
@@ -38,21 +38,15 @@ internal fun UserPromptControls(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CopyButton(
-            enabled = copyEnabled,
-            onCopy = onCopy,
-        )
         MessageActionButton(
-            painter = ConvoIcons.SquarePen(),
+            painter = ConvoIcons.Pencil(),
             contentDescription = "Edit",
             enabled = editEnabled,
             onClick = onEdit,
         )
-        MessageActionButton(
-            painter = ConvoIcons.Repeat(),
-            contentDescription = "Resend",
-            enabled = resendEnabled,
-            onClick = onResend,
+        CopyButton(
+            enabled = copyEnabled,
+            onCopy = onCopy,
         )
     }
 }

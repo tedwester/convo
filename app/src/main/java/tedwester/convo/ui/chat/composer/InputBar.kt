@@ -53,6 +53,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.Painter
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import tedwester.convo.features.chat.model.ChatAttachment
@@ -100,6 +102,9 @@ private val ComposerToolbarLayoutAnimation = tween<IntSize>(
     durationMillis = 220,
     easing = FastOutSlowInEasing,
 )
+
+private const val EditBarAnimMs = 200
+private val EditBarHeight = 32.dp
 
 @Composable
 private fun ComposerToolbarSlot(
@@ -254,6 +259,11 @@ fun InputBar(
         animationSpec = tween(280, easing = FastOutSlowInEasing),
         label = "dictationOverlay",
     )
+    val editBarProgress by animateFloatAsState(
+        targetValue = if (isEditingMessage) 1f else 0f,
+        animationSpec = tween(EditBarAnimMs, easing = FastOutSlowInEasing),
+        label = "editBarProgress",
+    )
     val textStyle = MaterialTheme.typography.bodyLarge.copy(
         color = MaterialTheme.colorScheme.onBackground,
     )
@@ -361,10 +371,6 @@ fun InputBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(
-                    animationSpec = ComposerExpandSpring,
-                    alignment = Alignment.BottomCenter,
-                )
                 .convoRingGapSurface(
                     outerShape = outerShape,
                     innerShape = innerShape,
@@ -375,35 +381,60 @@ fun InputBar(
                 ),
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                if (isEditingMessage) {
-                    Row(
+                if (editBarProgress > 0f) {
+                    val editMuted = if (dark) Color(0xFF9AA3B1) else Color(0xFF5A6472)
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(editingBarColor)
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .height(EditBarHeight * editBarProgress)
+                            .clipToBounds()
+                            .graphicsLayer { alpha = editBarProgress }
+                            .background(editingBarColor),
+                        contentAlignment = Alignment.BottomCenter,
                     ) {
-                        Text(
-                            text = "Editing message",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = if (dark) Color(0xFF9AA3B1) else Color(0xFF5A6472),
-                            ),
-                        )
-                        ConvoIconButton(
-                            painter = ConvoIcons.X(),
-                            contentDescription = "Cancel edit",
-                            onClick = onCancelEdit,
-                            size = 28.dp,
-                            iconSize = 14.dp,
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(EditBarHeight)
+                                .padding(start = 14.dp, end = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                painter = ConvoIcons.Pencil(),
+                                contentDescription = null,
+                                tint = editMuted,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                text = "Editing message",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = editMuted,
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            ConvoIconButton(
+                                painter = ConvoIcons.X(),
+                                contentDescription = "Cancel edit",
+                                onClick = onCancelEdit,
+                                size = 24.dp,
+                                iconSize = 13.dp,
+                                showBorder = false,
+                            )
+                        }
                     }
                 }
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = if (isEditingMessage) 84.dp else 96.dp)
+                        .animateContentSize(
+                            animationSpec = ComposerExpandSpring,
+                            alignment = Alignment.BottomCenter,
+                        )
+                        .heightIn(min = 96.dp)
                         .background(boxColor)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
