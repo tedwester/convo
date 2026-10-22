@@ -37,10 +37,14 @@ fun Modifier.convoRingGapSurface(
     ringColor: Color,
     ringGap: Dp = ConvoRingGapTokens.Gap,
     borderWidth: Dp = ConvoRingGapTokens.BorderWidth,
+    gapOverlay: Modifier = Modifier,
 ): Modifier = this
     .border(borderWidth, ringColor, outerShape)
     .clip(outerShape)
     .background(gapColor)
+    // Anything drawn in the gap slot lives in the moat between the outer ring and the inner
+    // surface, above the gap colour and below the inner surface.
+    .then(gapOverlay)
     .padding(ringGap)
     .clip(innerShape)
     .background(fillColor)

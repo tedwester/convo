@@ -20,6 +20,7 @@ fun ConversationTopBar(
     onNewChat: () -> Unit,
     showModelHint: Boolean = false,
     onDismissModelHint: () -> Unit = {},
+    modelPullProgress: Float = 0f,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -46,6 +47,7 @@ fun ConversationTopBar(
                     modelName = modelName,
                     onClick = onOpenModelSelector,
                     highlighted = showModelHint,
+                    pullProgress = modelPullProgress,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
             }

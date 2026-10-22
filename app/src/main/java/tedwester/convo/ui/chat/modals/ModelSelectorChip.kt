@@ -33,7 +33,9 @@ import tedwester.convo.ui.components.ConvoRingGapTokens
 import tedwester.convo.ui.components.convoRingColor
 import tedwester.convo.ui.components.convoRingGapSurface
 import tedwester.convo.ui.chat.HintRingOutline
+import tedwester.convo.ui.chat.PullRingOutline
 import tedwester.convo.ui.chat.hintHighlightRing
+import tedwester.convo.ui.chat.pullHighlightRing
 import tedwester.convo.ui.theme.ConvoTheme
 import tedwester.convo.ui.theme.DarkChatBox
 import tedwester.convo.ui.theme.LightChatBox
@@ -44,6 +46,7 @@ fun ModelSelectorChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
+    pullProgress: Float = 0f,
 ) {
     val haptics = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -72,6 +75,13 @@ fun ModelSelectorChip(
                 gapColor = pageBackground,
                 ringColor = ringColor,
                 ringGap = ConvoRingGapTokens.Gap,
+                // The pull highlight fills the moat between the text surface and the ring.
+                gapOverlay = Modifier.pullHighlightRing(
+                    progress = pullProgress,
+                    outline = PullRingOutline.Capsule,
+                    width = 2.dp,
+                    inset = 2.dp,
+                ),
             )
             .hintHighlightRing(
                 highlighted = highlighted,
