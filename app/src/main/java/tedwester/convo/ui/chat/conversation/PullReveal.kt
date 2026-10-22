@@ -31,9 +31,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import kotlinx.coroutines.launch
-
-/** How far the gesture has to travel before it counts as fully pulled. */
-internal val PullRevealDistance = 132.dp
+import tedwester.convo.ui.chat.message.PullRevealDistance
 
 /**
  * An outline that fills out around its edges as the gesture progresses.

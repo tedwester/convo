@@ -24,9 +24,9 @@ import tedwester.convo.ui.components.ConvoIconButton
 import tedwester.convo.ui.icons.ConvoIcons
 
 private const val ShowHideMs = 220
-internal val GapAboveComposer = 12.dp
+private val GapAboveComposer = 12.dp
 private val EndPadding = 18.dp
-internal val ButtonSize = 40.dp
+private val ButtonSize = 40.dp
 private val IconSize = 20.dp
 private val GapBetweenScrollButtons = 8.dp
 

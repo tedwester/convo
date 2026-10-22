@@ -48,8 +48,8 @@ internal const val ScrollToBottomThresholdPx = 120f
 /** Distance from the oldest content before the scroll-to-top button appears. */
 internal const val ScrollToTopThresholdPx = 120f
 
-/** How far the list has to be pulled past the newest content to offer a new chat. */
-internal val PullToNewChatDistance = 132.dp
+/** How far a pull gesture travels before it counts as fully pulled. */
+internal val PullRevealDistance = 132.dp
 
 // ---------------------------------------------------------------------------------------------
 // Exact geometry
@@ -71,16 +71,6 @@ internal val LazyListState.contentTop: Float
  * Positive when the newest content hangs below the viewport, zero when it is flush with the
  * end. Only meaningful while the newest item is on screen.
  */
-internal fun LazyListState.distanceToEnd(): Float {
-    val info = layoutInfo
-    if (info.totalItemsCount == 0) return 0f
-    if (!canScrollForward) return 0f
-    val last = info.visibleItemsInfo.lastOrNull() ?: return 0f
-    if (last.index != info.totalItemsCount - 1) return 0f
-    return (last.offset + last.size) - contentBottom
-}
-
-/** True when the newest content sits flush with the end of the viewport. */
 internal fun LazyListState.isAtEnd(slackPx: Float = EndSlackPx): Boolean {
     val info = layoutInfo
     if (info.totalItemsCount == 0) return true
@@ -418,7 +408,7 @@ fun rememberChatScrollController(
     autoScrollEnabled: Boolean = true,
     onDismissKeyboard: () -> Unit = {},
     onPullTriggered: () -> Unit = {},
-    pullDistance: Dp = PullToNewChatDistance,
+    pullDistance: Dp = PullRevealDistance,
     scope: CoroutineScope = rememberCoroutineScope(),
 ): ChatScrollController {
     val density = LocalDensity.current
