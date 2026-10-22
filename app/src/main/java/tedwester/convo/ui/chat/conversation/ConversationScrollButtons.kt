@@ -13,29 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
-import tedwester.convo.ui.chat.message.EndHideThresholdPx
-import tedwester.convo.ui.chat.message.EndVisibleThresholdPx
-import tedwester.convo.ui.chat.message.TopHideAtEndThresholdPx
-import tedwester.convo.ui.chat.message.TopShowFromEndThresholdPx
-import tedwester.convo.ui.chat.message.VisualTopThresholdPx
-import tedwester.convo.ui.chat.message.animateToStart
-import tedwester.convo.ui.chat.message.isAtEnd
-import tedwester.convo.ui.chat.message.isAtVisualTop
+import tedwester.convo.ui.chat.message.ChatScrollController
 import tedwester.convo.ui.components.ConvoIconButton
 import tedwester.convo.ui.icons.ConvoIcons
 
@@ -46,61 +30,18 @@ internal val ButtonSize = 40.dp
 private val IconSize = 20.dp
 private val GapBetweenScrollButtons = 8.dp
 
-private const val HideTopThresholdPx = 100
-
 @Composable
 fun ConversationScrollButtons(
-    listState: LazyListState,
+    controller: ChatScrollController,
     bottomInset: Dp,
     showTop: Boolean,
     showBottom: Boolean,
     hasMessages: Boolean,
     applyImePadding: Boolean = true,
-    onScrollToEnd: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
-    var topScrolledAway by remember(listState) { mutableStateOf(false) }
-    var bottomScrolledAway by remember(listState) { mutableStateOf(false) }
-
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            val scrolledUpFromBottom = !listState.isAtEnd(TopShowFromEndThresholdPx)
-            val backAtBottom = listState.isAtEnd(TopHideAtEndThresholdPx)
-            val awayFromTop = !listState.isAtVisualTop(VisualTopThresholdPx)
-            val nearTop = listState.isAtVisualTop(HideTopThresholdPx)
-            scrolledUpFromBottom to backAtBottom to (awayFromTop to nearTop)
-        }
-            .distinctUntilChanged()
-            .collect { (fromBottom, fromTop) ->
-                val (scrolledUpFromBottom, backAtBottom) = fromBottom
-                val (awayFromTop, nearTop) = fromTop
-                topScrolledAway = when {
-                    backAtBottom || nearTop -> false
-                    scrolledUpFromBottom && awayFromTop -> true
-                    else -> topScrolledAway
-                }
-            }
-    }
-
-    LaunchedEffect(listState) {
-        snapshotFlow {
-            val away = !listState.isAtEnd(EndVisibleThresholdPx)
-            val near = listState.isAtEnd(EndHideThresholdPx)
-            away to near
-        }
-            .distinctUntilChanged()
-            .collect { (away, near) ->
-                bottomScrolledAway = when {
-                    away -> true
-                    near -> false
-                    else -> bottomScrolledAway
-                }
-            }
-    }
-
-    val bottomFabVisible = showBottom && hasMessages && bottomScrolledAway
-    val topFabVisible = showTop && hasMessages && topScrolledAway
+    val bottomFabVisible = showBottom && hasMessages && !controller.isNearEnd
+    val topFabVisible = showTop && hasMessages && !controller.isNearStart
 
     val topBottomPadding by animateDpAsState(
         targetValue = if (bottomFabVisible) {
@@ -131,9 +72,7 @@ fun ConversationScrollButtons(
             ConvoIconButton(
                 painter = ConvoIcons.ChevronUp(),
                 contentDescription = "Scroll to start of chat",
-                onClick = {
-                    scope.launch { listState.animateToStart() }
-                },
+                onClick = { controller.scrollToStart() },
                 size = ButtonSize,
                 iconSize = IconSize,
             )
@@ -152,7 +91,7 @@ fun ConversationScrollButtons(
             ConvoIconButton(
                 painter = ConvoIcons.ChevronDown(),
                 contentDescription = "Scroll to latest messages",
-                onClick = onScrollToEnd,
+                onClick = { controller.scrollToEnd() },
                 size = ButtonSize,
                 iconSize = IconSize,
             )

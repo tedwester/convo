@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,7 +42,9 @@ import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.ui.chat.attachments.ImageViewerDialog
 import tedwester.convo.ui.chat.attachments.VideoViewerDialog
 import tedwester.convo.ui.chat.composer.InputBar
+import tedwester.convo.ui.chat.message.ChatScrollController
 import tedwester.convo.ui.chat.message.MessageList
+import tedwester.convo.ui.chat.message.rememberChatScrollController
 import tedwester.convo.ui.chat.message.rememberConversationListState
 
 @Composable
@@ -216,8 +217,7 @@ fun ConversationScreen(
     val hasMessages = chatState.messages.isNotEmpty()
     var topChromeDp by remember { mutableStateOf(64.dp) }
     var bottomChromeDp by remember { mutableStateOf(96.dp) }
-    var activeListState by remember { mutableStateOf<LazyListState?>(null) }
-    var scrollToEndToken by remember { mutableIntStateOf(0) }
+    var activeScrollController by remember { mutableStateOf<ChatScrollController?>(null) }
     var viewingAttachment by remember { mutableStateOf<ChatAttachment?>(null) }
     val applyComposerImePadding = !showModelSelector &&
         !showAttachmentOptions &&
@@ -272,30 +272,34 @@ fun ConversationScreen(
                 key(activeSession, conversationKey) {
                     val initialIndex = (displayMessages.size - 1).coerceAtLeast(0)
                     val listState = rememberConversationListState(initialIndex)
+                    val scrollController = rememberChatScrollController(
+                        listState = listState,
+                        conversationKey = conversationKey,
+                        autoScrollEnabled = isLiveSession,
+                    )
                     SideEffect {
                         if (isLiveSession) {
-                            activeListState = listState
+                            activeScrollController = scrollController
                         }
                     }
                     MessageList(
                         messages = displayMessages,
                         listState = listState,
+                        scrollController = scrollController,
                         conversationKey = conversationKey,
-                        autoScrollEnabled = isLiveSession,
                         isRunning = chatState.isRunning && isLiveSession,
-                        scrollToEndToken = if (isLiveSession) scrollToEndToken else 0,
                         userBubbleAnimOnMountToken = if (isLiveSession) userBubbleAnimOnMountToken else 0,
                         onRegenerate = { id ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()
                             chatState.regenerate(id)
-                            scrollToEndToken += 1
+                            scrollController.scrollToEnd()
                         },
                         onResendUserMessage = { id, editedText ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()
                             chatState.resendUserMessage(id, editedText)
-                            scrollToEndToken += 1
+                            scrollController.scrollToEnd()
                         },
                         onStartEditUserMessage = { id ->
                             if (!isLiveSession) return@MessageList
@@ -428,7 +432,7 @@ fun ConversationScreen(
                     } else {
                         dismissKeyboard()
                         chatState.send()
-                        scrollToEndToken += 1
+                        activeScrollController?.scrollToEnd()
                     }
                 },
                 isEditingMessage = chatState.editingMessageId != null,
@@ -529,18 +533,17 @@ fun ConversationScreen(
             )
         }
 
-        activeListState?.let { listState ->
+        activeScrollController?.let { controller ->
             if (composerPreferences.showScrollToTopButton ||
                 composerPreferences.showScrollToBottomButton
             ) {
                 ConversationScrollButtons(
-                    listState = listState,
+                    controller = controller,
                     bottomInset = bottomChromeDp,
                     showTop = composerPreferences.showScrollToTopButton,
                     showBottom = composerPreferences.showScrollToBottomButton,
                     hasMessages = hasMessages,
                     applyImePadding = applyComposerImePadding,
-                    onScrollToEnd = { scrollToEndToken += 1 },
                     modifier = Modifier.align(Alignment.BottomEnd),
                 )
             }
