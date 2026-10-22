@@ -216,6 +216,9 @@ class ChatScrollController internal constructor(
     var isNearStart by mutableStateOf(true)
         private set
 
+    /** True while an explicit scroll animation runs, so the follow logic keeps its hands off. */
+    internal var isProgrammaticScroll = false
+
     /** The user moved the list themselves; stop following until they come back. */
     internal fun onUserScrolled() {
         isFollowing = false
@@ -234,8 +237,9 @@ class ChatScrollController internal constructor(
     internal fun onProximityChanged(atEnd: Boolean, nearEnd: Boolean, nearStart: Boolean) {
         isNearEnd = nearEnd
         isNearStart = nearStart
-        if (atEnd) {
-            // Back at the newest content: following resumes.
+        if (atEnd && !isProgrammaticScroll) {
+            // Back at the newest content: following resumes. An explicit scroll keeps its own
+            // decision, otherwise this would drag the list back while it is animating.
             isFollowing = true
         }
     }
@@ -243,15 +247,27 @@ class ChatScrollController internal constructor(
     /** Scrolls to the newest content and keeps following it. */
     fun scrollToEnd(animated: Boolean = true) {
         isFollowing = true
+        isProgrammaticScroll = true
         scope.launch {
-            if (animated) listState.animateToEnd() else listState.jumpToEnd()
+            try {
+                if (animated) listState.animateToEnd() else listState.jumpToEnd()
+            } finally {
+                isProgrammaticScroll = false
+            }
         }
     }
 
-    /** Scrolls to the oldest content. */
+    /** Scrolls to the oldest content, letting go of the newest content on the way. */
     fun scrollToStart(animated: Boolean = true) {
+        // Reading history means the newest content is no longer what the user is looking at.
+        isFollowing = false
+        isProgrammaticScroll = true
         scope.launch {
-            if (animated) listState.animateToStart() else listState.jumpToStart()
+            try {
+                if (animated) listState.animateToStart() else listState.jumpToStart()
+            } finally {
+                isProgrammaticScroll = false
+            }
         }
     }
 }
@@ -299,6 +315,8 @@ fun rememberChatScrollController(
         snapshotFlow { listState.layoutInfo }
             .collect {
                 if (!controller.isFollowing) return@collect
+                // An explicit scroll owns the viewport while it runs.
+                if (controller.isProgrammaticScroll) return@collect
                 try {
                     listState.pinToEnd()
                 } catch (error: CancellationException) {
