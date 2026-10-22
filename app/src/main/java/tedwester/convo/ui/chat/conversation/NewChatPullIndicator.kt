@@ -1,14 +1,16 @@
 package tedwester.convo.ui.chat.conversation
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,24 +21,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 import tedwester.convo.ui.icons.ConvoIcons
 
-/** Grey band around the disc. Constant for the whole pull — never scaled. */
-private val RingThickness = 5.dp
-
-private val DiscStart = 16.dp
-private val DiscBeforeCover = 26.dp
-
 /**
- * New-chat affordance shown while pulling past the newest message.
+ * Indicator shown in the gap that opens when pulling past the newest message.
  *
- * The grey around the disc is a stroke of fixed thickness. The disc grows inside it.
- * At a full pull the disc expands through that band, so the grey disappears because
- * the circle has filled it, then settles with one small bounce.
+ * A grey disc with the new-chat glyph grows with the pull. At full pull it performs one
+ * soft bounce, the aura around it settles into the disc edge, and the label appears.
+ * Releasing while armed starts the new chat.
  */
 @Composable
 fun NewChatPullIndicator(
@@ -47,61 +42,62 @@ fun NewChatPullIndicator(
     val clamped = progress.coerceIn(0f, 1f)
     val grey = MaterialTheme.colorScheme.onSurfaceVariant
 
-    val cover by animateFloatAsState(
-        targetValue = if (armed) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f),
-        label = "newChatCover",
-    )
-    val bounce = remember { Animatable(0f) }
+    // One soft bounce each time the pull reaches full.
+    val bounce = remember { Animatable(1f) }
     LaunchedEffect(armed) {
         if (armed) {
-            bounce.snapTo(3f)
-            bounce.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 520f))
-        } else {
-            bounce.snapTo(0f)
+            bounce.snapTo(1.14f)
+            bounce.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = 0.45f, stiffness = 380f),
+            )
         }
     }
 
-    val disc = DiscStart + (DiscBeforeCover - DiscStart) * clamped +
-        RingThickness * cover + bounce.value.dp
+    // The disc grows from half size as the pull progresses.
+    val discScale = (0.5f + 0.5f * clamped) * bounce.value
+    // The aura starts wide and faint, then tightens onto the disc edge at full pull.
+    val auraScale = 1.9f - 0.9f * clamped
+    val auraAlpha = 0.20f * clamped
+
     val labelAlpha by animateFloatAsState(
         targetValue = if (armed) 1f else 0f,
-        animationSpec = spring(dampingRatio = 0.9f, stiffness = 500f),
-        label = "newChatLabel",
+        label = "newChatLabelAlpha",
     )
 
     Column(
-        modifier = modifier.alpha(0.35f + 0.65f * clamped),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(88.dp), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.matchParentSize()) {
-                val center = Offset(size.width / 2f, size.height / 2f)
-                val base = (DiscStart + (DiscBeforeCover - DiscStart) * clamped).toPx()
-                val thickness = RingThickness.toPx()
-                // Drawn under the disc. Thickness never changes; the growing disc covers it.
-                drawCircle(
-                    color = grey.copy(alpha = 0.55f),
-                    radius = base + thickness / 2f,
-                    center = center,
-                    style = Stroke(width = thickness, cap = StrokeCap.Butt),
-                )
-                drawCircle(
-                    color = grey.copy(alpha = 0.16f),
-                    radius = disc.toPx(),
-                    center = center,
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(72.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .scale(auraScale * bounce.value)
+                    .alpha(auraAlpha)
+                    .clip(CircleShape)
+                    .background(grey.copy(alpha = 0.16f)),
+            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(44.dp)
+                    .scale(discScale)
+                    .clip(CircleShape)
+                    .background(grey.copy(alpha = 0.10f + 0.08f * clamped)),
+            ) {
+                Icon(
+                    painter = ConvoIcons.SquarePen(),
+                    contentDescription = null,
+                    tint = grey.copy(alpha = 0.55f + 0.45f * clamped),
+                    modifier = Modifier.size(22.dp),
                 )
             }
-            Icon(
-                painter = ConvoIcons.SquarePen(),
-                contentDescription = null,
-                tint = grey,
-                modifier = Modifier
-                    .size(20.dp)
-                    .alpha(0.45f + 0.55f * clamped),
-            )
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = "New chat",
             style = MaterialTheme.typography.labelMedium,

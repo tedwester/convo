@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -234,7 +233,6 @@ class ChatScrollController internal constructor(
     internal var pullEnabled: Boolean = true
 
     private val pullHaptics = PullHaptics()
-    private var releaseJob: Job? = null
 
     /**
      * Watches the list for user input: it tells the controller when the user scrolls and
@@ -322,26 +320,22 @@ class ChatScrollController internal constructor(
 
     /** A finger went down on the list. Nothing may move the list while it is held. */
     internal fun onGestureStart() {
-        cancelRelease()
         isGestureActive = true
         isFollowing = false
         pullHaptics.reset()
     }
 
-    /** The finger lifted. A full pull starts a new chat; otherwise the gap closes smoothly. */
+    /** The finger lifted. A full pull starts a new chat; otherwise the list just settles. */
     internal fun onGestureEnd() {
         val fireNewChat = isPullArmed
         isGestureActive = false
         if (fireNewChat) {
-            cancelRelease()
-            pullDistance = 0f
             onPullTriggered()
-        } else {
-            releasePull()
         }
         if (!isProgrammaticScroll && listState.isAtEnd()) {
             isFollowing = true
         }
+        releasePull()
     }
 
     /** Re-arms following, for example when a new conversation is opened. */
@@ -394,9 +388,6 @@ class ChatScrollController internal constructor(
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
         if (deltaPx <= 0f || !pullEnabled) return
-        // A new drag owns the gap. A close animation still writing pullDistance is what
-        // made pulling back, then continuing, look like a ghost.
-        cancelRelease()
         val next = (pullDistance + deltaPx).coerceAtMost(pullThresholdPx * 1.15f)
         if (next == pullDistance) return
         pullDistance = next
@@ -415,21 +406,14 @@ class ChatScrollController internal constructor(
 
     /** Closes the gap and forgets it, for example when the conversation is left. */
     internal fun resetPull() {
-        cancelRelease()
         pullDistance = 0f
     }
 
-    private fun cancelRelease() {
-        releaseJob?.cancel()
-        releaseJob = null
-    }
-
-    /** Animates the gap closed. Only one close runs at a time. */
+    /** Animates the gap closed. */
     internal fun releasePull() {
         if (pullDistance <= 0f) return
-        cancelRelease()
         val from = pullDistance
-        releaseJob = scope.launch {
+        scope.launch {
             try {
                 animate(
                     initialValue = from,
@@ -443,8 +427,6 @@ class ChatScrollController internal constructor(
                 }
             } catch (error: CancellationException) {
                 if (!currentCoroutineContext().isActive) throw error
-            } finally {
-                releaseJob = null
             }
         }
     }
