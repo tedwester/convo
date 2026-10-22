@@ -49,7 +49,10 @@ internal const val ScrollToBottomThresholdPx = 120f
 internal const val ScrollToTopThresholdPx = 120f
 
 /** How far a pull gesture travels before it counts as fully pulled. */
-internal val PullRevealDistance = 132.dp
+internal val PullRevealDistance = 120.dp
+
+/** How far the chat moves up while a pull gesture is in progress. */
+internal val PullRevealShift = 56.dp
 
 // ---------------------------------------------------------------------------------------------
 // Exact geometry
@@ -209,6 +212,7 @@ class ChatScrollController internal constructor(
     val listState: LazyListState,
     private val scope: CoroutineScope,
     private val pullThresholdPx: Float,
+    private val pullShiftMaxPx: Float,
 ) {
     /** The keyboard is dismissed when the user starts scrolling the list. */
     internal var onDismissKeyboard: () -> Unit = {}
@@ -278,6 +282,15 @@ class ChatScrollController internal constructor(
     /** How far the pull has progressed towards the new chat action. */
     val pullProgress: Float
         get() = if (pullThresholdPx <= 0f) 0f else (pullDistance / pullThresholdPx).coerceIn(0f, 1f)
+
+    /**
+     * How far the chat itself moves up while pulling.
+     *
+     * The chat only shifts a little, so the gesture reads as "something is about to happen"
+     * rather than dragging the whole conversation off screen.
+     */
+    val pullShift: Float
+        get() = minOf(pullDistance, pullShiftMaxPx)
 
     /** True once the pull is far enough to offer a new chat. */
     val isPullArmed: Boolean
@@ -409,15 +422,18 @@ fun rememberChatScrollController(
     onDismissKeyboard: () -> Unit = {},
     onPullTriggered: () -> Unit = {},
     pullDistance: Dp = PullRevealDistance,
+    pullShift: Dp = PullRevealShift,
     scope: CoroutineScope = rememberCoroutineScope(),
 ): ChatScrollController {
     val density = LocalDensity.current
     val pullThresholdPx = with(density) { pullDistance.toPx() }
+    val pullShiftMaxPx = with(density) { pullShift.toPx() }
     val controller = remember(listState) {
         ChatScrollController(
             listState = listState,
             scope = scope,
             pullThresholdPx = pullThresholdPx,
+            pullShiftMaxPx = pullShiftMaxPx,
         )
     }
     SideEffect {

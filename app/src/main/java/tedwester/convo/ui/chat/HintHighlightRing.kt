@@ -236,21 +236,21 @@ private fun DrawScope.drawCapsuleHintRing(
     }
 }
 
-private fun glowFalloff(angle: Float, peakAngle: Float): Float? {
+internal fun glowFalloff(angle: Float, peakAngle: Float): Float? {
     val delta = angularDelta(angle, peakAngle)
     val t = (delta / GlowHalfWidthDegrees).coerceIn(-1f, 1f)
     if (abs(t) >= 1f) return null
     return ((1 + cos(t * PI)) / 2f).toFloat()
 }
 
-private fun angularDelta(a: Float, b: Float): Float {
+internal fun angularDelta(a: Float, b: Float): Float {
     var d = (a - b) % 360f
     if (d > 180f) d -= 360f
     if (d < -180f) d += 360f
     return d
 }
 
-private fun lerpColor(from: Color, to: Color, fraction: Float): Color {
+internal fun lerpColor(from: Color, to: Color, fraction: Float): Color {
     return Color(
         red = from.red + (to.red - from.red) * fraction,
         green = from.green + (to.green - from.green) * fraction,

@@ -108,8 +108,8 @@ fun MessageList(
         modifier = modifier
             .fillMaxSize()
             .clipToBounds()
-            // Pulling past the newest content lifts the list and opens a gap underneath.
-            .graphicsLayer { translationY = -scrollController.pullDistance }
+            // Pulling past the newest content lifts the chat a little.
+            .graphicsLayer { translationY = -scrollController.pullShift }
             .pointerInput(onDismissKeyboard) {
                 detectTapGestures(onTap = {
                     onDismissKeyboard()
