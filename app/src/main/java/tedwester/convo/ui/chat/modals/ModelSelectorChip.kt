@@ -68,14 +68,6 @@ fun ModelSelectorChip(
         modifier = modifier
             .scale(scale)
             .widthIn(max = 272.dp)
-            // The ring is drawn before the surface because the surface clips to the chip
-            // shape, which would cut off a ring that sits outside it.
-            .pullHighlightRing(
-                progress = pullProgress,
-                outline = PullRingOutline.Capsule,
-                width = 2.dp,
-                expand = 3.dp,
-            )
             .convoRingGapSurface(
                 outerShape = outerShape,
                 innerShape = outerShape,
@@ -83,6 +75,13 @@ fun ModelSelectorChip(
                 gapColor = pageBackground,
                 ringColor = ringColor,
                 ringGap = ConvoRingGapTokens.Gap,
+                // The pull highlight fills the moat between the text surface and the ring.
+                gapOverlay = Modifier.pullHighlightRing(
+                    progress = pullProgress,
+                    outline = PullRingOutline.Capsule,
+                    width = 2.dp,
+                    inset = 2.dp,
+                ),
             )
             .hintHighlightRing(
                 highlighted = highlighted,

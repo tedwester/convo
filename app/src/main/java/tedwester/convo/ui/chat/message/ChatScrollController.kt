@@ -35,6 +35,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.exp
+import tedwester.convo.ui.chat.PullHaptics
 
 /**
  * Slack, in pixels, that still counts as "flush with the newest content".
@@ -54,7 +55,7 @@ internal const val ScrollToTopThresholdPx = 120f
 internal val PullRevealDistance = 120.dp
 
 /** How far the chat moves up while a pull gesture is in progress. */
-internal val PullRevealShift = 56.dp
+internal val PullRevealShift = 96.dp
 
 // ---------------------------------------------------------------------------------------------
 // Exact geometry
@@ -222,6 +223,16 @@ class ChatScrollController internal constructor(
     /** Called when the list is pulled far enough to offer a new chat. */
     internal var onPullTriggered: () -> Unit = {}
 
+    /** Fired as the pull passes each quarter of the way. */
+    internal var onPullTick: () -> Unit = {}
+
+    /** Fired the moment the pull is complete. */
+    internal var onPullArmed: () -> Unit = {}
+
+    /** Whether the pull gesture is currently allowed. */
+    internal var pullEnabled: Boolean = true
+
+    private val pullHaptics = PullHaptics()
     private var pullTriggered = false
 
     /**
@@ -299,12 +310,7 @@ class ChatScrollController internal constructor(
             return pullShiftMaxPx * (1f - exp(-ratio))
         }
 
-    /** True once the pull is far enough to offer a new chat. */
-    val isPullArmed: Boolean
-        get() = pullProgress >= 1f
-
-    /** The user moved the list themselves; stop following until they come back. */
-    internal fun onUserScrolled() {
+    /** The user moved the list themselves; stop following until they come back. */    internal fun onUserScrolled() {
         isFollowing = false
     }
 
@@ -313,6 +319,7 @@ class ChatScrollController internal constructor(
         isGestureActive = true
         isFollowing = false
         pullTriggered = false
+        pullHaptics.reset()
     }
 
     /** The finger lifted. Following only resumes if the list ended up at the newest content. */
@@ -373,11 +380,17 @@ class ChatScrollController internal constructor(
 
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
-        if (deltaPx <= 0f || pullTriggered) return
+        if (deltaPx <= 0f || pullTriggered || !pullEnabled) return
         val next = (pullDistance + deltaPx).coerceAtMost(pullThresholdPx * 1.15f)
         if (next == pullDistance) return
         pullDistance = next
-        if (!pullTriggered && isPullArmed) {
+
+        val armed = pullHaptics.onProgress(
+            progress = pullProgress,
+            tick = onPullTick,
+            confirm = onPullArmed,
+        )
+        if (armed && !pullTriggered) {
             pullTriggered = true
             onPullTriggered()
             // Close the gap right away so the chat settles back while the new one arrives.
@@ -436,6 +449,9 @@ fun rememberChatScrollController(
     autoScrollEnabled: Boolean = true,
     onDismissKeyboard: () -> Unit = {},
     onPullTriggered: () -> Unit = {},
+    onPullTick: () -> Unit = {},
+    onPullArmed: () -> Unit = {},
+    pullEnabled: Boolean = true,
     pullDistance: Dp = PullRevealDistance,
     pullShift: Dp = PullRevealShift,
     scope: CoroutineScope = rememberCoroutineScope(),
@@ -454,6 +470,9 @@ fun rememberChatScrollController(
     SideEffect {
         controller.onDismissKeyboard = onDismissKeyboard
         controller.onPullTriggered = onPullTriggered
+        controller.onPullTick = onPullTick
+        controller.onPullArmed = onPullArmed
+        controller.pullEnabled = pullEnabled
     }
 
     LaunchedEffect(listState, conversationKey, autoScrollEnabled) {

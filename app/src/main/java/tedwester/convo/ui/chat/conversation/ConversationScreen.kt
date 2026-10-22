@@ -28,14 +28,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp
 import tedwester.convo.ConvoApp
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.core.network.model.ModelKind
@@ -95,6 +98,7 @@ fun ConversationScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val dismissKeyboard = rememberDismissKeyboard()
+    val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
     val imeInsets = WindowInsets.ime
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -294,6 +298,13 @@ fun ConversationScreen(
                         autoScrollEnabled = isLiveSession,
                         onDismissKeyboard = dismissKeyboard,
                         onPullTriggered = ::startNewChat,
+                        onPullTick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        },
+                        onPullArmed = {
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                        },
+                        pullEnabled = isLiveSession && !chatState.isRunning,
                     )
                     SideEffect {
                         if (isLiveSession) {
@@ -582,7 +593,9 @@ fun ConversationScreen(
             // Pulling past the newest content shifts the chat up and offers a new chat.
             if (controller.pullShift > 0f) {
                 val shiftDp = with(density) { controller.pullShift.toDp() }
-                val iconAlpha = FastOutSlowInEasing.transform(controller.pullProgress.coerceIn(0f, 1f))
+                val progress = controller.pullProgress.coerceIn(0f, 1f)
+                val iconAlpha = FastOutSlowInEasing.transform(progress)
+                val iconScale = lerp(0.4f, 1f, FastOutSlowInEasing.transform(progress))
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -590,6 +603,11 @@ fun ConversationScreen(
                             y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - NewChatPullSize / 2f),
                         )
                         .size(NewChatPullSize)
+                        .graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                            alpha = iconAlpha
+                        }
                         .pullHighlightRing(
                             progress = controller.pullProgress,
                             outline = PullRingOutline.Circle,
@@ -600,9 +618,7 @@ fun ConversationScreen(
                         painter = ConvoIcons.SquarePen(),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .size(NewChatPullGlyphSize)
-                            .alpha(iconAlpha),
+                        modifier = Modifier.size(NewChatPullGlyphSize),
                     )
                 }
             }

@@ -19,15 +19,15 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.launch
+import tedwester.convo.ui.chat.PullHaptics
 import tedwester.convo.ui.chat.message.PullRevealDistance
 
 /**
- * A pull gesture that reports how far it has been pulled.
+ * A vertical pull gesture that reports its progress and fires once fully pulled.
  *
- * The gesture only fires [onTrigger] once it has been pulled all the way. While it is in
- * progress [onProgress] reports the progress, which drives the highlight around whatever
- * the gesture is aiming at. A light haptic marks the halfway point and a firmer one marks
- * the moment the gesture is armed.
+ * The gesture only tracks how far it has been pulled: [onProgress] drives whatever highlight
+ * the caller has attached to the pull target, and [onTrigger] fires the moment the pull is
+ * complete. Haptics follow along (a light tick at each quarter, a firm one at full).
  */
 @Composable
 fun PullRevealGesture(
@@ -43,18 +43,17 @@ fun PullRevealGesture(
     val scope = rememberCoroutineScope()
 
     var pullPx by remember { mutableFloatStateOf(0f) }
-    var armed by remember { mutableStateOf(false) }
-    var halfway by remember { mutableStateOf(false) }
+    var triggered by remember { mutableStateOf(false) }
+    val progressHaptics = remember { PullHaptics() }
 
-    fun publish(value: Float) {
+    fun report(value: Float) {
         pullPx = value
         onProgress(if (distancePx <= 0f) 0f else (value / distancePx).coerceIn(0f, 1f))
     }
 
     fun reset() {
         val from = pullPx
-        armed = false
-        halfway = false
+        progressHaptics.reset()
         scope.launch {
             animate(
                 initialValue = from,
@@ -64,7 +63,7 @@ fun PullRevealGesture(
                     stiffness = Spring.StiffnessMediumLow,
                 ),
             ) { value, _ ->
-                publish(value)
+                report(value)
             }
         }
     }
@@ -74,25 +73,22 @@ fun PullRevealGesture(
             if (!enabled) return@pointerInput
             detectVerticalDragGestures(
                 onDragStart = {
-                    armed = false
-                    halfway = false
+                    triggered = false
+                    progressHaptics.reset()
                 },
-                onDragEnd = {
-                    if (armed) onTrigger()
-                    reset()
-                },
+                onDragEnd = { reset() },
                 onDragCancel = { reset() },
                 onVerticalDrag = { _, dragAmount ->
                     val next = (pullPx + dragAmount).coerceIn(0f, distancePx)
-                    publish(next)
-                    val progress = if (distancePx <= 0f) 0f else next / distancePx
-                    if (!halfway && progress >= 0.5f) {
-                        halfway = true
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    }
-                    if (!armed && progress >= 1f) {
-                        armed = true
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    report(next)
+                    val armed = progressHaptics.onProgress(
+                        progress = if (distancePx <= 0f) 0f else next / distancePx,
+                        tick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove) },
+                        confirm = { haptics.performHapticFeedback(HapticFeedbackType.Confirm) },
+                    )
+                    if (armed && !triggered) {
+                        triggered = true
+                        onTrigger()
                     }
                 },
             )
