@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.max
 import kotlin.math.min
 
+private const val PullRingSegments = 96
+
 /** The shape of a pull highlight ring. */
 enum class PullRingOutline {
     Circle,
@@ -86,8 +88,25 @@ fun Modifier.pullHighlightRing(
         val length = measure.length
         if (length <= 0f) return@drawBehind
 
-        val segment = Path()
-        measure.getSegment(0f, length * filled, segment, true)
-        drawPath(segment, color = peak, style = stroke)
+        // Draw the filled portion as a continuous stroke along the outline.
+        val fillLength = length * filled
+        val segmentLength = length / PullRingSegments
+        val position = FloatArray(2)
+        val tangent = FloatArray(2)
+        for (index in 0 until PullRingSegments) {
+            val start = index * segmentLength
+            if (start >= fillLength) break
+            val end = min(start + segmentLength, fillLength)
+            measure.getPosTan(start, position, tangent)
+            val from = Offset(position[0], position[1])
+            measure.getPosTan(end, position, tangent)
+            drawLine(
+                color = peak,
+                start = from,
+                end = Offset(position[0], position[1]),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+            )
+        }
     }
 }
