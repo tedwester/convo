@@ -48,6 +48,7 @@ import tedwester.convo.ui.chat.attachments.ImageViewerDialog
 import tedwester.convo.ui.chat.attachments.VideoViewerDialog
 import tedwester.convo.ui.chat.composer.InputBar
 import tedwester.convo.ui.chat.PullRingOutline
+import tedwester.convo.ui.chat.pullHighlightRing
 import tedwester.convo.ui.chat.message.ChatScrollController
 import tedwester.convo.ui.chat.message.MessageList
 import tedwester.convo.ui.chat.message.rememberChatScrollController
