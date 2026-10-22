@@ -44,6 +44,16 @@ Download the latest APK from [GitHub Releases](https://github.com/tedwester/conv
    ./gradlew assembleRelease
    ```
 
+## Releasing
+
+Release APKs are built and signed in GitHub Actions (`.github/workflows/release.yml`) whenever a `v*` tag is pushed, then attached to a GitHub Release. The signing keystore and passwords live in repository secrets, so no local Android SDK or keystore is needed:
+
+```bash
+scripts/release.sh 1.0.10
+```
+
+That bumps `versionCode`/`versionName`, commits, tags `v1.0.10`, and pushes. Follow the build with `gh run watch -R tedwester/convo`.
+
 ## Privacy
 
 - Chats are stored locally in the app's private storage
