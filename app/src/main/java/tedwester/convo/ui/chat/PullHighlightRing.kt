@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +32,9 @@ private const val PullRingRevolveMs = 2400
 
 private const val PullRingSegments = 96
 
+/** How wide the travelling glow is, as a share of the ring. */
+private const val PullRingGlowHalfWidth = 120f
+
 /** The shape of the ring that highlights a pull target. */
 enum class PullRingOutline {
     Circle,
@@ -53,7 +57,20 @@ fun Modifier.pullHighlightRing(
     val filled = progress.coerceIn(0f, 1f)
     if (filled <= 0.001f) return this
 
+    val dark = isSystemInDarkTheme()
     val primary = MaterialTheme.colorScheme.primary
+    // The same palette the hint rings use: a white strobe on dark, the theme colour on light.
+    val baseColor = if (dark) {
+        Color.White.copy(alpha = 0.22f)
+    } else {
+        primary.copy(alpha = 0.26f)
+    }
+    val peakColor = if (dark) {
+        Color.White.copy(alpha = 0.96f)
+    } else {
+        primary.copy(alpha = 0.95f)
+    }
+
     val transition = rememberInfiniteTransition(label = "pull-ring")
     val phase by transition.animateFloat(
         initialValue = 0f,
@@ -64,9 +81,6 @@ fun Modifier.pullHighlightRing(
         ),
         label = "pull-ring-phase",
     )
-
-    val baseColor = primary.copy(alpha = 0.14f)
-    val peakColor = primary.copy(alpha = 0.92f)
 
     return drawBehind {
         val strokeWidth = max(width.toPx(), 1f)
@@ -126,7 +140,7 @@ fun Modifier.pullHighlightRing(
                 ),
             ).toFloat()
 
-            val falloff = glowFalloff(angle, peakAngle) ?: 0f
+            val falloff = glowFalloff(angle, peakAngle, PullRingGlowHalfWidth) ?: 0f
             val from = Offset(position[0], position[1])
             if (!measure.getPosTan(end, position, tangent)) continue
             drawLine(

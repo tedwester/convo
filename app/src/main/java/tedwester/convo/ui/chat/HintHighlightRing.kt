@@ -236,9 +236,13 @@ private fun DrawScope.drawCapsuleHintRing(
     }
 }
 
-internal fun glowFalloff(angle: Float, peakAngle: Float): Float? {
+internal fun glowFalloff(
+    angle: Float,
+    peakAngle: Float,
+    halfWidthDegrees: Float = GlowHalfWidthDegrees,
+): Float? {
     val delta = angularDelta(angle, peakAngle)
-    val t = (delta / GlowHalfWidthDegrees).coerceIn(-1f, 1f)
+    val t = (delta / halfWidthDegrees).coerceIn(-1f, 1f)
     if (abs(t) >= 1f) return null
     return ((1 + cos(t * PI)) / 2f).toFloat()
 }

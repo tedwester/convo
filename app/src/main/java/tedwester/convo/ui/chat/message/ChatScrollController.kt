@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.exp
 
 /**
  * Slack, in pixels, that still counts as "flush with the newest content".
@@ -286,11 +288,16 @@ class ChatScrollController internal constructor(
     /**
      * How far the chat itself moves up while pulling.
      *
-     * The chat only shifts a little, so the gesture reads as "something is about to happen"
-     * rather than dragging the whole conversation off screen.
+     * The chat only shifts a little, and it eases into place instead of tracking the finger
+     * exactly, so the gesture reads as "something is about to happen" rather than dragging
+     * the whole conversation off screen.
      */
     val pullShift: Float
-        get() = minOf(pullDistance, pullShiftMaxPx)
+        get() {
+            if (pullShiftMaxPx <= 0f || pullDistance <= 0f) return 0f
+            val ratio = pullDistance / pullShiftMaxPx
+            return pullShiftMaxPx * (1f - exp(-ratio))
+        }
 
     /** True once the pull is far enough to offer a new chat. */
     val isPullArmed: Boolean
@@ -384,6 +391,12 @@ class ChatScrollController internal constructor(
         pullDistance = (pullDistance - amountPx).coerceAtLeast(0f)
     }
 
+    /** Closes the gap and forgets it, for example when the conversation is left. */
+    internal fun resetPull() {
+        pullTriggered = false
+        pullDistance = 0f
+    }
+
     /** Animates the gap closed. */
     internal fun releasePull() {
         if (pullDistance <= 0f) return
@@ -447,6 +460,14 @@ fun rememberChatScrollController(
         if (!autoScrollEnabled) return@LaunchedEffect
         controller.resumeFollowing()
         controller.listState.jumpToEnd()
+    }
+
+    DisposableEffect(controller) {
+        onDispose {
+            // The scope that would animate the gap closed is gone with this controller, so
+            // the gap is cleared outright instead of being left half open.
+            controller.resetPull()
+        }
     }
 
     LaunchedEffect(listState, autoScrollEnabled) {

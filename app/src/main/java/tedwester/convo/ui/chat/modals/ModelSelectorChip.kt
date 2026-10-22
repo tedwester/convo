@@ -68,6 +68,14 @@ fun ModelSelectorChip(
         modifier = modifier
             .scale(scale)
             .widthIn(max = 272.dp)
+            // The ring is drawn before the surface because the surface clips to the chip
+            // shape, which would cut off a ring that sits outside it.
+            .pullHighlightRing(
+                progress = pullProgress,
+                outline = PullRingOutline.Capsule,
+                width = 2.dp,
+                expand = 3.dp,
+            )
             .convoRingGapSurface(
                 outerShape = outerShape,
                 innerShape = outerShape,
@@ -79,11 +87,6 @@ fun ModelSelectorChip(
             .hintHighlightRing(
                 highlighted = highlighted,
                 outline = HintRingOutline.Capsule,
-            )
-            .pullHighlightRing(
-                progress = pullProgress,
-                outline = PullRingOutline.Capsule,
-                expand = 4.dp,
             )
             .clickable(
                 interactionSource = interactionSource,

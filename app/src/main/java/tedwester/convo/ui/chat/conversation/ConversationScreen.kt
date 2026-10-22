@@ -1,5 +1,6 @@
 ﻿package tedwester.convo.ui.chat.conversation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -356,6 +357,11 @@ fun ConversationScreen(
                     )
                 }
             } else {
+                SideEffect {
+                    // No list means no scroll controller, so nothing may keep drawing a pull
+                    // affordance for the chat that was just left.
+                    if (isLiveSession) activeScrollController = null
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -576,6 +582,7 @@ fun ConversationScreen(
             // Pulling past the newest content shifts the chat up and offers a new chat.
             if (controller.pullShift > 0f) {
                 val shiftDp = with(density) { controller.pullShift.toDp() }
+                val iconAlpha = FastOutSlowInEasing.transform(controller.pullProgress.coerceIn(0f, 1f))
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -590,12 +597,12 @@ fun ConversationScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        painter = ConvoIcons.Speech(),
+                        painter = ConvoIcons.SquarePen(),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .size(NewChatPullGlyphSize)
-                            .alpha(controller.pullProgress),
+                            .alpha(iconAlpha),
                     )
                 }
             }
