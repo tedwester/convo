@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,9 +30,10 @@ import tedwester.convo.ui.icons.ConvoIcons
 /**
  * Indicator shown in the gap that opens when pulling past the newest message.
  *
- * A grey disc with the new-chat glyph grows with the pull. At full pull it performs one
- * soft bounce, the aura around it settles into the disc edge, and the label appears.
- * Releasing while armed starts the new chat.
+ * A grey ring of constant thickness sits around the disc. The disc grows with the pull and,
+ * at full pull, performs one soft bounce that fills in where the ring was, so the grey
+ * disappears. The whole indicator fades in and out with the pull so releasing without
+ * triggering cleans up smoothly.
  */
 @Composable
 fun NewChatPullIndicator(
@@ -56,9 +58,6 @@ fun NewChatPullIndicator(
 
     // The disc grows from half size as the pull progresses.
     val discScale = (0.5f + 0.5f * clamped) * bounce.value
-    // The aura starts wide and faint, then tightens onto the disc edge at full pull.
-    val auraScale = 1.9f - 0.9f * clamped
-    val auraAlpha = 0.20f * clamped
 
     val labelAlpha by animateFloatAsState(
         targetValue = if (armed) 1f else 0f,
@@ -66,28 +65,31 @@ fun NewChatPullIndicator(
     )
 
     Column(
-        modifier = modifier,
+        modifier = modifier.alpha(clamped),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.size(72.dp),
         ) {
+            // Static grey ring of constant thickness. The growing disc covers it at full pull.
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .scale(auraScale * bounce.value)
-                    .alpha(auraAlpha)
                     .clip(CircleShape)
-                    .background(grey.copy(alpha = 0.16f)),
+                    .border(
+                        width = 6.dp,
+                        color = grey.copy(alpha = 0.30f),
+                        shape = CircleShape,
+                    ),
             )
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(56.dp)
                     .scale(discScale)
                     .clip(CircleShape)
-                    .background(grey.copy(alpha = 0.10f + 0.08f * clamped)),
+                    .background(grey.copy(alpha = 0.10f + 0.10f * clamped)),
             ) {
                 Icon(
                     painter = ConvoIcons.SquarePen(),
@@ -97,7 +99,7 @@ fun NewChatPullIndicator(
                 )
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = "New chat",
             style = MaterialTheme.typography.labelMedium,

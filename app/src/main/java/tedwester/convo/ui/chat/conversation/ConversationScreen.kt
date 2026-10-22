@@ -575,7 +575,7 @@ fun ConversationScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .offset(
-                            y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - 40.dp),
+                            y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - 60.dp),
                         ),
                 )
             }
