@@ -17,9 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -75,30 +73,6 @@ fun MessageList(
         { scrollController.stopFollowing() }
     }
 
-    val scrollConnection = remember(onDismissKeyboard, scrollController) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && available.y != 0f) {
-                    onDismissKeyboard()
-                }
-                return Offset.Zero
-            }
-
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                // Only let go of the newest content once the list actually moved, so that a
-                // swipe that cannot scroll (at either end) does not drop the follow state.
-                if (source == NestedScrollSource.UserInput && consumed.y != 0f) {
-                    scrollController.onUserScrolled()
-                }
-                return Offset.Zero
-            }
-        }
-    }
-
     SideEffect {
         if (!scrollEnabled) return@SideEffect
         var pulseId = -1L
@@ -134,13 +108,15 @@ fun MessageList(
         modifier = modifier
             .fillMaxSize()
             .clipToBounds()
+            // Pulling past the newest content lifts the list and opens a gap underneath.
+            .graphicsLayer { translationY = -scrollController.pullDistance }
             .pointerInput(onDismissKeyboard) {
                 detectTapGestures(onTap = {
                     onDismissKeyboard()
                     selectedPromptMessageId = -1L
                 })
             }
-            .nestedScroll(scrollConnection),
+            .nestedScroll(scrollController.scrollConnection),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(0.dp),
         userScrollEnabled = scrollEnabled,

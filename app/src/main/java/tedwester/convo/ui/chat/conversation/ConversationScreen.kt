@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -276,6 +277,8 @@ fun ConversationScreen(
                         listState = listState,
                         conversationKey = conversationKey,
                         autoScrollEnabled = isLiveSession,
+                        onDismissKeyboard = dismissKeyboard,
+                        onPullTriggered = ::startNewChat,
                     )
                     SideEffect {
                         if (isLiveSession) {
@@ -344,6 +347,17 @@ fun ConversationScreen(
                         .fillMaxWidth()
                         .height(screenHeight),
                 ) {
+                    // Pulling down on an empty chat opens the model selector.
+                    PullRevealGesture(
+                        onTrigger = { requestModelSelector() },
+                        enabled = isLiveSession && !isKeyboardVisible && !voiceRecording.isOrbVisible,
+                        modifier = Modifier.matchParentSize(),
+                    ) { progress ->
+                        PullRevealOutline(
+                            progress = progress,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                     EmptyChatPlaceholder(
                         modelName = chatState.selectedModel?.name,
                         visible = !isKeyboardVisible && !voiceRecording.isOrbVisible &&
@@ -545,6 +559,18 @@ fun ConversationScreen(
                     hasMessages = hasMessages,
                     applyImePadding = applyComposerImePadding,
                     modifier = Modifier.align(Alignment.BottomEnd),
+                )
+            }
+
+            // Pulling past the newest content opens a gap that offers a new chat.
+            if (controller.pullDistance > 0f) {
+                PullRevealOutline(
+                    progress = controller.pullProgress,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(with(density) { controller.pullDistance.toDp() })
+                        .offset(y = -(bottomChromeDp + listBottomImeDp)),
                 )
             }
         }

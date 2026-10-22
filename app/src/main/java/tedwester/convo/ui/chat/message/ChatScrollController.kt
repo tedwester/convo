@@ -1,18 +1,29 @@
 package tedwester.convo.ui.chat.message
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -35,6 +46,9 @@ internal const val ScrollToBottomThresholdPx = 120f
 
 /** Distance from the oldest content before the scroll-to-top button appears. */
 internal const val ScrollToTopThresholdPx = 120f
+
+/** How far the list has to be pulled past the newest content to offer a new chat. */
+internal val PullToNewChatDistance = 132.dp
 
 // ---------------------------------------------------------------------------------------------
 // Exact geometry
@@ -203,7 +217,50 @@ internal suspend fun LazyListState.jumpToStart() {
 class ChatScrollController internal constructor(
     val listState: LazyListState,
     private val scope: CoroutineScope,
+    private val pullThresholdPx: Float,
 ) {
+    /** The keyboard is dismissed when the user starts scrolling the list. */
+    internal var onDismissKeyboard: () -> Unit = {}
+
+    /** Called when the list is pulled far enough to offer a new chat. */
+    internal var onPullTriggered: () -> Unit = {}
+
+    private var pullTriggered = false
+
+    /**
+     * Watches the list for user input: it tells the controller when the user scrolls and
+     * opens the gap below the newest content when the list is pulled past the end.
+     */
+    val scrollConnection: NestedScrollConnection = object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            if (source == NestedScrollSource.UserInput && available.y != 0f) {
+                onDismissKeyboard()
+            }
+            return Offset.Zero
+        }
+
+        override fun onPostScroll(
+            consumed: Offset,
+            available: Offset,
+            source: NestedScrollSource,
+        ): Offset {
+            if (source != NestedScrollSource.UserInput) return Offset.Zero
+
+            if (consumed.y != 0f) {
+                onUserScrolled()
+                // Scrolling back towards the newest content closes the gap again.
+                closePull(consumed.y)
+            }
+
+            // Dragging past the end opens a gap for the new chat action.
+            if (available.y < 0f && listState.isAtEnd()) {
+                addPull(-available.y)
+                return Offset(0f, available.y)
+            }
+            return Offset.Zero
+        }
+    }
+
     /** True while the list should stay pinned to the newest content. */
     var isFollowing by mutableStateOf(true)
         private set
@@ -216,12 +273,43 @@ class ChatScrollController internal constructor(
     var isNearStart by mutableStateOf(true)
         private set
 
+    /** True while the user has a finger on the list. */
+    var isGestureActive by mutableStateOf(false)
+        private set
+
     /** True while an explicit scroll animation runs, so the follow logic keeps its hands off. */
     internal var isProgrammaticScroll = false
+
+    /** How far the list has been pulled past the newest content, in pixels. */
+    var pullDistance by mutableFloatStateOf(0f)
+        private set
+
+    /** How far the pull has progressed towards the new chat action. */
+    val pullProgress: Float
+        get() = if (pullThresholdPx <= 0f) 0f else (pullDistance / pullThresholdPx).coerceIn(0f, 1f)
+
+    /** True once the pull is far enough to offer a new chat. */
+    val isPullArmed: Boolean
+        get() = pullProgress >= 1f
 
     /** The user moved the list themselves; stop following until they come back. */
     internal fun onUserScrolled() {
         isFollowing = false
+    }
+
+    /** A finger went down on the list. Nothing may move the list while it is held. */
+    internal fun onGestureStart() {
+        isGestureActive = true
+        isFollowing = false
+    }
+
+    /** The finger lifted. Following only resumes if the list ended up at the newest content. */
+    internal fun onGestureEnd() {
+        isGestureActive = false
+        if (!isProgrammaticScroll && listState.isAtEnd()) {
+            isFollowing = true
+        }
+        releasePull()
     }
 
     /** Re-arms following, for example when a new conversation is opened. */
@@ -237,9 +325,9 @@ class ChatScrollController internal constructor(
     internal fun onProximityChanged(atEnd: Boolean, nearEnd: Boolean, nearStart: Boolean) {
         isNearEnd = nearEnd
         isNearStart = nearStart
-        if (atEnd && !isProgrammaticScroll) {
-            // Back at the newest content: following resumes. An explicit scroll keeps its own
-            // decision, otherwise this would drag the list back while it is animating.
+        if (atEnd && !isProgrammaticScroll && !isGestureActive) {
+            // Back at the newest content: following resumes. While a finger is down the list
+            // belongs to the user, and an explicit scroll keeps its own decision.
             isFollowing = true
         }
     }
@@ -270,6 +358,47 @@ class ChatScrollController internal constructor(
             }
         }
     }
+
+    /** Opens the gap below the newest content while the list is pulled past the end. */
+    internal fun addPull(deltaPx: Float) {
+        if (deltaPx <= 0f) return
+        val next = (pullDistance + deltaPx).coerceAtMost(pullThresholdPx * 1.15f)
+        if (next == pullDistance) return
+        pullDistance = next
+        if (!pullTriggered && isPullArmed) {
+            pullTriggered = true
+            onPullTriggered()
+        }
+    }
+
+    /** Closes the gap again, for example when the user scrolls back down. */
+    internal fun closePull(amountPx: Float) {
+        if (amountPx <= 0f || pullDistance <= 0f) return
+        pullDistance = (pullDistance - amountPx).coerceAtLeast(0f)
+    }
+
+    /** Animates the gap closed. */
+    internal fun releasePull() {
+        pullTriggered = false
+        if (pullDistance <= 0f) return
+        val from = pullDistance
+        scope.launch {
+            try {
+                animate(
+                    initialValue = from,
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                ) { value, _ ->
+                    pullDistance = value
+                }
+            } catch (error: CancellationException) {
+                if (!currentCoroutineContext().isActive) throw error
+            }
+        }
+    }
 }
 
 /**
@@ -279,15 +408,31 @@ class ChatScrollController internal constructor(
  *   position to the newest content.
  * @param autoScrollEnabled when false the controller stays out of the way and the list is only
  *   moved by the user.
+ * @param onDismissKeyboard called when the user starts scrolling the list.
  */
 @Composable
 fun rememberChatScrollController(
     listState: LazyListState,
     conversationKey: Any? = null,
     autoScrollEnabled: Boolean = true,
+    onDismissKeyboard: () -> Unit = {},
+    onPullTriggered: () -> Unit = {},
+    pullDistance: Dp = PullToNewChatDistance,
     scope: CoroutineScope = rememberCoroutineScope(),
 ): ChatScrollController {
-    val controller = remember(listState) { ChatScrollController(listState, scope) }
+    val density = LocalDensity.current
+    val pullThresholdPx = with(density) { pullDistance.toPx() }
+    val controller = remember(listState) {
+        ChatScrollController(
+            listState = listState,
+            scope = scope,
+            pullThresholdPx = pullThresholdPx,
+        )
+    }
+    SideEffect {
+        controller.onDismissKeyboard = onDismissKeyboard
+        controller.onPullTriggered = onPullTriggered
+    }
 
     LaunchedEffect(listState, conversationKey, autoScrollEnabled) {
         if (!autoScrollEnabled) return@LaunchedEffect
@@ -315,8 +460,8 @@ fun rememberChatScrollController(
         snapshotFlow { listState.layoutInfo }
             .collect {
                 if (!controller.isFollowing) return@collect
-                // An explicit scroll owns the viewport while it runs.
-                if (controller.isProgrammaticScroll) return@collect
+                // An explicit scroll owns the viewport while it runs, and so does a finger.
+                if (controller.isProgrammaticScroll || controller.isGestureActive) return@collect
                 try {
                     listState.pinToEnd()
                 } catch (error: CancellationException) {
@@ -325,6 +470,16 @@ fun rememberChatScrollController(
                     if (!currentCoroutineContext().isActive) throw error
                 }
             }
+    }
+
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is DragInteraction.Start -> controller.onGestureStart()
+                is DragInteraction.Stop -> controller.onGestureEnd()
+                else -> Unit
+            }
+        }
     }
 
     return controller

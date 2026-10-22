@@ -41,7 +41,9 @@ fun ConversationScrollButtons(
     modifier: Modifier = Modifier,
 ) {
     val bottomFabVisible = showBottom && hasMessages && !controller.isNearEnd
-    val topFabVisible = showTop && hasMessages && !controller.isNearStart
+    // The top button only shows once the user has moved away from the newest content, so it
+    // never sits at the bottom of a chat where it would be in the way.
+    val topFabVisible = showTop && hasMessages && !controller.isNearStart && !controller.isNearEnd
 
     val topBottomPadding by animateDpAsState(
         targetValue = if (bottomFabVisible) {

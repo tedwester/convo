@@ -3,15 +3,22 @@
 # this script only bumps the version, commits, tags, and pushes.
 #
 # Usage:
-#   scripts/release.sh 1.0.10          # interactive confirm
+#   scripts/release.sh 1.0.10          # stable release
+#   scripts/release.sh 1.1.0-beta1    # pre-release (the tag contains a dash)
 #   scripts/release.sh 1.0.10 --yes    # no prompt
+#
+# A tag with a dash in it is published as a GitHub pre-release, so it does not replace the
+# latest stable release. Version names with a suffix are fine for Android; the version code
+# is what decides whether an update installs over an older build.
 set -euo pipefail
 
 VERSION="${1:-}"
 ASSUME_YES="${2:-}"
 
-if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "usage: $(basename "$0") <major.minor.patch> [--yes]" >&2
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+    echo "usage: $(basename "$0") <major.minor.patch[-suffix]> [--yes]" >&2
+    echo "  1.0.10       stable release" >&2
+    echo "  1.1.0-beta1  pre-release" >&2
     exit 64
 fi
 
@@ -19,6 +26,12 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 GRADLE_FILE="app/build.gradle.kts"
 TAG="v$VERSION"
+
+if [[ "$VERSION" == *-* ]]; then
+    KIND="pre-release"
+else
+    KIND="release"
+fi
 
 # --- preflight -------------------------------------------------------------
 if [[ -n "$(git status --porcelain)" ]]; then
@@ -46,7 +59,7 @@ if [[ -z "$CURRENT_CODE" || -z "$CURRENT_NAME" ]]; then
 fi
 NEXT_CODE=$((CURRENT_CODE + 1))
 
-echo "Bumping $CURRENT_NAME ($CURRENT_CODE) -> $VERSION ($NEXT_CODE)"
+echo "Bumping $CURRENT_NAME ($CURRENT_CODE) -> $VERSION ($NEXT_CODE) [$KIND]"
 
 sed -i "s/^\( *versionCode *= *\)[0-9]\+/\1$NEXT_CODE/" "$GRADLE_FILE"
 sed -i "s/^\( *versionName *= *\)\"[^\"]*\"/\1\"$VERSION\"/" "$GRADLE_FILE"
@@ -71,3 +84,6 @@ echo
 echo "Pushed $TAG. The workflow builds, signs, and publishes the APK:"
 echo "  gh run list -R tedwester/convo -L 1"
 echo "  gh run watch -R tedwester/convo"
+if [[ "$KIND" == "pre-release" ]]; then
+    echo "The tag contains a dash, so this is published as a pre-release."
+fi
