@@ -21,38 +21,13 @@ Download the latest APK from [GitHub Releases](https://github.com/tedwester/conv
 
 ## Build from source
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/tedwester/convo.git
-   cd convo
-   ```
-
-2. Open the project in Android Studio, or build from the command line:
-   ```bash
-   ./gradlew assembleDebug
-   ```
-
-3. For a signed release APK, create a release keystore and add `keystore.properties` at the project root (see `.gitignore` — this file is never committed):
-   ```properties
-   storeFile=signing/convo-release.jks
-   storePassword=your-store-password
-   keyAlias=convo
-   keyPassword=your-key-password
-   ```
-   Then run:
-   ```bash
-   ./gradlew assembleRelease
-   ```
-
-## Releasing
-
-Release APKs are built and signed in GitHub Actions (`.github/workflows/release.yml`) whenever a `v*` tag is pushed, then attached to a GitHub Release. The signing keystore and passwords live in repository secrets, so no local Android SDK or keystore is needed:
+Requires a JDK 17+ and the Android SDK. Open the project in Android Studio, or build with the command line:
 
 ```bash
-scripts/release.sh 1.0.10
+git clone https://github.com/tedwester/convo.git
+cd convo
+./gradlew assembleDebug
 ```
-
-That bumps `versionCode`/`versionName`, commits, tags `v1.0.10`, and pushes. Follow the build with `gh run watch -R tedwester/convo`.
 
 ## Privacy
 

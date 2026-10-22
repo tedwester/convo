@@ -19,3 +19,5 @@ app/keystore.properties
 
 docs/
 
+# Maintainer-only docs
+RELEASING.md
