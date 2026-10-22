@@ -567,17 +567,15 @@ fun ConversationScreen(
             }
 
             // Pulling past the newest content shifts the chat up and offers a new chat.
-            // Extra lift at full pull keeps clear space between the affordance and the composer.
             if (controller.pullShift > 0f) {
                 val shiftDp = with(density) { controller.pullShift.toDp() }
-                val liftDp = 8.dp + 10.dp * controller.pullProgress.coerceIn(0f, 1f)
                 NewChatPullIndicator(
                     progress = controller.pullProgress,
                     armed = controller.isPullArmed,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .offset(
-                            y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - 40.dp + liftDp),
+                            y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - 40.dp),
                         ),
                 )
             }
