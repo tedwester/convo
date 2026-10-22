@@ -233,6 +233,7 @@ class ChatScrollController internal constructor(
     internal var pullEnabled: Boolean = true
 
     private val pullHaptics = PullHaptics()
+    private var releaseJob: kotlinx.coroutines.Job? = null
 
     /**
      * Watches the list for user input: it tells the controller when the user scrolls and
@@ -320,6 +321,8 @@ class ChatScrollController internal constructor(
 
     /** A finger went down on the list. Nothing may move the list while it is held. */
     internal fun onGestureStart() {
+        releaseJob?.cancel()
+        releaseJob = null
         isGestureActive = true
         isFollowing = false
         pullHaptics.reset()
@@ -330,12 +333,19 @@ class ChatScrollController internal constructor(
         val fireNewChat = isPullArmed
         isGestureActive = false
         if (fireNewChat) {
+            // Clear the gap instantly: the new-chat transition covers the change, so an
+            // animated close would linger as a ghost on the next screen.
+            releaseJob?.cancel()
+            releaseJob = null
+            resetPull()
             onPullTriggered()
         }
         if (!isProgrammaticScroll && listState.isAtEnd()) {
             isFollowing = true
         }
-        releasePull()
+        if (!fireNewChat) {
+            releasePull()
+        }
     }
 
     /** Re-arms following, for example when a new conversation is opened. */
@@ -388,6 +398,9 @@ class ChatScrollController internal constructor(
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
         if (deltaPx <= 0f || !pullEnabled) return
+        // A fresh drag cancels any in-flight close animation so the two never fight.
+        releaseJob?.cancel()
+        releaseJob = null
         val next = (pullDistance + deltaPx).coerceAtMost(pullThresholdPx * 1.15f)
         if (next == pullDistance) return
         pullDistance = next
@@ -406,14 +419,17 @@ class ChatScrollController internal constructor(
 
     /** Closes the gap and forgets it, for example when the conversation is left. */
     internal fun resetPull() {
+        releaseJob?.cancel()
+        releaseJob = null
         pullDistance = 0f
     }
 
     /** Animates the gap closed. */
     internal fun releasePull() {
         if (pullDistance <= 0f) return
+        releaseJob?.cancel()
         val from = pullDistance
-        scope.launch {
+        releaseJob = scope.launch {
             try {
                 animate(
                     initialValue = from,
