@@ -25,6 +25,9 @@ import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
 
+/** Space under every chat bubble, down to the list's content end. */
+internal val ChatBubbleBottomGap = 18.dp
+
 @Composable
 fun MessageList(
     messages: List<ChatMessage>,
@@ -164,7 +167,7 @@ fun MessageList(
                 onVoiceAutoPlayStarted = { onVoiceAutoPlayStarted(message.id) },
                 onVoicePlaybackFinished = onVoicePlaybackFinished,
                 onVoicePlaybackPaused = onVoicePlaybackPaused,
-                modifier = Modifier.padding(bottom = 18.dp),
+                modifier = Modifier.padding(bottom = ChatBubbleBottomGap),
             )
         }
     }

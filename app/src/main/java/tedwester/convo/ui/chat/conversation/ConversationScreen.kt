@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -33,6 +32,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import tedwester.convo.ConvoApp
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.core.network.model.ModelKind
@@ -45,6 +45,7 @@ import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.ui.chat.attachments.ImageViewerDialog
 import tedwester.convo.ui.chat.attachments.VideoViewerDialog
 import tedwester.convo.ui.chat.composer.InputBar
+import tedwester.convo.ui.chat.message.ChatBubbleBottomGap
 import tedwester.convo.ui.chat.message.ChatScrollController
 import tedwester.convo.ui.chat.message.MessageList
 import tedwester.convo.ui.chat.message.rememberChatScrollController
@@ -352,10 +353,17 @@ fun ConversationScreen(
                     )
                 }
             } else {
-                SideEffect {
-                    // No list means no scroll controller, so nothing may keep drawing a pull
-                    // affordance for the chat that was just left.
-                    if (isLiveSession) activeScrollController = null
+                // No list means no scroll controller. Drop it only after the session
+                // transition has played out: when a pull triggers a new chat, the old
+                // conversation keeps composing while it fades, and its controller still
+                // animates the (already released) pull closed. Nulling immediately would
+                // pop the pull affordance off the screen mid-transition. The guard keeps
+                // a newer live controller from being cleared by a stale session.
+                LaunchedEffect(activeSession) {
+                    delay(ConversationTransitionMs.toLong() + 32L)
+                    if (activeSession == chatState.conversationSessionId) {
+                        activeScrollController = null
+                    }
                 }
                 Box(
                     modifier = Modifier
@@ -572,11 +580,13 @@ fun ConversationScreen(
                 NewChatPullIndicator(
                     progress = controller.pullProgress,
                     armed = controller.isPullArmed,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .offset(
-                            y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - 60.dp),
-                        ),
+                    // Vertical room in the gap that opens between the composer top and
+                    // the newest message ink: the base spacing under the last bubble
+                    // (content padding gap plus the bubble's own bottom padding) plus
+                    // everything the pull itself opened up.
+                    bandHeight = ConversationChromeMessageGap + ChatBubbleBottomGap +
+                        listBottomImeDp + shiftDp,
+                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
         }
