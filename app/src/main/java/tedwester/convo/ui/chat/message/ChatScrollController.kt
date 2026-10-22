@@ -13,9 +13,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -120,6 +123,25 @@ internal suspend fun LazyListState.pinToEnd() {
     val info = layoutInfo
     val lastIndex = info.totalItemsCount - 1
     if (lastIndex < 0) return
+    if (!canScrollForward) return
+    val last = info.visibleItemsInfo.lastOrNull()
+    if (last != null && last.index == lastIndex) {
+        val overflow = (last.offset + last.size) - contentBottom
+        if (overflow > 0.5f) scrollBy(overflow)
+        return
+    }
+    // The newest item is not on screen, so something was appended while we were following.
+    // Bring it in and settle on the exact end.
+    animateScrollToItem(lastIndex)
+    settleAtEnd(animated = true)
+}
+
+/** Jumps straight to the newest content, without animating. */
+internal suspend fun LazyListState.jumpToEnd() {
+    awaitContent()
+    val info = layoutInfo
+    val lastIndex = info.totalItemsCount - 1
+    if (lastIndex < 0) return
     val last = info.visibleItemsInfo.lastOrNull()
     if (last != null && last.index == lastIndex) {
         val overflow = (last.offset + last.size) - contentBottom
@@ -130,25 +152,24 @@ internal suspend fun LazyListState.pinToEnd() {
     settleAtEnd(animated = false)
 }
 
-/** Jumps straight to the newest content, without animating. */
-internal suspend fun LazyListState.jumpToEnd() {
-    awaitContent()
-    val lastIndex = layoutInfo.totalItemsCount - 1
-    if (lastIndex < 0) return
-    scrollToItem(lastIndex)
-    settleAtEnd(animated = false)
-}
-
 /**
  * Animates to the newest content.
  *
- * Item based, so the distance is never guessed: the newest item is scrolled into view and the
- * short remainder to its very end is animated afterwards.
+ * When the newest item is on screen the remaining distance is exact, so the list glides
+ * straight to the end. Otherwise the item is scrolled into view first and the short
+ * remainder to its very end is animated afterwards.
  */
 internal suspend fun LazyListState.animateToEnd() {
     awaitContent()
-    val lastIndex = layoutInfo.totalItemsCount - 1
+    val info = layoutInfo
+    val lastIndex = info.totalItemsCount - 1
     if (lastIndex < 0) return
+    val last = info.visibleItemsInfo.lastOrNull()
+    if (last != null && last.index == lastIndex) {
+        val overflow = (last.offset + last.size) - contentBottom
+        if (overflow > 0.5f) animateScrollBy(overflow)
+        return
+    }
     animateScrollToItem(lastIndex)
     settleAtEnd(animated = true)
 }
@@ -277,8 +298,13 @@ fun rememberChatScrollController(
         if (!autoScrollEnabled) return@LaunchedEffect
         snapshotFlow { listState.layoutInfo }
             .collect {
-                if (controller.isFollowing) {
+                if (!controller.isFollowing) return@collect
+                try {
                     listState.pinToEnd()
+                } catch (error: CancellationException) {
+                    // A user gesture interrupted the pin. Keep the loop alive so the list can
+                    // follow again later, unless this whole effect is being cancelled.
+                    if (!currentCoroutineContext().isActive) throw error
                 }
             }
     }
