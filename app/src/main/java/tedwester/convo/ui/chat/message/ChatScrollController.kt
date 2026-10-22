@@ -305,6 +305,7 @@ class ChatScrollController internal constructor(
     internal fun onGestureStart() {
         isGestureActive = true
         isFollowing = false
+        pullTriggered = false
     }
 
     /** The finger lifted. Following only resumes if the list ended up at the newest content. */
@@ -365,13 +366,15 @@ class ChatScrollController internal constructor(
 
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
-        if (deltaPx <= 0f) return
+        if (deltaPx <= 0f || pullTriggered) return
         val next = (pullDistance + deltaPx).coerceAtMost(pullThresholdPx * 1.15f)
         if (next == pullDistance) return
         pullDistance = next
         if (!pullTriggered && isPullArmed) {
             pullTriggered = true
             onPullTriggered()
+            // Close the gap right away so the chat settles back while the new one arrives.
+            releasePull()
         }
     }
 
@@ -383,7 +386,6 @@ class ChatScrollController internal constructor(
 
     /** Animates the gap closed. */
     internal fun releasePull() {
-        pullTriggered = false
         if (pullDistance <= 0f) return
         val from = pullDistance
         scope.launch {

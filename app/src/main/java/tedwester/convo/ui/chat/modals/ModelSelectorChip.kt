@@ -83,6 +83,7 @@ fun ModelSelectorChip(
             .pullHighlightRing(
                 progress = pullProgress,
                 outline = PullRingOutline.Capsule,
+                expand = 4.dp,
             )
             .clickable(
                 interactionSource = interactionSource,

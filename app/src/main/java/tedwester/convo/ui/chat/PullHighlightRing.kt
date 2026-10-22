@@ -48,6 +48,7 @@ fun Modifier.pullHighlightRing(
     progress: Float,
     outline: PullRingOutline = PullRingOutline.Circle,
     width: Dp = 1.5.dp,
+    expand: Dp = 0.dp,
 ): Modifier {
     val filled = progress.coerceIn(0f, 1f)
     if (filled <= 0.001f) return this
@@ -69,9 +70,10 @@ fun Modifier.pullHighlightRing(
 
     return drawBehind {
         val strokeWidth = max(width.toPx(), 1f)
-        val inset = strokeWidth / 2f
-        val w = size.width - strokeWidth
-        val h = size.height - strokeWidth
+        val grow = expand.toPx()
+        val inset = strokeWidth / 2f - grow
+        val w = size.width + grow * 2f - strokeWidth
+        val h = size.height + grow * 2f - strokeWidth
         if (w <= 0f || h <= 0f) return@drawBehind
 
         val path = Path()
@@ -95,7 +97,6 @@ fun Modifier.pullHighlightRing(
                 )
             }
         }
-
         val measure = AndroidPathMeasure(path.asAndroidPath(), false)
         val length = measure.length
         if (length <= 0f) return@drawBehind
