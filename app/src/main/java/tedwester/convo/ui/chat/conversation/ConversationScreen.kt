@@ -1,6 +1,5 @@
 ﻿package tedwester.convo.ui.chat.conversation
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -12,15 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,7 +24,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
@@ -38,7 +33,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.lerp
 import tedwester.convo.ConvoApp
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.core.network.model.ModelKind
@@ -51,19 +45,10 @@ import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.ui.chat.attachments.ImageViewerDialog
 import tedwester.convo.ui.chat.attachments.VideoViewerDialog
 import tedwester.convo.ui.chat.composer.InputBar
-import tedwester.convo.ui.chat.PullRingOutline
-import tedwester.convo.ui.chat.pullHighlightRing
 import tedwester.convo.ui.chat.message.ChatScrollController
 import tedwester.convo.ui.chat.message.MessageList
 import tedwester.convo.ui.chat.message.rememberChatScrollController
 import tedwester.convo.ui.chat.message.rememberConversationListState
-import tedwester.convo.ui.icons.ConvoIcons
-
-/** Size of the new chat affordance that appears while pulling. */
-private val NewChatPullSize = 44.dp
-
-/** Size of the glyph inside that affordance. */
-private val NewChatPullGlyphSize = 24.dp
 
 @Composable
 fun ConversationScreen(
@@ -237,7 +222,6 @@ fun ConversationScreen(
     var topChromeDp by remember { mutableStateOf(64.dp) }
     var bottomChromeDp by remember { mutableStateOf(96.dp) }
     var activeScrollController by remember { mutableStateOf<ChatScrollController?>(null) }
-    var emptyChatPullProgress by remember { mutableFloatStateOf(0f) }
     var viewingAttachment by remember { mutableStateOf<ChatAttachment?>(null) }
     val applyComposerImePadding = !showModelSelector &&
         !showAttachmentOptions &&
@@ -378,13 +362,6 @@ fun ConversationScreen(
                         .fillMaxWidth()
                         .height(screenHeight),
                 ) {
-                    // Pulling down on an empty chat highlights the model selector and opens it.
-                    PullRevealGesture(
-                        onTrigger = { requestModelSelector() },
-                        onProgress = { emptyChatPullProgress = it },
-                        enabled = isLiveSession && !isKeyboardVisible && !voiceRecording.isOrbVisible,
-                        modifier = Modifier.matchParentSize(),
-                    )
                     EmptyChatPlaceholder(
                         modelName = chatState.selectedModel?.name,
                         visible = !isKeyboardVisible && !voiceRecording.isOrbVisible &&
@@ -414,7 +391,6 @@ fun ConversationScreen(
                 modelName = chatState.selectedModel?.name,
                 showModelHint = showModelHint,
                 onDismissModelHint = ::dismissModelHint,
-                modelPullProgress = emptyChatPullProgress,
                 onOpenMenu = {
                     if (voiceRecording.isOrbVisible) voiceRecording.cancelRecording()
                     dictation.cancel()
@@ -593,34 +569,15 @@ fun ConversationScreen(
             // Pulling past the newest content shifts the chat up and offers a new chat.
             if (controller.pullShift > 0f) {
                 val shiftDp = with(density) { controller.pullShift.toDp() }
-                val progress = controller.pullProgress.coerceIn(0f, 1f)
-                val iconAlpha = FastOutSlowInEasing.transform(progress)
-                val iconScale = lerp(0.4f, 1f, FastOutSlowInEasing.transform(progress))
-                Box(
+                NewChatPullIndicator(
+                    progress = controller.pullProgress,
+                    armed = controller.isPullArmed,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .offset(
-                            y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - NewChatPullSize / 2f),
-                        )
-                        .size(NewChatPullSize)
-                        .graphicsLayer {
-                            scaleX = iconScale
-                            scaleY = iconScale
-                            alpha = iconAlpha
-                        }
-                        .pullHighlightRing(
-                            progress = controller.pullProgress,
-                            outline = PullRingOutline.Circle,
+                            y = -(bottomChromeDp + listBottomImeDp + shiftDp / 2f - 40.dp),
                         ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = ConvoIcons.SquarePen(),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(NewChatPullGlyphSize),
-                    )
-                }
+                )
             }
         }
 

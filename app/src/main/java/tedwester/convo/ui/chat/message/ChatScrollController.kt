@@ -233,7 +233,6 @@ class ChatScrollController internal constructor(
     internal var pullEnabled: Boolean = true
 
     private val pullHaptics = PullHaptics()
-    private var pullTriggered = false
 
     /**
      * Watches the list for user input: it tells the controller when the user scrolls and
@@ -296,6 +295,10 @@ class ChatScrollController internal constructor(
     val pullProgress: Float
         get() = if (pullThresholdPx <= 0f) 0f else (pullDistance / pullThresholdPx).coerceIn(0f, 1f)
 
+    /** True once a release would start a new chat. */
+    val isPullArmed: Boolean
+        get() = pullProgress >= 1f
+
     /**
      * How far the chat itself moves up while pulling.
      *
@@ -310,7 +313,8 @@ class ChatScrollController internal constructor(
             return pullShiftMaxPx * (1f - exp(-ratio))
         }
 
-    /** The user moved the list themselves; stop following until they come back. */    internal fun onUserScrolled() {
+    /** The user moved the list themselves; stop following until they come back. */
+    internal fun onUserScrolled() {
         isFollowing = false
     }
 
@@ -318,13 +322,16 @@ class ChatScrollController internal constructor(
     internal fun onGestureStart() {
         isGestureActive = true
         isFollowing = false
-        pullTriggered = false
         pullHaptics.reset()
     }
 
-    /** The finger lifted. Following only resumes if the list ended up at the newest content. */
+    /** The finger lifted. A full pull starts a new chat; otherwise the list just settles. */
     internal fun onGestureEnd() {
+        val fireNewChat = isPullArmed
         isGestureActive = false
+        if (fireNewChat) {
+            onPullTriggered()
+        }
         if (!isProgrammaticScroll && listState.isAtEnd()) {
             isFollowing = true
         }
@@ -380,22 +387,15 @@ class ChatScrollController internal constructor(
 
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
-        if (deltaPx <= 0f || pullTriggered || !pullEnabled) return
+        if (deltaPx <= 0f || !pullEnabled) return
         val next = (pullDistance + deltaPx).coerceAtMost(pullThresholdPx * 1.15f)
         if (next == pullDistance) return
         pullDistance = next
-
-        val armed = pullHaptics.onProgress(
+        pullHaptics.onProgress(
             progress = pullProgress,
             tick = onPullTick,
             confirm = onPullArmed,
         )
-        if (armed && !pullTriggered) {
-            pullTriggered = true
-            onPullTriggered()
-            // Close the gap right away so the chat settles back while the new one arrives.
-            releasePull()
-        }
     }
 
     /** Closes the gap again, for example when the user scrolls back down. */
@@ -406,7 +406,6 @@ class ChatScrollController internal constructor(
 
     /** Closes the gap and forgets it, for example when the conversation is left. */
     internal fun resetPull() {
-        pullTriggered = false
         pullDistance = 0f
     }
 
