@@ -16,6 +16,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,16 +47,20 @@ import tedwester.convo.ui.chat.ChatSectionAnimMs
 import tedwester.convo.ui.components.DockSurface
 import tedwester.convo.ui.icons.ConvoIcons
 
-private val CheckboxSlotWidth = 26.dp
+private val CheckboxSlotWidth = 34.dp
 private val CheckboxSize = 20.dp
 
 /**
  * Tint used behind a checked row, so selection reads on the row itself and not only on the
- * checkbox. Kept light enough to sit under the text without fighting it.
+ * checkbox. Uses the same neutral highlight the rest of the sidebar uses, a touch stronger.
  */
 @Composable
 internal fun selectionRowTint(): Color {
-    return MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+    return if (isSystemInDarkTheme()) {
+        Color.White.copy(alpha = 0.08f)
+    } else {
+        Color.Black.copy(alpha = 0.06f)
+    }
 }
 
 /**
@@ -99,8 +104,12 @@ internal fun SelectionCheckbox(
     checked: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val dark = isSystemInDarkTheme()
+    val checkedFill = if (dark) Color.White else MaterialTheme.colorScheme.onBackground
+    val checkTint = if (dark) Color(0xFF171615) else Color.White
+
     val fill by animateColorAsState(
-        targetValue = if (checked) MaterialTheme.colorScheme.primary else Color.Transparent,
+        targetValue = if (checked) checkedFill else Color.Transparent,
         animationSpec = tween(160, easing = FastOutSlowInEasing),
         label = "checkFill",
     )
@@ -132,7 +141,7 @@ internal fun SelectionCheckbox(
             Icon(
                 painter = ConvoIcons.Check(),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
+                tint = checkTint,
                 modifier = Modifier.size(13.dp),
             )
         }

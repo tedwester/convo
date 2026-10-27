@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
+import tedwester.convo.ui.chat.RectAnchor
 
 @Composable
 fun ChatBubble(
@@ -18,6 +19,7 @@ fun ChatBubble(
     onTogglePromptBar: () -> Unit = {},
     onStartEdit: () -> Unit = {},
     userAnimToken: Int = 0,
+    flightOrigin: RectAnchor? = null,
     expectStreamedThinking: Boolean = false,
     onViewAttachment: (ChatAttachment) -> Unit = {},
     onThinkingInteraction: () -> Unit = {},
@@ -31,6 +33,7 @@ fun ChatBubble(
         UserMessage(
             message = message,
             animToken = userAnimToken,
+            flightOrigin = flightOrigin,
             promptBarVisible = promptBarVisible,
             actionsEnabled = actionsEnabled,
             onTogglePromptBar = onTogglePromptBar,

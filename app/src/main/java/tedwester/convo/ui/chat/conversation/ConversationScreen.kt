@@ -42,6 +42,7 @@ import tedwester.convo.features.chat.data.ComposerPreferences
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.MessageAuthor
+import tedwester.convo.ui.chat.RectAnchor
 import tedwester.convo.ui.chat.attachments.ImageViewerDialog
 import tedwester.convo.ui.chat.attachments.VideoViewerDialog
 import tedwester.convo.ui.chat.composer.InputBar
@@ -224,6 +225,7 @@ fun ConversationScreen(
     var bottomChromeDp by remember { mutableStateOf(96.dp) }
     var activeScrollController by remember { mutableStateOf<ChatScrollController?>(null) }
     var viewingAttachment by remember { mutableStateOf<ChatAttachment?>(null) }
+    val sendFlightOrigin = remember { RectAnchor() }
     val applyComposerImePadding = !showModelSelector &&
         !showAttachmentOptions &&
         !showSystemMessage &&
@@ -303,6 +305,7 @@ fun ConversationScreen(
                         conversationKey = conversationKey,
                         isRunning = chatState.isRunning && isLiveSession,
                         userBubbleAnimOnMountToken = if (isLiveSession) userBubbleAnimOnMountToken else 0,
+                        sendFlightOrigin = if (isLiveSession) sendFlightOrigin else null,
                         onRegenerate = { id ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()
@@ -464,6 +467,7 @@ fun ConversationScreen(
                     dismissKeyboard()
                     chatState.cancelEditingMessage()
                 },
+                textFieldAnchor = sendFlightOrigin,
                 onOpenAttachOptions = {
                     if (pendingAttachmentOptions || showAttachmentOptions) return@InputBar
                     if (model?.supportsComposerAttachments == false) return@InputBar

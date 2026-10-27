@@ -59,6 +59,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -75,6 +77,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.ui.chat.HintPopupFadeTokens
+import tedwester.convo.ui.chat.RectAnchor
 import tedwester.convo.ui.chat.attachments.AttachmentPreviewStrip
 import tedwester.convo.ui.chat.composerHintHighlightRing
 import tedwester.convo.ui.components.ConvoIconButton
@@ -133,6 +136,7 @@ private fun ComposerTextInput(
     textStyle: TextStyle,
     placeholder: String,
     focusRequester: FocusRequester? = null,
+    textFieldAnchor: RectAnchor? = null,
 ) {
     val textFieldState = rememberTextFieldState(initialText = value)
     val status = when {
@@ -182,7 +186,19 @@ private fun ComposerTextInput(
         cursorBrush = SolidColor(textStyle.color),
         lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = ComposerMaxLines),
         decorator = { innerTextField ->
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (textFieldAnchor != null) {
+                            Modifier.onGloballyPositioned {
+                                textFieldAnchor.value = it.boundsInRoot()
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ),
+            ) {
                 if (textFieldState.text.isEmpty()) {
                     Text(
                         text = status,
@@ -248,6 +264,7 @@ fun InputBar(
     micOnlyMode: Boolean = false,
     isEditingMessage: Boolean = false,
     onCancelEdit: () -> Unit = {},
+    textFieldAnchor: RectAnchor? = null,
 ) {
     val dark = isSystemInDarkTheme()
     val boxColor = if (dark) DarkChatBox else LightChatBox
@@ -474,6 +491,7 @@ fun InputBar(
                 textStyle = textStyle,
                 placeholder = placeholder,
                 focusRequester = composerFocusRequester,
+                textFieldAnchor = textFieldAnchor,
             )
 
             Row(

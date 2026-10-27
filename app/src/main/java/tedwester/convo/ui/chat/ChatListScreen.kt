@@ -353,14 +353,19 @@ fun ChatListScreen(
             }
         }
 
-        // Both docks own the same corner, so they trade places rather than stack: the quick
-        // settings dock sinks while the selection bar rises into its spot.
+        // Both docks own the same corner, so they trade places: each one slides straight down
+        // off the bottom of the screen when it leaves, and rises back up the same way when it
+        // returns.
         AnimatedVisibility(
             visible = !selection.isActive,
-            enter = fadeIn(tween(180, easing = FastOutSlowInEasing)) +
-                slideInVertically(tween(220, easing = FastOutSlowInEasing)) { it / 4 },
-            exit = fadeOut(tween(140, easing = FastOutSlowInEasing)) +
-                slideOutVertically(tween(200, easing = FastOutSlowInEasing)) { it / 4 },
+            enter = slideInVertically(
+                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
+                initialOffsetY = { it },
+            ) + fadeIn(tween(ChatSectionAnimMs, easing = FastOutSlowInEasing)),
+            exit = slideOutVertically(
+                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
+                targetOffsetY = { it },
+            ) + fadeOut(tween(ChatSectionAnimMs / 2, easing = FastOutSlowInEasing)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding(),
@@ -370,10 +375,14 @@ fun ChatListScreen(
 
         AnimatedVisibility(
             visible = selection.isActive,
-            enter = fadeIn(tween(200, easing = FastOutSlowInEasing)) +
-                slideInVertically(tween(240, easing = FastOutSlowInEasing)) { it / 4 },
-            exit = fadeOut(tween(120, easing = FastOutSlowInEasing)) +
-                slideOutVertically(tween(180, easing = FastOutSlowInEasing)) { it / 4 },
+            enter = slideInVertically(
+                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
+                initialOffsetY = { it },
+            ) + fadeIn(tween(ChatSectionAnimMs, easing = FastOutSlowInEasing)),
+            exit = slideOutVertically(
+                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
+                targetOffsetY = { it },
+            ) + fadeOut(tween(ChatSectionAnimMs / 2, easing = FastOutSlowInEasing)),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding(),

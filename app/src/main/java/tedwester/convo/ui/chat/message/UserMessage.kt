@@ -3,6 +3,7 @@ package tedwester.convo.ui.chat.message
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,26 +33,58 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
+import tedwester.convo.ui.chat.RectAnchor
 import tedwester.convo.ui.chat.attachments.AttachmentFileBadge
 import tedwester.convo.ui.chat.attachments.AttachmentImageThumb
 
 private const val PromptBarAnimMs = 200
-private const val SendAnimMs = 300
 private val PromptBarTopGap = 6.dp
+
+/**
+ * The send animation is the genie: the bubble you just typed is the same object that arrives
+ * in the thread, so it climbs out of the compose field instead of appearing somewhere else.
+ *
+ * The bubble leaves the field at the end of the line you typed on — where the send button
+ * sits — and is pulled up into the thread on a spring. While it travels it is tall and narrow,
+ * the way a thread of liquid behaves when it is drawn out of a narrow opening, and it relaxes
+ * into its final shape as it lands.
+ *
+ * The shape stretches while the text stays put: the bubble's body carries the scale, and the
+ * text carries its inverse about the same corner, so the letters never smear. The text is
+ * resolved once the body has opened out enough to hold it, so the message is never shown
+ * twice or shown wrong.
+ *
+ * [flightOrigin] is where the compose field sits on screen. Without it — a chat that is
+ * opening rather than a message being sent — the bubble simply scales into place.
+ */
+private val GenieSpring = spring<Float>(
+    dampingRatio = 0.72f,
+    stiffness = 420f,
+)
+
+/** Width the bubble is at while it is still a thread leaving the field. */
+private const val GenieStartWidth = 0.42f
+
+/** How much taller than usual the bubble is at that moment. */
+private const val GenieStartHeight = 1.6f
+
+/** How far the shape has to open out before the text starts to resolve. */
+private const val GenieTextOpenness = 0.72f
 
 @Composable
 internal fun UserMessage(
     message: ChatMessage,
     modifier: Modifier = Modifier,
     animToken: Int = 0,
+    flightOrigin: RectAnchor? = null,
     promptBarVisible: Boolean = false,
     actionsEnabled: Boolean = true,
     onTogglePromptBar: () -> Unit = {},
@@ -77,37 +109,30 @@ internal fun UserMessage(
     val bubbleGrey = if (dark) Color(0xFF2C2B29) else Color(0xFFE4E6EC)
     val onBubble = if (dark) Color(0xFFE7EAF0) else Color(0xFF1A1D23)
 
-    val density = LocalDensity.current
-    val enter = remember { Animatable(1f) }
-    var enterLayerActive by remember(message.id) { mutableStateOf(false) }
+    // Flight progress: 1 means settled. A send drives it back to 0 and lets it spring home.
+    val progress = remember { Animatable(1f) }
     var lastAnimatedToken by remember(message.id) { mutableIntStateOf(0) }
+
+    // Where the bubble comes to rest, measured on screen. Read live inside the layer so a
+    // scrolling conversation keeps the landing spot honest.
+    val settledBounds = remember(message.id) { RectAnchor() }
+
     LaunchedEffect(animToken) {
         if (animToken <= 0) {
-            enterLayerActive = false
-            enter.snapTo(1f)
+            progress.snapTo(1f)
             lastAnimatedToken = 0
             return@LaunchedEffect
         }
         if (animToken == lastAnimatedToken) return@LaunchedEffect
         lastAnimatedToken = animToken
-        enterLayerActive = true
-        enter.snapTo(0f)
-        enter.animateTo(1f, tween(durationMillis = SendAnimMs, easing = FastOutSlowInEasing))
-        enterLayerActive = false
+        progress.snapTo(0f)
+        progress.animateTo(1f, GenieSpring)
     }
-    val pendingEnter = animToken > lastAnimatedToken && animToken > 0
-    val t = when {
-        enterLayerActive -> enter.value
-        pendingEnter -> 0f
-        else -> 1f
-    }
-    val slidePx = with(density) { 14.dp.toPx() }
-    // Genie-style send: the bubble grows out of its bottom-right corner — the side that sits
-    // above the send button — climbing as it expands, the way the typed text flows out of the
-    // compose field into the thread as one object. The text resolves once the bubble has
-    // taken its shape, so nothing ever jumps or shows twice.
-    val bubbleScale = 0.35f + 0.65f * t
-    val textAlpha = ((t - 0.35f) / 0.65f).coerceIn(0f, 1f)
+
+    // Before the effect above runs on the very first frame, a freshly sent message already
+    // has a token waiting for it. Treat that frame as progress 0 so the bubble never flashes
+    // into its resting place before it starts climbing.
+    val pendingSend = animToken > lastAnimatedToken && animToken > 0
 
     val toggleInteraction = remember { MutableInteractionSource() }
     val promptBarProgress by animateFloatAsState(
@@ -117,18 +142,7 @@ internal fun UserMessage(
     )
 
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (enterLayerActive || pendingEnter) {
-                    Modifier.graphicsLayer {
-                        alpha = 0.4f + 0.6f * t
-                        translationY = (1f - t) * slidePx
-                    }
-                } else {
-                    Modifier
-                },
-            ),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.Top,
     ) {
@@ -172,36 +186,74 @@ internal fun UserMessage(
 
             if (textToShow.isNotBlank()) {
                 val bubbleShape = RoundedCornerShape(14.dp)
-                val animating = enterLayerActive || pendingEnter
                 Box(
-                    modifier = Modifier
-                        .clip(bubbleShape)
-                        .background(bubbleGrey)
-                        .then(
-                            if (animating) {
-                                Modifier.graphicsLayer {
-                                    scaleX = bubbleScale
-                                    scaleY = bubbleScale
-                                    transformOrigin = TransformOrigin(1f, 1f)
-                                }
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier.onGloballyPositioned {
+                        settledBounds.value = it.boundsInRoot()
+                    },
                 ) {
-                    Text(
-                        text = textToShow,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            color = onBubble,
-                            fontWeight = FontWeight.ExtraLight,
-                        ),
-                        modifier = if (animating) {
-                            Modifier.graphicsLayer { alpha = textAlpha }
-                        } else {
-                            Modifier
-                        },
-                    )
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                val p = if (pendingSend) 0f else progress.value
+                                val origin = flightOrigin?.value
+                                val settled = settledBounds.value
+                                val hasFlight = origin != null && !origin.isEmpty && !settled.isEmpty
+
+                                if (hasFlight) {
+                                    // Rise out of the compose field: start at the end of the
+                                    // line the text was typed on and climb into the thread.
+                                    translationX = (origin.right - settled.right) * (1f - p)
+                                    translationY = (origin.bottom - settled.bottom) * (1f - p)
+                                    // A thread of liquid: narrow and tall on the way out.
+                                    scaleX = GenieStartWidth + (1f - GenieStartWidth) * p
+                                    scaleY = GenieStartHeight + (1f - GenieStartHeight) * p
+                                } else {
+                                    scaleX = 0.55f + 0.45f * p
+                                    scaleY = 0.55f + 0.45f * p
+                                }
+                                // Anchored at the corner that sits over the send button.
+                                transformOrigin = TransformOrigin(1f, 1f)
+                            }
+                            .clip(bubbleShape)
+                            .background(bubbleGrey),
+                    ) {
+                        Text(
+                            text = textToShow,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = onBubble,
+                                fontWeight = FontWeight.ExtraLight,
+                            ),
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    val p = if (pendingSend) 0f else progress.value
+                                    val origin = flightOrigin?.value
+                                    val settled = settledBounds.value
+                                    val hasFlight =
+                                        origin != null && !origin.isEmpty && !settled.isEmpty
+                                    if (hasFlight) {
+                                        // Counteract the body so the letters stay crisp and
+                                        // level while the shape stretches around them.
+                                        val openness = GenieStartWidth +
+                                            (1f - GenieStartWidth) * p
+                                        val stretch = GenieStartHeight +
+                                            (1f - GenieStartHeight) * p
+                                        scaleX = 1f / openness
+                                        scaleY = 1f / stretch
+                                    }
+                                    transformOrigin = TransformOrigin(1f, 1f)
+                                    // Resolve the text only once the bubble has opened out
+                                    // enough to hold it.
+                                    val openness = if (hasFlight) {
+                                        GenieStartWidth + (1f - GenieStartWidth) * p
+                                    } else {
+                                        0.55f + 0.45f * p
+                                    }
+                                    alpha = ((openness - GenieTextOpenness) /
+                                        (1f - GenieTextOpenness)).coerceIn(0f, 1f)
+                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                        )
+                    }
                 }
             }
 

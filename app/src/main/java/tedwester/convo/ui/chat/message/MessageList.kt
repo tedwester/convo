@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.MessageAuthor
+import tedwester.convo.ui.chat.RectAnchor
 
 /** Space under every chat bubble, down to the list's content end. */
 internal val ChatBubbleBottomGap = 18.dp
@@ -39,6 +40,7 @@ fun MessageList(
     scrollEnabled: Boolean = true,
     isRunning: Boolean = false,
     userBubbleAnimOnMountToken: Int = 0,
+    sendFlightOrigin: RectAnchor? = null,
     onRegenerate: (Long) -> Unit = {},
     onResendUserMessage: (messageId: Long, editedText: String?) -> Unit = { _, _ -> },
     onStartEditUserMessage: (messageId: Long) -> Unit = {},
@@ -166,6 +168,7 @@ fun MessageList(
                 },
                 expectStreamedThinking = message.expectStreamedThinking && message.isStreaming,
                 userAnimToken = if (message.id == userBubbleAnimId) userBubbleAnimToken else 0,
+                flightOrigin = sendFlightOrigin,
                 onViewAttachment = onViewAttachment,
                 onThinkingInteraction = onThinkingInteraction,
                 autoPlayVoiceReplies = message.id == autoPlayMessageId,
