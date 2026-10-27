@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.features.chat.model.Chat
@@ -127,12 +128,44 @@ fun ChatListScreen(
     var renamingChatId by remember { mutableStateOf<String?>(null) }
     var recentsExpanded by rememberSaveable { mutableStateOf(true) }
     var archiveExpanded by rememberSaveable { mutableStateOf(false) }
+    var selectionMode by rememberSaveable { mutableStateOf(false) }
+    var selectedChatIds by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var pendingDeleteIds by remember { mutableStateOf(setOf<String>()) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val recentChats = remember(chats) { chats.filter { !it.archived } }
     val archivedChats = remember(chats) { chats.filter { it.archived } }
     val projectNames = remember(projects) { projects.associate { it.id to it.name } }
+
+    fun toggleChatSelected(chatId: String) {
+        selectedChatIds = if (chatId in selectedChatIds) {
+            selectedChatIds - chatId
+        } else {
+            selectedChatIds + chatId
+        }
+        if (selectedChatIds.isEmpty()) selectionMode = false
+    }
+
+    fun startSelecting(chatId: String) {
+        selectionMode = true
+        if (chatId !in selectedChatIds) {
+            selectedChatIds = selectedChatIds + chatId
+        }
+    }
+
+    fun deleteSelectedChats() {
+        val ids = selectedChatIds
+        if (ids.isEmpty()) return
+        pendingDeleteIds = ids
+        selectedChatIds = emptySet()
+        selectionMode = false
+        scope.launch {
+            delay(ChatSectionAnimMs.toLong())
+            ids.forEach { onDeleteChat(it) }
+            pendingDeleteIds = emptySet()
+        }
+    }
 
     var showTranscriptionPicker by remember { mutableStateOf(false) }
     var showReplyPicker by remember { mutableStateOf(false) }
@@ -175,6 +208,8 @@ fun ChatListScreen(
         showVoiceModeSheet = false
         assigningChatId = null
         renamingChatId = null
+        selectionMode = false
+        selectedChatIds = emptySet()
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
     }
@@ -250,7 +285,17 @@ fun ChatListScreen(
                                         selected = chat.id == activeChatId,
                                         runStatus = runStatuses[chat.id],
                                         projectName = chat.projectId?.let(projectNames::get),
-                                        onClick = { onOpenChat(chat.id) },
+                                        selectionMode = selectionMode,
+                                        checked = chat.id in selectedChatIds,
+                                        pendingDelete = chat.id in pendingDeleteIds,
+                                        onClick = {
+                                            if (selectionMode) {
+                                                toggleChatSelected(chat.id)
+                                            } else {
+                                                onOpenChat(chat.id)
+                                            }
+                                        },
+                                        onLongClick = { startSelecting(chat.id) },
                                         onPin = { onPinChat(chat.id, !chat.pinned) },
                                         onAddToProject = { assigningChatId = chat.id },
                                         onRename = { renamingChatId = chat.id },
@@ -298,7 +343,17 @@ fun ChatListScreen(
                                         selected = chat.id == activeChatId,
                                         runStatus = runStatuses[chat.id],
                                         projectName = chat.projectId?.let(projectNames::get),
-                                        onClick = { onOpenChat(chat.id) },
+                                        selectionMode = selectionMode,
+                                        checked = chat.id in selectedChatIds,
+                                        pendingDelete = chat.id in pendingDeleteIds,
+                                        onClick = {
+                                            if (selectionMode) {
+                                                toggleChatSelected(chat.id)
+                                            } else {
+                                                onOpenChat(chat.id)
+                                            }
+                                        },
+                                        onLongClick = { startSelecting(chat.id) },
                                         onPin = { onPinChat(chat.id, !chat.pinned) },
                                         onAddToProject = { assigningChatId = chat.id },
                                         onRename = { renamingChatId = chat.id },
@@ -313,12 +368,32 @@ fun ChatListScreen(
             }
         }
 
-        QuickSettingsDock(
-            quickSettings = quickSettings,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding(),
-        )
+        AnimatedVisibility(
+            visible = selectionMode,
+            enter = fadeIn(tween(ChatSectionAnimMs, easing = FastOutSlowInEasing)),
+            exit = fadeOut(tween(ChatSectionAnimMs / 2, easing = FastOutSlowInEasing)),
+        ) {
+            ChatSelectionBar(
+                selectedCount = selectedChatIds.size,
+                onCancel = {
+                    selectedChatIds = emptySet()
+                    selectionMode = false
+                },
+                onDelete = { deleteSelectedChats() },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding(),
+            )
+        }
+
+        if (!selectionMode) {
+            QuickSettingsDock(
+                quickSettings = quickSettings,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding(),
+            )
+        }
 
         CreditsFlashOverlay(
             content = creditsFlash,

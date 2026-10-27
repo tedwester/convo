@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
@@ -44,6 +45,7 @@ import tedwester.convo.ui.chat.attachments.AttachmentFileBadge
 import tedwester.convo.ui.chat.attachments.AttachmentImageThumb
 
 private const val PromptBarAnimMs = 200
+private const val SendAnimMs = 300
 private val PromptBarTopGap = 6.dp
 
 @Composable
@@ -90,7 +92,7 @@ internal fun UserMessage(
         lastAnimatedToken = animToken
         enterLayerActive = true
         enter.snapTo(0f)
-        enter.animateTo(1f, tween(durationMillis = 380, easing = FastOutSlowInEasing))
+        enter.animateTo(1f, tween(durationMillis = SendAnimMs, easing = FastOutSlowInEasing))
         enterLayerActive = false
     }
     val pendingEnter = animToken > lastAnimatedToken && animToken > 0
@@ -99,7 +101,12 @@ internal fun UserMessage(
         pendingEnter -> 0f
         else -> 1f
     }
-    val slidePx = with(density) { 14.dp.toPx() }
+    val slidePx = with(density) { 10.dp.toPx() }
+    // The bubble grows out of the corner that sits above the send button, the way a
+    // message is conjured out of the compose field, and the text resolves once the
+    // bubble has taken its shape.
+    val bubbleScale = 0.4f + 0.6f * t
+    val textAlpha = ((t - 0.25f) / 0.75f).coerceIn(0f, 1f)
 
     val toggleInteraction = remember { MutableInteractionSource() }
     val promptBarProgress by animateFloatAsState(
@@ -114,7 +121,7 @@ internal fun UserMessage(
             .then(
                 if (enterLayerActive || pendingEnter) {
                     Modifier.graphicsLayer {
-                        alpha = 0.25f + 0.75f * t
+                        alpha = 0.4f + 0.6f * t
                         translationY = (1f - t) * slidePx
                     }
                 } else {
@@ -164,10 +171,22 @@ internal fun UserMessage(
 
             if (textToShow.isNotBlank()) {
                 val bubbleShape = RoundedCornerShape(14.dp)
+                val animating = enterLayerActive || pendingEnter
                 Box(
                     modifier = Modifier
                         .clip(bubbleShape)
                         .background(bubbleGrey)
+                        .then(
+                            if (animating) {
+                                Modifier.graphicsLayer {
+                                    scaleX = bubbleScale
+                                    scaleY = bubbleScale
+                                    transformOrigin = TransformOrigin(1f, 1f)
+                                }
+                            } else {
+                                Modifier
+                            },
+                        )
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                 ) {
                     Text(
@@ -176,6 +195,11 @@ internal fun UserMessage(
                             color = onBubble,
                             fontWeight = FontWeight.ExtraLight,
                         ),
+                        modifier = if (animating) {
+                            Modifier.graphicsLayer { alpha = textAlpha }
+                        } else {
+                            Modifier
+                        },
                     )
                 }
             }
