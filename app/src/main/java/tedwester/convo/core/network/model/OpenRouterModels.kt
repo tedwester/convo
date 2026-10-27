@@ -115,6 +115,16 @@ data class OpenRouterModel(
             else -> "mp3"
         }
 
+    /**
+     * Sample rate of the raw PCM this model returns.
+     *
+     * Headerless PCM carries no rate of its own, so it has to be declared when it is
+     * wrapped in a container. Most providers return 24 kHz mono; HeyGen Voice streams
+     * 44.1 kHz.
+     */
+    val speechSampleRate: Int
+        get() = if (authorSlug.equals("heygen", ignoreCase = true)) 44_100 else 24_000
+
     fun resolveVoice(selected: String?): String? {
         if (supportedVoices.isEmpty()) {
             return selected?.takeIf { it.isNotBlank() }

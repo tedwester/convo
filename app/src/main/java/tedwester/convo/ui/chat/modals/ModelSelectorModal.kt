@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -61,7 +62,6 @@ import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.core.network.model.ModelKind
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.ui.components.ConvoBottomSheet
-import tedwester.convo.ui.components.ConvoIconButton
 import tedwester.convo.ui.components.ConvoSearchField
 import tedwester.convo.ui.components.ConvoSheetHeader
 import tedwester.convo.ui.components.LazyColumnWithEdgeFades
@@ -209,29 +209,46 @@ private fun ModelSelectorContent(
         )
 
         if (showFilterBadges) {
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = ModelSelectorHorizontalPadding),
-                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                ConvoIconButton(
-                    painter = if (filtersExpanded) {
-                        ConvoIcons.ChevronUp()
-                    } else {
-                        ConvoIcons.ChevronDown()
-                    },
-                    contentDescription = if (filtersExpanded) {
-                        "Hide filters"
-                    } else {
-                        "Show filters"
-                    },
-                    onClick = { filtersExpanded = !filtersExpanded },
-                    size = 34.dp,
-                    iconSize = 18.dp,
+                Text(
+                    text = "Filters",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    modifier = Modifier.weight(1f),
                 )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { filtersExpanded = !filtersExpanded },
+                        ),
+                ) {
+                    Icon(
+                        painter = if (filtersExpanded) {
+                            ConvoIcons.ChevronUp()
+                        } else {
+                            ConvoIcons.ChevronDown()
+                        },
+                        contentDescription = if (filtersExpanded) {
+                            "Hide filters"
+                        } else {
+                            "Show filters"
+                        },
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
 
             AnimatedVisibility(
@@ -242,7 +259,7 @@ private fun ModelSelectorContent(
                     shrinkVertically(tween(FilterAnimMs - 60, easing = FastOutSlowInEasing)),
             ) {
                 Column {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     ModelFilterBadgeRows(
                         filters = filters,

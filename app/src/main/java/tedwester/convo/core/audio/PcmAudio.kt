@@ -12,7 +12,7 @@ import java.nio.ByteOrder
  */
 object PcmAudio {
 
-    /** Sample rate of the speech providers that return raw PCM. */
+    /** Default sample rate for the providers that return raw PCM. */
     const val SpeechSampleRate = 24_000
 
     const val BitsPerSample = 16

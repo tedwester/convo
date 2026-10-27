@@ -118,7 +118,7 @@ internal fun ChatState.runSpeechReply(
             }
             val mime = audioMimeFor(result.contentType)
             val audioBytes = if (mime == "audio/pcm") {
-                PcmAudio.wrapInWav(result.audioBytes)
+                PcmAudio.wrapInWav(result.audioBytes, sampleRate = model.speechSampleRate)
             } else {
                 result.audioBytes
             }
@@ -139,9 +139,12 @@ internal fun ChatState.runSpeechReply(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val error = "⚠ ${e.message?.takeIf { it.isNotBlank() } ?: "Voice generation failed"}"
-            val content = ttsInput.takeIf { it.isNotBlank() }?.let { "$it\n\n$error" } ?: error
-            SpecialGenerationOutcome(content = content, success = false)
+            // The error stands on its own: prefixing the spoken text would hide the warning
+            // marker and render the failure as an ordinary reply.
+            SpecialGenerationOutcome(
+                content = "⚠ ${e.message?.takeIf { it.isNotBlank() } ?: "Voice generation failed"}",
+                success = false,
+            )
         }
     }
 }
