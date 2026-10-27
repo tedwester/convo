@@ -23,8 +23,8 @@ android {
         applicationId = "tedwester.convo"
         minSdk = 29
         targetSdk = 37
-        versionCode = 30
-        versionName = "1.1.0-beta21"
+        versionCode = 31
+        versionName = "1.1.0-beta22"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
