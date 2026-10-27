@@ -3,27 +3,20 @@ package tedwester.convo.ui.chat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,17 +41,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tedwester.convo.features.chat.data.ChatRunStatus
 import tedwester.convo.features.chat.model.Chat
+import tedwester.convo.ui.chat.selection.SelectionCheckboxSlot
+import tedwester.convo.ui.chat.selection.selectionRowTint
 import tedwester.convo.ui.components.ConvoIconButton
 import tedwester.convo.ui.components.ConvoIconButtonGap
 import tedwester.convo.ui.components.ConvoOverflowMenu
@@ -345,7 +338,11 @@ internal fun ChatListRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .background(
-                if (selected) selectedChatHighlight() else Color.Transparent,
+                when {
+                    checked -> selectionRowTint()
+                    selected -> selectedChatHighlight()
+                    else -> Color.Transparent
+                },
             )
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -456,158 +453,6 @@ internal fun ChatListRow(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SelectionCheckboxSlot(
-    visible: Boolean,
-    checked: Boolean,
-) {
-    val width by animateDpAsState(
-        targetValue = if (visible) 26.dp else 0.dp,
-        animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
-        label = "chatCheckSlot",
-    )
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(ChatSectionAnimMs / 2, easing = FastOutSlowInEasing),
-        label = "chatCheckAlpha",
-    )
-
-    Box(
-        modifier = Modifier.width(width),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        if (alpha > 0f) {
-            SelectionCheckbox(
-                checked = checked,
-                modifier = Modifier.alpha(alpha),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SelectionCheckbox(
-    checked: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val fill by animateColorAsState(
-        targetValue = if (checked) MaterialTheme.colorScheme.primary else Color.Transparent,
-        animationSpec = tween(160, easing = FastOutSlowInEasing),
-        label = "checkFill",
-    )
-    val ring by animateColorAsState(
-        targetValue = if (checked) {
-            Color.Transparent
-        } else {
-            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f)
-        },
-        animationSpec = tween(160, easing = FastOutSlowInEasing),
-        label = "checkRing",
-    )
-    val shape = RoundedCornerShape(6.dp)
-
-    Box(
-        modifier = modifier
-            .size(20.dp)
-            .clip(shape)
-            .background(fill)
-            .border(1.5.dp, ring, shape),
-        contentAlignment = Alignment.Center,
-    ) {
-        AnimatedVisibility(
-            visible = checked,
-            enter = scaleIn(spring(dampingRatio = 0.6f, stiffness = 420f)) +
-                fadeIn(tween(120)),
-            exit = scaleOut(tween(100)) + fadeOut(tween(100)),
-        ) {
-            Icon(
-                painter = ConvoIcons.Check(),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(13.dp),
-            )
-        }
-    }
-}
-
-/**
- * Bar shown while chats are selected. Replaces the quick settings dock so the two never
- * compete for the same corner.
- */
-@Composable
-internal fun ChatSelectionBar(
-    selectedCount: Int,
-    onCancel: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val dark = isSystemInDarkTheme()
-    val dockFill = if (dark) {
-        Color(0xFF1E1D1B).copy(alpha = 0.96f)
-    } else {
-        Color.White.copy(alpha = 0.96f)
-    }
-    val dockRing = if (dark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f)
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 8.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(dockFill)
-            .border(1.dp, dockRing, RoundedCornerShape(26.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Cancel",
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.Normal,
-                fontSize = 15.sp,
-            ),
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onCancel,
-                )
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-        )
-
-        Text(
-            text = if (selectedCount == 1) "1 selected" else "$selectedCount selected",
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
-            ),
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center,
-        )
-
-        Text(
-            text = "Delete",
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 15.sp,
-            ),
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = selectedCount > 0,
-                    onClick = onDelete,
-                )
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-        )
     }
 }
 

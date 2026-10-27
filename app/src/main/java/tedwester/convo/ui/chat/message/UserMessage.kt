@@ -101,12 +101,13 @@ internal fun UserMessage(
         pendingEnter -> 0f
         else -> 1f
     }
-    val slidePx = with(density) { 10.dp.toPx() }
-    // The bubble grows out of the corner that sits above the send button, the way a
-    // message is conjured out of the compose field, and the text resolves once the
-    // bubble has taken its shape.
-    val bubbleScale = 0.4f + 0.6f * t
-    val textAlpha = ((t - 0.25f) / 0.75f).coerceIn(0f, 1f)
+    val slidePx = with(density) { 14.dp.toPx() }
+    // Genie-style send: the bubble grows out of its bottom-right corner — the side that sits
+    // above the send button — climbing as it expands, the way the typed text flows out of the
+    // compose field into the thread as one object. The text resolves once the bubble has
+    // taken its shape, so nothing ever jumps or shows twice.
+    val bubbleScale = 0.35f + 0.65f * t
+    val textAlpha = ((t - 0.35f) / 0.65f).coerceIn(0f, 1f)
 
     val toggleInteraction = remember { MutableInteractionSource() }
     val promptBarProgress by animateFloatAsState(

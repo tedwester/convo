@@ -1,5 +1,6 @@
 package tedwester.convo.ui.chat
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.EnterTransition
@@ -13,7 +14,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -53,13 +56,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.features.chat.model.Chat
@@ -76,6 +80,8 @@ import tedwester.convo.ui.chat.modals.ModelSelectorModal
 import tedwester.convo.ui.chat.modals.QuickSettingsDock
 import tedwester.convo.ui.chat.modals.RenameChatModal
 import tedwester.convo.ui.chat.modals.VoiceModeModal
+import tedwester.convo.ui.chat.selection.ChatSelectionBar
+import tedwester.convo.ui.chat.selection.rememberChatSelectionState
 
 private const val ProjectsPageAnimMs = 300
 
@@ -128,43 +134,35 @@ fun ChatListScreen(
     var renamingChatId by remember { mutableStateOf<String?>(null) }
     var recentsExpanded by rememberSaveable { mutableStateOf(true) }
     var archiveExpanded by rememberSaveable { mutableStateOf(false) }
-    var selectionMode by rememberSaveable { mutableStateOf(false) }
-    var selectedChatIds by rememberSaveable { mutableStateOf(setOf<String>()) }
-    var pendingDeleteIds by remember { mutableStateOf(setOf<String>()) }
+    val selection = rememberChatSelectionState()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val haptics = LocalHapticFeedback.current
+
+    // System back leaves selection before it leaves the sidebar: a selection in progress is
+    // worth more than the drawer's open state, and it keeps back from feeling destructive.
+    BackHandler(enabled = selection.isActive) { selection.clear() }
 
     val recentChats = remember(chats) { chats.filter { !it.archived } }
     val archivedChats = remember(chats) { chats.filter { it.archived } }
     val projectNames = remember(projects) { projects.associate { it.id to it.name } }
 
-    fun toggleChatSelected(chatId: String) {
-        selectedChatIds = if (chatId in selectedChatIds) {
-            selectedChatIds - chatId
+    /** Tap: open the chat, or check it when a selection is already running. */
+    fun onRowClick(chatId: String) {
+        if (selection.isActive) {
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            selection.toggle(chatId)
         } else {
-            selectedChatIds + chatId
-        }
-        if (selectedChatIds.isEmpty()) selectionMode = false
-    }
-
-    fun startSelecting(chatId: String) {
-        selectionMode = true
-        if (chatId !in selectedChatIds) {
-            selectedChatIds = selectedChatIds + chatId
+            onOpenChat(chatId)
         }
     }
 
-    fun deleteSelectedChats() {
-        val ids = selectedChatIds
-        if (ids.isEmpty()) return
-        pendingDeleteIds = ids
-        selectedChatIds = emptySet()
-        selectionMode = false
-        scope.launch {
-            delay(ChatSectionAnimMs.toLong())
-            ids.forEach { onDeleteChat(it) }
-            pendingDeleteIds = emptySet()
+    /** Long press: start a selection on this chat. Always lands on a checked row. */
+    fun onRowLongClick(chatId: String) {
+        if (!selection.isActive) {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         }
+        selection.select(chatId)
     }
 
     var showTranscriptionPicker by remember { mutableStateOf(false) }
@@ -208,8 +206,7 @@ fun ChatListScreen(
         showVoiceModeSheet = false
         assigningChatId = null
         renamingChatId = null
-        selectionMode = false
-        selectedChatIds = emptySet()
+        selection.clear()
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
     }
@@ -285,17 +282,11 @@ fun ChatListScreen(
                                         selected = chat.id == activeChatId,
                                         runStatus = runStatuses[chat.id],
                                         projectName = chat.projectId?.let(projectNames::get),
-                                        selectionMode = selectionMode,
-                                        checked = chat.id in selectedChatIds,
-                                        pendingDelete = chat.id in pendingDeleteIds,
-                                        onClick = {
-                                            if (selectionMode) {
-                                                toggleChatSelected(chat.id)
-                                            } else {
-                                                onOpenChat(chat.id)
-                                            }
-                                        },
-                                        onLongClick = { startSelecting(chat.id) },
+                                        selectionMode = selection.isActive,
+                                        checked = chat.id in selection.selectedIds,
+                                        pendingDelete = chat.id in selection.exitingIds,
+                                        onClick = { onRowClick(chat.id) },
+                                        onLongClick = { onRowLongClick(chat.id) },
                                         onPin = { onPinChat(chat.id, !chat.pinned) },
                                         onAddToProject = { assigningChatId = chat.id },
                                         onRename = { renamingChatId = chat.id },
@@ -343,17 +334,11 @@ fun ChatListScreen(
                                         selected = chat.id == activeChatId,
                                         runStatus = runStatuses[chat.id],
                                         projectName = chat.projectId?.let(projectNames::get),
-                                        selectionMode = selectionMode,
-                                        checked = chat.id in selectedChatIds,
-                                        pendingDelete = chat.id in pendingDeleteIds,
-                                        onClick = {
-                                            if (selectionMode) {
-                                                toggleChatSelected(chat.id)
-                                            } else {
-                                                onOpenChat(chat.id)
-                                            }
-                                        },
-                                        onLongClick = { startSelecting(chat.id) },
+                                        selectionMode = selection.isActive,
+                                        checked = chat.id in selection.selectedIds,
+                                        pendingDelete = chat.id in selection.exitingIds,
+                                        onClick = { onRowClick(chat.id) },
+                                        onLongClick = { onRowLongClick(chat.id) },
                                         onPin = { onPinChat(chat.id, !chat.pinned) },
                                         onAddToProject = { assigningChatId = chat.id },
                                         onRename = { renamingChatId = chat.id },
@@ -368,30 +353,35 @@ fun ChatListScreen(
             }
         }
 
+        // Both docks own the same corner, so they trade places rather than stack: the quick
+        // settings dock sinks while the selection bar rises into its spot.
         AnimatedVisibility(
-            visible = selectionMode,
-            enter = fadeIn(tween(ChatSectionAnimMs, easing = FastOutSlowInEasing)),
-            exit = fadeOut(tween(ChatSectionAnimMs / 2, easing = FastOutSlowInEasing)),
+            visible = !selection.isActive,
+            enter = fadeIn(tween(180, easing = FastOutSlowInEasing)) +
+                slideInVertically(tween(220, easing = FastOutSlowInEasing)) { it / 4 },
+            exit = fadeOut(tween(140, easing = FastOutSlowInEasing)) +
+                slideOutVertically(tween(200, easing = FastOutSlowInEasing)) { it / 4 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding(),
         ) {
-            ChatSelectionBar(
-                selectedCount = selectedChatIds.size,
-                onCancel = {
-                    selectedChatIds = emptySet()
-                    selectionMode = false
-                },
-                onDelete = { deleteSelectedChats() },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding(),
-            )
+            QuickSettingsDock(quickSettings = quickSettings)
         }
 
-        if (!selectionMode) {
-            QuickSettingsDock(
-                quickSettings = quickSettings,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding(),
+        AnimatedVisibility(
+            visible = selection.isActive,
+            enter = fadeIn(tween(200, easing = FastOutSlowInEasing)) +
+                slideInVertically(tween(240, easing = FastOutSlowInEasing)) { it / 4 },
+            exit = fadeOut(tween(120, easing = FastOutSlowInEasing)) +
+                slideOutVertically(tween(180, easing = FastOutSlowInEasing)) { it / 4 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding(),
+        ) {
+            ChatSelectionBar(
+                selectedCount = selection.selectedCount,
+                onCancel = { selection.clear() },
+                onDelete = { selection.beginDelete(scope, onDeleteChat) },
             )
         }
 

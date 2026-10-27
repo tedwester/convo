@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -44,11 +43,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import tedwester.convo.features.chat.model.QuickSetting
 import tedwester.convo.features.chat.model.QuickSettingState
+import tedwester.convo.ui.components.DockCornerRadius
+import tedwester.convo.ui.components.DockSurface
 
 private val DockHeight = 52.dp
 private val DockSlotSize = 44.dp
 private val DockSlotIconSize = 21.dp
-private val DockCornerRadius = 26.dp
 private val DockPadding = 4.dp
 private const val StaggerMs = 45L
 private const val EnterMs = 220
@@ -61,32 +61,21 @@ fun QuickSettingsDock(
 ) {
     if (quickSettings.isEmpty()) return
 
-    val dark = isSystemInDarkTheme()
-    val dockFill = if (dark) {
-        Color(0xFF1E1D1B).copy(alpha = 0.96f)
-    } else {
-        Color.White.copy(alpha = 0.96f)
-    }
-    val dockRing = if (dark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.08f)
-
     Box(
         modifier = modifier
             .padding(horizontal = 16.dp)
             .padding(bottom = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier
-                .height(DockHeight)
-                .clip(RoundedCornerShape(DockCornerRadius))
-                .background(dockFill)
-                .border(1.dp, dockRing, RoundedCornerShape(DockCornerRadius))
-                .padding(DockPadding),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            quickSettings.forEachIndexed { index, setting ->
-                DockSlot(setting = setting, staggerIndex = index)
+        DockSurface(modifier = Modifier.height(DockHeight)) {
+            Row(
+                modifier = Modifier.padding(DockPadding),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                quickSettings.forEachIndexed { index, setting ->
+                    DockSlot(setting = setting, staggerIndex = index)
+                }
             }
         }
     }
