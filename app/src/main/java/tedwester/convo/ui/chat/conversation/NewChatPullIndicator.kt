@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.pow
 import tedwester.convo.ui.icons.ConvoIcons
 
 /**
@@ -55,11 +56,12 @@ fun NewChatPullIndicator(
     val grey = MaterialTheme.colorScheme.onSurfaceVariant
 
     // ---- size -----------------------------------------------------------------
-    // Disc diameter. Capped at full size; below the cap it tracks the open band, so small
-    // pulls show a small disc. The 34dp reserve is label (16) + spacer (6) + 6dp clearance
-    // on each side, which keeps the whole column inside the band with margin.
+    // Disc diameter, grown straight from the pull progress so the affordance is exactly
+    // as big as the gesture is long. It reaches its full size at the arming point and no
+    // further: the visible pull and the distance the user has to drag back are the same
+    // thing, so unwinding it never feels longer than building it.
     val maxDisc = 56.dp
-    val disc = (bandHeight - 34.dp).coerceIn(0.dp, maxDisc)
+    val disc = (maxDisc.value * p.pow(0.8f)).dp
 
     // ---- fade -----------------------------------------------------------------
     // Opacity follows the disc's own size, so the disc and its transparency always move
@@ -68,15 +70,14 @@ fun NewChatPullIndicator(
     val labelAlpha = ((p - 0.60f) / 0.30f).coerceIn(0f, 1f)
 
     // ---- placement ------------------------------------------------------------
-    // Center the whole column in the band. The label's space is always part of the column
-    // height, so the disc stays put when the label fades in, and the disc's top and the
-    // label's bottom both keep at least 6dp of clearance from the response and composer.
-    val columnHeight = disc.value + 22f
-    val bottomClearance = ((bandHeight.value - columnHeight) / 2f).coerceAtLeast(6f).dp
+    // Center the disc in the gap. The label hangs below it in the space the gap leaves,
+    // so the disc keeps its place when the label fades in. The clearance below is what
+    // keeps the label off the composer, and the band keeps the disc off the response.
+    val clearance = ((bandHeight.value - disc.value - 22f) / 2f).coerceAtLeast(6f).dp
 
     Column(
         modifier = modifier
-            .offset(y = -(bottomInset + bottomClearance))
+            .offset(y = -(bottomInset + clearance))
             .alpha(overallAlpha),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

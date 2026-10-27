@@ -34,7 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.math.exp
+import kotlin.math.abs
 import tedwester.convo.ui.chat.PullHaptics
 
 /**
@@ -331,18 +331,17 @@ class ChatScrollController internal constructor(
     /**
      * How far the chat itself moves up while pulling.
      *
-     * The chat only shifts a little, and it eases into place instead of tracking the finger
-     * exactly, so the gesture reads as "something is about to happen" rather than dragging
-     * the whole conversation off screen. The shift follows the same post-dead-zone distance
-     * as the progress, so the gap and the affordance in it always move together.
+     * The shift is proportional to the pull, damped to at most [pullShiftMaxPx], so the gap
+     * opens and closes in step with the gesture instead of saturating early. An easing
+     * curve would look fine but would bank an invisible surplus of overscroll: the
+     * affordance would look full long before the gesture was spent, and dragging back
+     * would then have to unwind distance the user never saw, which reads as the page
+     * sticking to the bottom.
      */
     val pullShift: Float
         get() {
             if (pullShiftMaxPx <= 0f) return 0f
-            val pull = effectivePull
-            if (pull <= 0f) return 0f
-            val ratio = pull / pullShiftMaxPx
-            return pullShiftMaxPx * (1f - exp(-ratio))
+            return pullShiftMaxPx * pullProgress
         }
 
     /** The user moved the list themselves; stop following until they come back. */
@@ -420,7 +419,10 @@ class ChatScrollController internal constructor(
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
         if (deltaPx <= 0f || !pullEnabled) return
-        val cap = (pullThresholdPx + pullDeadZonePx) * 1.15f
+        // The pull stops at the arming point: the affordance is full there, so anything
+        // beyond it would be distance the user cannot see and would have to drag back
+        // through, which is what made the page feel stuck to the bottom.
+        val cap = pullThresholdPx + pullDeadZonePx
         val next = (pullDistance + deltaPx).coerceAtMost(cap)
         if (next == pullDistance) return
         pullDistance = next
@@ -431,10 +433,17 @@ class ChatScrollController internal constructor(
         )
     }
 
-    /** Closes the gap again, for example when the user scrolls back down. */
+    /**
+     * Closes the gap again, for example when the user scrolls away.
+     *
+     * Any real scroll dismisses the pull, in either direction: the gap belongs to the
+     * overscroll, not to the conversation, so the chat must not stay shifted up while the
+     * user reads back through it.
+     */
     internal fun closePull(amountPx: Float) {
-        if (amountPx <= 0f || pullDistance <= 0f) return
-        pullDistance = (pullDistance - amountPx).coerceAtLeast(0f)
+        val amount = abs(amountPx)
+        if (amount <= 0f || pullDistance <= 0f) return
+        pullDistance = (pullDistance - amount).coerceAtLeast(0f)
     }
 
     /** Closes the gap and forgets it, for example when the conversation is left. */
