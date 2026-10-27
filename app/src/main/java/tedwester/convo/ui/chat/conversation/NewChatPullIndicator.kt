@@ -3,7 +3,6 @@ package tedwester.convo.ui.chat.conversation
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -29,25 +28,21 @@ import tedwester.convo.ui.icons.ConvoIcons
 /**
  * Indicator shown in the gap that opens when pulling past the newest message.
  *
- * All geometry is derived from [bandHeight] — the room currently available between the top
- * of the composer and the newest message's ink. The assembly therefore always fits inside
- * that gap with a clearance on both sides, at every instant of the gesture, and can never
- * overlap the composer below or the response above.
+ * A single grey disc holding the new-chat glyph grows from small to full with the pull and
+ * shrinks back with it; at full pull it performs one soft bounce. The "New chat" label
+ * appears during the last stretch of the pull.
  *
- * Visual structure, bottom to top of the drawn ink:
- *
- *  - one disc holding the new-chat glyph, growing from small to full with the pull;
- *  - exactly one grey ring hugging the disc's edge (the border is drawn over the disc, so
- *    they are always attached, never separated);
- *  - the "New chat" label, which appears during the last stretch of the pull.
- *
- * The whole assembly grows with the pull and shrinks back with it. In the final stretch
- * the ring thins away and the disc grows into its place, so at full pull the grey ring is
- * gone, replaced by the circle. Alpha rides the same pull signal the list scroll uses, so
- * fades stay in step with the scroll settling and nothing lingers over the content.
+ * Placement is derived, never guessed. The column is anchored above the composer by
+ * [bottomInset] plus a clearance that centers it inside [bandHeight] — the room between
+ * the composer top and the newest message's ink. The column's full height (disc + spacer
+ * + label, whose space is reserved even while the label is invisible) always fits the
+ * band with margin, so neither the disc nor the label can overlap the composer below or
+ * the response above, at any point of the gesture or release. Alpha rides the same pull
+ * signal the list scroll uses, so fades stay in step with the scroll settling.
  *
  * @param progress pull progress, 0..1 (1 = fully pulled / armed).
  * @param armed true once a release would start a new chat.
+ * @param bottomInset distance from the screen bottom to the composer top (chrome + ime).
  * @param bandHeight vertical room between the composer top and the newest message ink,
  *   including the shift the pull has already opened.
  */
@@ -55,6 +50,7 @@ import tedwester.convo.ui.icons.ConvoIcons
 fun NewChatPullIndicator(
     progress: Float,
     armed: Boolean,
+    bottomInset: Dp,
     bandHeight: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -62,21 +58,14 @@ fun NewChatPullIndicator(
     val grey = MaterialTheme.colorScheme.onSurfaceVariant
 
     // ---- size -----------------------------------------------------------------
-    // Total outer diameter of disc + ring. Capped at the full size; below the cap it
-    // tracks the open band so small pulls show a small assembly. The reserved space is
-    // label (16) + spacer (6) + 5dp clearance on each side, so the ink fits with margin.
-    val maxOuter = 56.dp
-    val outer = (bandHeight - 32.dp).coerceIn(0.dp, maxOuter)
+    // Disc diameter. Capped at full size; below the cap it tracks the open band, so small
+    // pulls show a small disc. The 34dp reserve is label (16) + spacer (6) + 6dp clearance
+    // on each side, which keeps the whole column inside the band with margin.
+    val maxDisc = 56.dp
+    val disc = (bandHeight - 34.dp).coerceIn(0.dp, maxDisc)
 
-    // Ring thickness: a constant fraction of the assembly (same look at every size),
-    // thinning away only in the last stretch of the pull, where the disc overtakes it.
-    val absorb = smoothStep(((p - 0.72f) / 0.28f).coerceIn(0f, 1f))
-    val ringWidth = outer.value * 0.10f * (1f - absorb)
-    val discDiameter = outer.value - 2f * ringWidth
-
-    // The disc is drawn at a fixed base size and scales to [discDiameter]; the glyph
-    // scales with it. One soft bounce each time the pull reaches full.
-    val discBase = maxOuter.value
+    // The disc is drawn at a fixed base size and scales to [disc]; the glyph scales with
+    // it. One soft bounce each time the pull reaches full.
     val bounce = remember { Animatable(1f) }
     LaunchedEffect(armed) {
         if (armed) {
@@ -87,36 +76,35 @@ fun NewChatPullIndicator(
             )
         }
     }
-    val discScale = discDiameter / discBase * bounce.value
+    val discScale = disc.value / maxDisc.value * bounce.value
 
     // ---- fade -----------------------------------------------------------------
-    // Ramps in quickly as the pull starts, and both position and alpha collapse with
-    // the same animated pull signal on release, so the indicator disappears in step
-    // with the scroll returning.
     val overallAlpha = (p / 0.30f).coerceIn(0f, 1f)
     val labelAlpha = ((p - 0.60f) / 0.30f).coerceIn(0f, 1f)
 
     // ---- placement ------------------------------------------------------------
-    // Bottom clearance centers the currently visible ink inside the band. While the
-    // label is hidden only the disc counts, so the disc floats centered in the gap and
-    // glides down gently as the label appears below it.
-    val visibleInk = outer.value + 22f * labelAlpha
-    val bottomClearance = ((bandHeight.value - visibleInk) / 2f).coerceAtLeast(6f).dp
+    // Center the whole column in the band. The label's space is always part of the column
+    // height, so the disc stays put when the label fades in, and the disc's top and the
+    // label's bottom both keep at least 6dp of clearance from the response and composer.
+    val columnHeight = disc.value + 22f
+    val bottomClearance = ((bandHeight.value - columnHeight) / 2f).coerceAtLeast(6f).dp
 
     Column(
         modifier = modifier
-            .offset(y = -bottomClearance)
+            .offset(y = -(bottomInset + bottomClearance))
             .alpha(overallAlpha),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        // Wrapper sized to the disc so the column's layout height matches the visual disc;
+        // the inner fixed-size box only scales its drawing, glyph included.
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(outer),
+            modifier = Modifier.size(disc),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(maxOuter)
+                    .size(maxDisc)
                     .scale(discScale)
                     .clip(CircleShape)
                     .background(grey.copy(alpha = 0.10f + 0.08f * p)),
@@ -128,16 +116,6 @@ fun NewChatPullIndicator(
                     modifier = Modifier.size(22.dp),
                 )
             }
-            // One ring, painted over the disc's edge so the two are always attached.
-            Box(
-                modifier = Modifier
-                    .size(outer)
-                    .border(
-                        width = ringWidth.dp,
-                        color = grey.copy(alpha = 0.30f),
-                        shape = CircleShape,
-                    ),
-            )
         }
         Spacer(Modifier.height(6.dp))
         Text(
@@ -148,6 +126,3 @@ fun NewChatPullIndicator(
         )
     }
 }
-
-/** Hermite interpolation between 0 and 1 at [t] (0..1), for easing the ring absorption. */
-private fun smoothStep(t: Float): Float = t * t * (3f - 2f * t)

@@ -52,7 +52,7 @@ internal const val ScrollToBottomThresholdPx = 120f
 internal const val ScrollToTopThresholdPx = 120f
 
 /** How far a pull gesture travels before it counts as fully pulled. */
-internal val PullRevealDistance = 150.dp
+internal val PullRevealDistance = 200.dp
 
 /** How far the chat moves up while a pull gesture is in progress. */
 internal val PullRevealShift = 96.dp

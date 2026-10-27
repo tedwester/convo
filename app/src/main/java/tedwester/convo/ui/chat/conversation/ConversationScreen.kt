@@ -580,12 +580,13 @@ fun ConversationScreen(
                 NewChatPullIndicator(
                     progress = controller.pullProgress,
                     armed = controller.isPullArmed,
+                    // Anchor above the composer, never above the raw screen bottom.
+                    bottomInset = bottomChromeDp + listBottomImeDp,
                     // Vertical room in the gap that opens between the composer top and
                     // the newest message ink: the base spacing under the last bubble
                     // (content padding gap plus the bubble's own bottom padding) plus
                     // everything the pull itself opened up.
-                    bandHeight = ConversationChromeMessageGap + ChatBubbleBottomGap +
-                        listBottomImeDp + shiftDp,
+                    bandHeight = ConversationChromeMessageGap + ChatBubbleBottomGap + shiftDp,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
