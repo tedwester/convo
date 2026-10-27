@@ -59,7 +59,6 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -191,9 +190,10 @@ private fun ComposerTextInput(
                     .fillMaxWidth()
                     .then(
                         if (textFieldAnchor != null) {
-                            Modifier.onGloballyPositioned {
-                                textFieldAnchor.value = it.boundsInRoot()
-                            }
+                            // Kept by reference only; the send animation turns it into a
+                            // rectangle on the frames it actually flies, so tracking it
+                            // costs nothing while the keyboard moves.
+                            Modifier.onGloballyPositioned { textFieldAnchor.coords = it }
                         } else {
                             Modifier
                         },

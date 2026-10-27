@@ -30,12 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,8 @@ import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.ui.chat.RectAnchor
 import tedwester.convo.ui.chat.attachments.AttachmentFileBadge
 import tedwester.convo.ui.chat.attachments.AttachmentImageThumb
+import kotlin.math.PI
+import kotlin.math.sin
 
 private const val PromptBarAnimMs = 200
 private val PromptBarTopGap = 6.dp
@@ -53,9 +56,10 @@ private val PromptBarTopGap = 6.dp
  * in the thread, so it climbs out of the compose field instead of appearing somewhere else.
  *
  * The bubble leaves the field at the end of the line you typed on — where the send button
- * sits — and is pulled up into the thread on a spring. While it travels it is tall and narrow,
- * the way a thread of liquid behaves when it is drawn out of a narrow opening, and it relaxes
- * into its final shape as it lands.
+ * sits — and travels up into the thread along a curve that bows out to the side mid-flight,
+ * the way the Mac genie veers instead of going straight. While it travels it is tall and
+ * narrow, the way a thread of liquid behaves when it is drawn out of a narrow opening, and it
+ * relaxes into its final shape as it lands.
  *
  * The shape stretches while the text stays put: the bubble's body carries the scale, and the
  * text carries its inverse about the same corner, so the letters never smear. The text is
@@ -66,8 +70,8 @@ private val PromptBarTopGap = 6.dp
  * opening rather than a message being sent — the bubble simply scales into place.
  */
 private val GenieSpring = spring<Float>(
-    dampingRatio = 0.72f,
-    stiffness = 420f,
+    dampingRatio = 0.9f,
+    stiffness = 380f,
 )
 
 /** Width the bubble is at while it is still a thread leaving the field. */
@@ -75,6 +79,12 @@ private const val GenieStartWidth = 0.42f
 
 /** How much taller than usual the bubble is at that moment. */
 private const val GenieStartHeight = 1.6f
+
+/** How far sideways the flight bows out at the middle of its curve. */
+private val GenieSway = 36.dp
+
+/** How far the bubble tips over mid-flight, in degrees. Zero at both ends. */
+private const val GenieTiltDeg = 2.5f
 
 /** How far the shape has to open out before the text starts to resolve. */
 private const val GenieTextOpenness = 0.72f
@@ -113,9 +123,12 @@ internal fun UserMessage(
     val progress = remember { Animatable(1f) }
     var lastAnimatedToken by remember(message.id) { mutableIntStateOf(0) }
 
-    // Where the bubble comes to rest, measured on screen. Read live inside the layer so a
-    // scrolling conversation keeps the landing spot honest.
-    val settledBounds = remember(message.id) { RectAnchor() }
+    // Where the bubble comes to rest, kept by reference. It is only turned into a
+    // rectangle on the frames a flight is running, so settled bubbles and keyboard
+    // transitions never pay for measuring.
+    val settledAnchor = remember(message.id) { RectAnchor() }
+    val density = LocalDensity.current
+    val swayPx = with(density) { GenieSway.toPx() }
 
     LaunchedEffect(animToken) {
         if (animToken <= 0) {
@@ -187,26 +200,35 @@ internal fun UserMessage(
             if (textToShow.isNotBlank()) {
                 val bubbleShape = RoundedCornerShape(14.dp)
                 Box(
-                    modifier = Modifier.onGloballyPositioned {
-                        settledBounds.value = it.boundsInRoot()
-                    },
+                    modifier = Modifier.onGloballyPositioned { settledAnchor.coords = it },
                 ) {
                     Box(
                         modifier = Modifier
                             .graphicsLayer {
                                 val p = if (pendingSend) 0f else progress.value
-                                val origin = flightOrigin?.value
-                                val settled = settledBounds.value
+                                // Only a flying bubble measures anything. Settled bubbles
+                                // skip it entirely, so scrolling and keyboard transitions
+                                // never pay for the flight's bookkeeping.
+                                val origin = if (p < 1f) {
+                                    flightOrigin?.current()
+                                } else {
+                                    null
+                                }
+                                val settled = if (p < 1f) settledAnchor.current() else Rect.Zero
                                 val hasFlight = origin != null && !origin.isEmpty && !settled.isEmpty
 
                                 if (hasFlight) {
-                                    // Rise out of the compose field: start at the end of the
-                                    // line the text was typed on and climb into the thread.
-                                    translationX = (origin.right - settled.right) * (1f - p)
-                                    translationY = (origin.bottom - settled.bottom) * (1f - p)
+                                    val e = p.coerceIn(0f, 1f)
+                                    // Climb out of the compose field along a curve that bows
+                                    // out to the side mid-flight instead of going straight.
+                                    val bow = sin(PI * e).toFloat()
+                                    translationX = (origin.right - settled.right) * (1f - e) -
+                                        bow * swayPx
+                                    translationY = (origin.bottom - settled.bottom) * (1f - e)
+                                    rotationZ = -bow * GenieTiltDeg
                                     // A thread of liquid: narrow and tall on the way out.
-                                    scaleX = GenieStartWidth + (1f - GenieStartWidth) * p
-                                    scaleY = GenieStartHeight + (1f - GenieStartHeight) * p
+                                    scaleX = GenieStartWidth + (1f - GenieStartWidth) * e
+                                    scaleY = GenieStartHeight + (1f - GenieStartHeight) * e
                                 } else {
                                     scaleX = 0.55f + 0.45f * p
                                     scaleY = 0.55f + 0.45f * p
@@ -226,19 +248,30 @@ internal fun UserMessage(
                             modifier = Modifier
                                 .graphicsLayer {
                                     val p = if (pendingSend) 0f else progress.value
-                                    val origin = flightOrigin?.value
-                                    val settled = settledBounds.value
+                                    val origin = if (p < 1f) {
+                                        flightOrigin?.current()
+                                    } else {
+                                        null
+                                    }
+                                    val settled = if (p < 1f) {
+                                        settledAnchor.current()
+                                    } else {
+                                        Rect.Zero
+                                    }
                                     val hasFlight =
                                         origin != null && !origin.isEmpty && !settled.isEmpty
                                     if (hasFlight) {
+                                        val e = p.coerceIn(0f, 1f)
+                                        val bow = sin(PI * e).toFloat()
                                         // Counteract the body so the letters stay crisp and
-                                        // level while the shape stretches around them.
+                                        // level while the shape stretches and tips around them.
                                         val openness = GenieStartWidth +
-                                            (1f - GenieStartWidth) * p
+                                            (1f - GenieStartWidth) * e
                                         val stretch = GenieStartHeight +
-                                            (1f - GenieStartHeight) * p
+                                            (1f - GenieStartHeight) * e
                                         scaleX = 1f / openness
                                         scaleY = 1f / stretch
+                                        rotationZ = bow * GenieTiltDeg
                                     }
                                     transformOrigin = TransformOrigin(1f, 1f)
                                     // Resolve the text only once the bubble has opened out
