@@ -73,7 +73,16 @@ fun MessageList(
     var selectedPromptMessageId by remember { mutableLongStateOf(-1L) }
 
     val onThinkingInteraction = remember(scrollController) {
-        { scrollController.stopFollowing() }
+        {
+            // Expanding a thinking block grows its message, which moves everything below
+            // it. When the chat is sitting at the newest content, that growth must not
+            // drag the page off the bottom, so the follow logic keeps it flush instead.
+            // Away from the bottom the viewport belongs to the user and nothing may move
+            // it.
+            if (!scrollController.listState.isAtEnd()) {
+                scrollController.stopFollowing()
+            }
+        }
     }
 
     SideEffect {

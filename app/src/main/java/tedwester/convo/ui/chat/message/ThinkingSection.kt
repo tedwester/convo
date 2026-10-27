@@ -171,16 +171,11 @@ private fun ThinkingPane(
                 source: NestedScrollSource,
             ): Offset {
                 if (source == NestedScrollSource.UserInput) onUserScroll(consumed.y)
-                if (available.y == 0f) return Offset.Zero
-
-                val atTop = scrollState.value <= 0
-                val atBottom = scrollState.value >= scrollState.maxValue
-                return when {
-                    scrollState.maxValue <= 0 -> Offset(0f, available.y)
-                    available.y > 0f && atTop -> Offset(0f, available.y)
-                    available.y < 0f && atBottom -> Offset(0f, available.y)
-                    else -> Offset.Zero
-                }
+                // The pane never holds on to what it could not scroll itself. Whatever is
+                // left of the gesture belongs to the chat list, so an expanded thinking
+                // block can never swallow a scroll and leave the page stuck short of the
+                // bottom.
+                return Offset.Zero
             }
         }
     }

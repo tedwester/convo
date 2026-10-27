@@ -249,8 +249,19 @@ class ChatScrollController internal constructor(
      */
     val scrollConnection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            if (source == NestedScrollSource.UserInput && available.y != 0f) {
+            if (source != NestedScrollSource.UserInput) return Offset.Zero
+            if (available.y != 0f) {
                 onDismissKeyboard()
+            }
+            // While a pull is open, the drag that brings the finger back up cannot scroll
+            // the list (it already sits at the newest content), so it used to be thrown
+            // away and the pull stayed open until the finger lifted. Count that drag
+            // against the pull instead: the gesture unwinds the affordance the way it
+            // came, and only once the pull is closed does the list scroll again.
+            if (available.y > 0f && pullDistance > 0f) {
+                val consumed = minOf(available.y, pullDistance)
+                closePull(consumed)
+                return Offset(0f, consumed)
             }
             return Offset.Zero
         }
