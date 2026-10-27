@@ -28,17 +28,8 @@ import tedwester.convo.ui.icons.ConvoIcons
  * A single grey disc holding the new-chat glyph grows from small to full with the pull and
  * shrinks back with it. The "New chat" label appears during the last stretch of the pull.
  *
- * Everything visual — size, opacity and position — is driven by one quantity: the gap the
- * pull has opened. That makes the indicator an exact mirror of the gesture: it grows as the
- * gap opens and shrinks back as the gap closes, never fading on a schedule of its own, so
- * it can never linger over the chat while it dissolves.
- *
- * Placement is derived, never guessed. The column is anchored above the composer by
- * [bottomInset] plus a clearance that centers it inside [bandHeight] — the room between
- * the composer top and the newest message's ink. The column's full height (disc + spacer
- * + label, whose space is reserved even while the label is invisible) always fits the band
- * with margin, so neither the disc nor the label can overlap the composer below or the
- * response above.
+ * Size, opacity and position all follow the pull progress, so the indicator mirrors the
+ * gesture exactly and can never linger over the chat while it dissolves.
  *
  * @param progress pull progress, 0..1 (1 = fully pulled / armed).
  * @param bottomInset distance from the screen bottom to the composer top (chrome + ime).
@@ -55,24 +46,17 @@ fun NewChatPullIndicator(
     val p = progress.coerceIn(0f, 1f)
     val grey = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // ---- size -----------------------------------------------------------------
-    // Disc diameter, grown straight from the pull progress so the affordance is exactly
-    // as big as the gesture is long. It reaches its full size at the arming point and no
-    // further: the visible pull and the distance the user has to drag back are the same
-    // thing, so unwinding it never feels longer than building it.
+    // The disc is grown from the progress so that what is on screen is exactly what the
+    // gesture has spent, and it reaches full size at the arming point.
     val maxDisc = 56.dp
     val disc = (maxDisc.value * p.pow(0.8f)).dp
 
-    // ---- fade -----------------------------------------------------------------
-    // Opacity follows the disc's own size, so the disc and its transparency always move
-    // together: growing means becoming visible, shrinking means dissolving with it.
+    // Opacity follows the disc size, so the two always move together.
     val overallAlpha = ((disc.value - 8f) / 14f).coerceIn(0f, 1f)
     val labelAlpha = ((p - 0.60f) / 0.30f).coerceIn(0f, 1f)
 
-    // ---- placement ------------------------------------------------------------
-    // Center the disc in the gap. The label hangs below it in the space the gap leaves,
-    // so the disc keeps its place when the label fades in. The clearance below is what
-    // keeps the label off the composer, and the band keeps the disc off the response.
+    // Clearance below the column keeps the label off the composer; the band keeps the disc
+    // off the response above.
     val clearance = ((bandHeight.value - disc.value - 22f) / 2f).coerceAtLeast(6f).dp
 
     Column(

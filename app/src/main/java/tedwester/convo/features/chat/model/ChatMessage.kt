@@ -48,8 +48,6 @@ data class ChatMessage(
     val showVoiceAsTextFirst: Boolean = false,
 
     val voiceAutoPlayed: Boolean = false,
-
-    val variantContinuations: List<List<ChatMessage>> = emptyList(),
 ) {
 
     fun savedVariants(): List<String> {

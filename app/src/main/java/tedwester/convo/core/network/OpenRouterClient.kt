@@ -517,7 +517,9 @@ class OpenRouterClient(
                 put("reasoning", reasoning.toJson())
             }
             if (maxTokens != null && maxTokens > 0) {
-                put("max_tokens", maxTokens)
+                // max_tokens is deprecated in favour of max_completion_tokens, and some
+                // providers reject anything below 16.
+                put("max_completion_tokens", maxTokens.coerceAtLeast(16))
             }
         }
         return Request.Builder()

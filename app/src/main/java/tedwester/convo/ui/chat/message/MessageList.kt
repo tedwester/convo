@@ -74,11 +74,8 @@ fun MessageList(
 
     val onThinkingInteraction = remember(scrollController) {
         {
-            // Expanding a thinking block grows its message, which moves everything below
-            // it. When the chat is sitting at the newest content, that growth must not
-            // drag the page off the bottom, so the follow logic keeps it flush instead.
-            // Away from the bottom the viewport belongs to the user and nothing may move
-            // it.
+            // Expanding a thinking block grows its message, which moves everything below it.
+            // At the newest content the follow logic keeps the bottom flush instead.
             if (!scrollController.listState.isAtEnd()) {
                 scrollController.stopFollowing()
             }

@@ -1,12 +1,5 @@
 package tedwester.convo.features.chat.model
 
-internal fun ChatMessage.ensureVariantContinuations(variantCount: Int): List<List<ChatMessage>> {
-    if (variantCount <= 0) return emptyList()
-    val current = variantContinuations
-    if (current.size >= variantCount) return current
-    return current + List(variantCount - current.size) { emptyList() }
-}
-
 internal fun ChatMessage.withActiveVariantFields(index: Int): ChatMessage {
     val saved = savedVariants()
     val clamped = index.coerceIn(0, saved.lastIndex)

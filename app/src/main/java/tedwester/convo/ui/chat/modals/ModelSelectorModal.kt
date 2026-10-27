@@ -2,11 +2,17 @@ package tedwester.convo.ui.chat.modals
 
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -55,16 +61,19 @@ import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.core.network.model.ModelKind
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.ui.components.ConvoBottomSheet
+import tedwester.convo.ui.components.ConvoIconButton
 import tedwester.convo.ui.components.ConvoSearchField
 import tedwester.convo.ui.components.ConvoSheetHeader
 import tedwester.convo.ui.components.LazyColumnWithEdgeFades
 import tedwester.convo.ui.components.rememberConvoSheetController
+import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.ConvoModalTokens
 import tedwester.convo.ui.theme.convoModalSurface
 import java.util.Locale
 
 private val ModelSelectorHorizontalPadding = 20.dp
 private const val ModelFetchRetryMs = 2_000L
+private const val FilterAnimMs = 220
 
 @Composable
 fun ModelSelectorModal(
@@ -155,6 +164,7 @@ private fun ModelSelectorContent(
     var loading by remember { mutableStateOf(true) }
     var query by remember { mutableStateOf("") }
     var filters by remember { mutableStateOf(fixedFilters ?: initialFilters) }
+    var filtersExpanded by remember { mutableStateOf(true) }
     val sheetBackground = convoModalSurface()
     val activeFilters = fixedFilters ?: filters
 
@@ -199,13 +209,48 @@ private fun ModelSelectorContent(
         )
 
         if (showFilterBadges) {
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            ModelFilterBadgeRows(
-                filters = filters,
-                onFiltersChange = ::updateFilters,
-                contentHorizontalPadding = ModelSelectorHorizontalPadding,
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ModelSelectorHorizontalPadding),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                ConvoIconButton(
+                    painter = if (filtersExpanded) {
+                        ConvoIcons.ChevronUp()
+                    } else {
+                        ConvoIcons.ChevronDown()
+                    },
+                    contentDescription = if (filtersExpanded) {
+                        "Hide filters"
+                    } else {
+                        "Show filters"
+                    },
+                    onClick = { filtersExpanded = !filtersExpanded },
+                    size = 34.dp,
+                    iconSize = 18.dp,
+                )
+            }
+
+            AnimatedVisibility(
+                visible = filtersExpanded,
+                enter = fadeIn(tween(FilterAnimMs, easing = FastOutSlowInEasing)) +
+                    expandVertically(tween(FilterAnimMs, easing = FastOutSlowInEasing)),
+                exit = fadeOut(tween(FilterAnimMs - 60, easing = FastOutSlowInEasing)) +
+                    shrinkVertically(tween(FilterAnimMs - 60, easing = FastOutSlowInEasing)),
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    ModelFilterBadgeRows(
+                        filters = filters,
+                        onFiltersChange = ::updateFilters,
+                        contentHorizontalPadding = ModelSelectorHorizontalPadding,
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
         } else {

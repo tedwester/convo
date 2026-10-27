@@ -171,10 +171,9 @@ private fun ThinkingPane(
                 source: NestedScrollSource,
             ): Offset {
                 if (source == NestedScrollSource.UserInput) onUserScroll(consumed.y)
-                // The pane never holds on to what it could not scroll itself. Whatever is
-                // left of the gesture belongs to the chat list, so an expanded thinking
-                // block can never swallow a scroll and leave the page stuck short of the
-                // bottom.
+                // Never hold on to what the pane could not scroll itself: the leftover
+                // belongs to the chat list, so an expanded thinking block cannot swallow a
+                // scroll and leave the page stuck short of the bottom.
                 return Offset.Zero
             }
         }

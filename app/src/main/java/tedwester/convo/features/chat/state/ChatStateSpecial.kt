@@ -5,6 +5,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import tedwester.convo.core.audio.PcmAudio
 import tedwester.convo.core.network.model.ImageRequest
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.core.network.model.SpeechRequest
@@ -111,17 +112,23 @@ internal fun ChatState.runSpeechReply(
                         model = model.id,
                         input = ttsInput,
                         voice = voice,
-                        responseFormat = "mp3",
+                        responseFormat = model.speechResponseFormat,
                     ),
                 )
             }
             val mime = audioMimeFor(result.contentType)
+            val audioBytes = if (mime == "audio/pcm") {
+                PcmAudio.wrapInWav(result.audioBytes)
+            } else {
+                result.audioBytes
+            }
+            val storedMime = if (mime == "audio/pcm") "audio/wav" else mime
             val attachment = withContext(Dispatchers.IO) {
                 AttachmentStore.ingestBytes(
                     context = context,
-                    bytes = result.audioBytes,
-                    mimeType = mime,
-                    displayName = "voice_${System.currentTimeMillis()}.${extForMime(mime)}",
+                    bytes = audioBytes,
+                    mimeType = storedMime,
+                    displayName = "voice_${System.currentTimeMillis()}.${extForMime(storedMime)}",
                 )
             }
             if (attachment == null) {

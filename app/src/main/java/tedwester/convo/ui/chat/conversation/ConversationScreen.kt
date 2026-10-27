@@ -353,12 +353,10 @@ fun ConversationScreen(
                     )
                 }
             } else {
-                // No list means no scroll controller. Drop it only after the session
-                // transition has played out: when a pull triggers a new chat, the old
-                // conversation keeps composing while it fades, and its controller still
-                // animates the (already released) pull closed. Nulling immediately would
-                // pop the pull affordance off the screen mid-transition. The guard keeps
-                // a newer live controller from being cleared by a stale session.
+                // Drop the controller only after the session transition has played out: when
+                // a pull triggers a new chat, the old conversation keeps composing while it
+                // fades and its controller still animates the pull closed. The guard keeps a
+                // newer live controller from being cleared by a stale session.
                 LaunchedEffect(activeSession) {
                     delay(ConversationTransitionMs.toLong() + 32L)
                     if (activeSession == chatState.conversationSessionId) {
@@ -581,10 +579,9 @@ fun ConversationScreen(
                     progress = controller.pullProgress,
                     // Anchor above the composer, never above the raw screen bottom.
                     bottomInset = bottomChromeDp + listBottomImeDp,
-                    // Vertical room in the gap that opens between the composer top and
-                    // the newest message ink: the base spacing under the last bubble
-                    // (content padding gap plus the bubble's own bottom padding) plus
-                    // everything the pull itself opened up.
+                    // Room in the gap that opens between the composer top and the newest
+                    // message ink: the base spacing under the last bubble plus everything
+                    // the pull itself opened up.
                     bandHeight = ConversationChromeMessageGap + ChatBubbleBottomGap + shiftDp,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )

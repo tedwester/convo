@@ -55,10 +55,8 @@ internal const val ScrollToTopThresholdPx = 120f
 internal val PullRevealDistance = 180.dp
 
 /**
- * Overscroll that has to pile up before the pull starts at all.
- *
- * Casual overscroll at the end of a conversation should not spawn the new-chat affordance,
- * so the gesture has to commit to it before anything moves.
+ * Overscroll that has to pile up before the pull starts at all, so casual overscroll at
+ * the end of a conversation does not spawn the new-chat affordance.
  */
 internal val PullStartDeadZone = 28.dp
 
@@ -254,10 +252,9 @@ class ChatScrollController internal constructor(
                 onDismissKeyboard()
             }
             // While a pull is open, the drag that brings the finger back up cannot scroll
-            // the list (it already sits at the newest content), so it used to be thrown
-            // away and the pull stayed open until the finger lifted. Count that drag
-            // against the pull instead: the gesture unwinds the affordance the way it
-            // came, and only once the pull is closed does the list scroll again.
+            // the list (it already sits at the newest content), so it would be thrown away.
+            // Count it against the pull instead: the gesture unwinds the affordance the way
+            // it came, and the list only scrolls once the pull is closed.
             if (available.y > 0f && pullDistance > 0f) {
                 val consumed = minOf(available.y, pullDistance)
                 closePull(consumed)
@@ -311,12 +308,7 @@ class ChatScrollController internal constructor(
     var pullDistance by mutableFloatStateOf(0f)
         private set
 
-    /**
-     * The pull distance that counts, which is the overscroll past the start dead zone.
-     *
-     * The dead zone is what makes the gesture less sensitive: until the overscroll clears
-     * it, the chat does not move and no affordance appears.
-     */
+    /** The pull distance that counts, which is the overscroll past the start dead zone. */
     private val effectivePull: Float
         get() = (pullDistance - pullDeadZonePx).coerceAtLeast(0f)
 
@@ -331,12 +323,9 @@ class ChatScrollController internal constructor(
     /**
      * How far the chat itself moves up while pulling.
      *
-     * The shift is proportional to the pull, damped to at most [pullShiftMaxPx], so the gap
-     * opens and closes in step with the gesture instead of saturating early. An easing
-     * curve would look fine but would bank an invisible surplus of overscroll: the
-     * affordance would look full long before the gesture was spent, and dragging back
-     * would then have to unwind distance the user never saw, which reads as the page
-     * sticking to the bottom.
+     * Proportional to the pull, damped to at most [pullShiftMaxPx]. An easing curve would
+     * saturate early and bank an invisible surplus of overscroll that the user would still
+     * have to drag back through.
      */
     val pullShift: Float
         get() {
@@ -419,9 +408,8 @@ class ChatScrollController internal constructor(
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
         if (deltaPx <= 0f || !pullEnabled) return
-        // The pull stops at the arming point: the affordance is full there, so anything
-        // beyond it would be distance the user cannot see and would have to drag back
-        // through, which is what made the page feel stuck to the bottom.
+        // Stop at the arming point: beyond it the affordance is already full, and any
+        // further distance would be invisible and still have to be dragged back through.
         val cap = pullThresholdPx + pullDeadZonePx
         val next = (pullDistance + deltaPx).coerceAtMost(cap)
         if (next == pullDistance) return
@@ -434,11 +422,8 @@ class ChatScrollController internal constructor(
     }
 
     /**
-     * Closes the gap again, for example when the user scrolls away.
-     *
-     * Any real scroll dismisses the pull, in either direction: the gap belongs to the
-     * overscroll, not to the conversation, so the chat must not stay shifted up while the
-     * user reads back through it.
+     * Closes the gap again. Any real scroll dismisses the pull: the gap belongs to the
+     * overscroll, not to the conversation.
      */
     internal fun closePull(amountPx: Float) {
         val amount = abs(amountPx)

@@ -99,6 +99,22 @@ data class OpenRouterModel(
         get() = isSpeechModel &&
             (supportsVoiceParameter || supportedVoices.isNotEmpty())
 
+    /**
+     * Audio format the speech endpoint can return for this model.
+     *
+     * OpenRouter accepts `mp3` and `pcm`, but some providers accept only one of them and
+     * reject the other with a 400: HeyGen Voice and Gemini TTS return pcm only, MiniMax
+     * returns mp3 only.
+     */
+    val speechResponseFormat: String
+        get() = when {
+            authorSlug.equals("heygen", ignoreCase = true) -> "pcm"
+            authorSlug.equals("minimax", ignoreCase = true) -> "mp3"
+            authorSlug.equals("google", ignoreCase = true) &&
+                id.contains("tts", ignoreCase = true) -> "pcm"
+            else -> "mp3"
+        }
+
     fun resolveVoice(selected: String?): String? {
         if (supportedVoices.isEmpty()) {
             return selected?.takeIf { it.isNotBlank() }

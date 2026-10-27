@@ -18,12 +18,12 @@ enum class ModelOutputFilter(val label: String, val apiValues: List<String>) {
 }
 
 enum class ModelSortBadge(val label: String, val apiValue: String) {
+    Newest("Newest", "newest"),
     Popular("Popular", "most-popular"),
     Cheapest("Cheapest", "pricing-low-to-high"),
     Fastest("Fastest", "throughput-high-to-low"),
     LowestLatency("Snappy", "latency-low-to-high"),
     Smartest("Smartest", "intelligence-high-to-low"),
-    Newest("Newest", "newest"),
     ;
 }
 
