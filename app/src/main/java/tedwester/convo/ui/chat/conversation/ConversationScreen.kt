@@ -579,7 +579,6 @@ fun ConversationScreen(
                 val shiftDp = with(density) { controller.pullShift.toDp() }
                 NewChatPullIndicator(
                     progress = controller.pullProgress,
-                    armed = controller.isPullArmed,
                     // Anchor above the composer, never above the raw screen bottom.
                     bottomInset = bottomChromeDp + listBottomImeDp,
                     // Vertical room in the gap that opens between the composer top and

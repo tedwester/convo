@@ -52,7 +52,15 @@ internal const val ScrollToBottomThresholdPx = 120f
 internal const val ScrollToTopThresholdPx = 120f
 
 /** How far a pull gesture travels before it counts as fully pulled. */
-internal val PullRevealDistance = 200.dp
+internal val PullRevealDistance = 180.dp
+
+/**
+ * Overscroll that has to pile up before the pull starts at all.
+ *
+ * Casual overscroll at the end of a conversation should not spawn the new-chat affordance,
+ * so the gesture has to commit to it before anything moves.
+ */
+internal val PullStartDeadZone = 28.dp
 
 /** How far the chat moves up while a pull gesture is in progress. */
 internal val PullRevealShift = 96.dp
@@ -216,6 +224,7 @@ class ChatScrollController internal constructor(
     private val scope: CoroutineScope,
     private val pullThresholdPx: Float,
     private val pullShiftMaxPx: Float,
+    private val pullDeadZonePx: Float,
 ) {
     /** The keyboard is dismissed when the user starts scrolling the list. */
     internal var onDismissKeyboard: () -> Unit = {}
@@ -291,9 +300,18 @@ class ChatScrollController internal constructor(
     var pullDistance by mutableFloatStateOf(0f)
         private set
 
+    /**
+     * The pull distance that counts, which is the overscroll past the start dead zone.
+     *
+     * The dead zone is what makes the gesture less sensitive: until the overscroll clears
+     * it, the chat does not move and no affordance appears.
+     */
+    private val effectivePull: Float
+        get() = (pullDistance - pullDeadZonePx).coerceAtLeast(0f)
+
     /** How far the pull has progressed towards the new chat action. */
     val pullProgress: Float
-        get() = if (pullThresholdPx <= 0f) 0f else (pullDistance / pullThresholdPx).coerceIn(0f, 1f)
+        get() = if (pullThresholdPx <= 0f) 0f else (effectivePull / pullThresholdPx).coerceIn(0f, 1f)
 
     /** True once a release would start a new chat. */
     val isPullArmed: Boolean
@@ -304,12 +322,15 @@ class ChatScrollController internal constructor(
      *
      * The chat only shifts a little, and it eases into place instead of tracking the finger
      * exactly, so the gesture reads as "something is about to happen" rather than dragging
-     * the whole conversation off screen.
+     * the whole conversation off screen. The shift follows the same post-dead-zone distance
+     * as the progress, so the gap and the affordance in it always move together.
      */
     val pullShift: Float
         get() {
-            if (pullShiftMaxPx <= 0f || pullDistance <= 0f) return 0f
-            val ratio = pullDistance / pullShiftMaxPx
+            if (pullShiftMaxPx <= 0f) return 0f
+            val pull = effectivePull
+            if (pull <= 0f) return 0f
+            val ratio = pull / pullShiftMaxPx
             return pullShiftMaxPx * (1f - exp(-ratio))
         }
 
@@ -388,7 +409,8 @@ class ChatScrollController internal constructor(
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
         if (deltaPx <= 0f || !pullEnabled) return
-        val next = (pullDistance + deltaPx).coerceAtMost(pullThresholdPx * 1.15f)
+        val cap = (pullThresholdPx + pullDeadZonePx) * 1.15f
+        val next = (pullDistance + deltaPx).coerceAtMost(cap)
         if (next == pullDistance) return
         pullDistance = next
         pullHaptics.onProgress(
@@ -453,17 +475,20 @@ fun rememberChatScrollController(
     pullEnabled: Boolean = true,
     pullDistance: Dp = PullRevealDistance,
     pullShift: Dp = PullRevealShift,
+    pullDeadZone: Dp = PullStartDeadZone,
     scope: CoroutineScope = rememberCoroutineScope(),
 ): ChatScrollController {
     val density = LocalDensity.current
     val pullThresholdPx = with(density) { pullDistance.toPx() }
     val pullShiftMaxPx = with(density) { pullShift.toPx() }
+    val pullDeadZonePx = with(density) { pullDeadZone.toPx() }
     val controller = remember(listState) {
         ChatScrollController(
             listState = listState,
             scope = scope,
             pullThresholdPx = pullThresholdPx,
             pullShiftMaxPx = pullShiftMaxPx,
+            pullDeadZonePx = pullDeadZonePx,
         )
     }
     SideEffect {
