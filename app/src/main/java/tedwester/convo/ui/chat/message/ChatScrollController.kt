@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -241,6 +242,9 @@ class ChatScrollController internal constructor(
 
     private val pullHaptics = PullHaptics()
 
+    /** The gap-closing animation, if one is running. Cancelled by any fresh pull. */
+    private var releaseJob: Job? = null
+
     /**
      * Watches the list for user input: it tells the controller when the user scrolls and
      * opens the gap below the newest content when the list is pulled past the end.
@@ -342,6 +346,7 @@ class ChatScrollController internal constructor(
     internal fun onGestureStart() {
         isGestureActive = true
         isFollowing = false
+        releaseJob?.cancel()
         pullHaptics.reset()
     }
 
@@ -408,6 +413,10 @@ class ChatScrollController internal constructor(
     /** Opens the gap below the newest content while the list is pulled past the end. */
     internal fun addPull(deltaPx: Float) {
         if (deltaPx <= 0f || !pullEnabled) return
+        // A fresh pull wins over a stale close animation: easing off and pulling again, or
+        // starting a new pull while the gap is still closing, must count towards the
+        // threshold instead of being overwritten back to zero.
+        releaseJob?.cancel()
         // Stop at the arming point: beyond it the affordance is already full, and any
         // further distance would be invisible and still have to be dragged back through.
         val cap = pullThresholdPx + pullDeadZonePx
@@ -438,9 +447,10 @@ class ChatScrollController internal constructor(
 
     /** Animates the gap closed. */
     internal fun releasePull() {
+        releaseJob?.cancel()
         if (pullDistance <= 0f) return
         val from = pullDistance
-        scope.launch {
+        releaseJob = scope.launch {
             try {
                 animate(
                     initialValue = from,

@@ -58,6 +58,11 @@ private const val ToggleColorMs = 240
 fun QuickSettingsDock(
     quickSettings: List<QuickSetting>,
     modifier: Modifier = Modifier,
+    /**
+     * Whether the options cascade in one by one. True the first time the bar appears;
+     * after that the bar always arrives with its options already in it.
+     */
+    playIntro: Boolean = true,
 ) {
     if (quickSettings.isEmpty()) return
 
@@ -74,7 +79,11 @@ fun QuickSettingsDock(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 quickSettings.forEachIndexed { index, setting ->
-                    DockSlot(setting = setting, staggerIndex = index)
+                    DockSlot(
+                        setting = setting,
+                        staggerIndex = index,
+                        immediate = !playIntro,
+                    )
                 }
             }
         }
@@ -82,9 +91,11 @@ fun QuickSettingsDock(
 }
 
 @Composable
-private fun DockSlot(setting: QuickSetting, staggerIndex: Int) {
-    var entered by remember { mutableStateOf(false) }
-    LaunchedEffectStagger(staggerIndex) { entered = true }
+private fun DockSlot(setting: QuickSetting, staggerIndex: Int, immediate: Boolean) {
+    var entered by remember { mutableStateOf(immediate) }
+    if (!immediate) {
+        LaunchedEffectStagger(staggerIndex) { entered = true }
+    }
 
     AnimatedVisibility(
         visible = entered,

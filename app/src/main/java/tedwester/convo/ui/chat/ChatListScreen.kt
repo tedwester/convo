@@ -81,9 +81,13 @@ import tedwester.convo.ui.chat.modals.QuickSettingsDock
 import tedwester.convo.ui.chat.modals.RenameChatModal
 import tedwester.convo.ui.chat.modals.VoiceModeModal
 import tedwester.convo.ui.chat.selection.ChatSelectionBar
+import tedwester.convo.ui.chat.selection.ChatDeletedFlash
 import tedwester.convo.ui.chat.selection.rememberChatSelectionState
 
 private const val ProjectsPageAnimMs = 300
+
+/** How long the bulk-delete confirmation pill stays up. */
+private const val DeletedFlashMs = 1600L
 
 private val SectionAnimSpec = tween<Float>(ChatSectionAnimMs, easing = FastOutSlowInEasing)
 private val SectionSizeAnimSpec: FiniteAnimationSpec<IntSize> =
@@ -135,6 +139,20 @@ fun ChatListScreen(
     var recentsExpanded by rememberSaveable { mutableStateOf(true) }
     var archiveExpanded by rememberSaveable { mutableStateOf(false) }
     val selection = rememberChatSelectionState()
+    // The options cascade in only the very first time the bar appears. After that — in
+    // particular when it comes back from a selection — the bar arrives with them already in it.
+    var dockIntroPlayed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(selection.isActive) {
+        if (selection.isActive) dockIntroPlayed = true
+    }
+    // How many chats the last bulk delete removed. Shown briefly as a confirmation pill in
+    // the dock corner, in place of the quick settings bar.
+    var deletedFlashCount by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(deletedFlashCount) {
+        if (deletedFlashCount == null) return@LaunchedEffect
+        kotlinx.coroutines.delay(DeletedFlashMs)
+        deletedFlashCount = null
+    }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val haptics = LocalHapticFeedback.current
@@ -353,11 +371,11 @@ fun ChatListScreen(
             }
         }
 
-        // Both docks own the same corner, so they trade places: each one slides straight down
-        // off the bottom of the screen when it leaves, and rises back up the same way when it
-        // returns.
+        // The corner holds one thing at a time: quick settings, the selection bar, or the
+        // delete confirmation. Each slides straight down off-screen when it leaves and rises
+        // back the same way.
         AnimatedVisibility(
-            visible = !selection.isActive,
+            visible = !selection.isActive && deletedFlashCount == null,
             enter = slideInVertically(
                 animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
                 initialOffsetY = { it },
@@ -370,7 +388,10 @@ fun ChatListScreen(
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding(),
         ) {
-            QuickSettingsDock(quickSettings = quickSettings)
+            QuickSettingsDock(
+                quickSettings = quickSettings,
+                playIntro = !dockIntroPlayed,
+            )
         }
 
         AnimatedVisibility(
@@ -390,8 +411,31 @@ fun ChatListScreen(
             ChatSelectionBar(
                 selectedCount = selection.selectedCount,
                 onCancel = { selection.clear() },
-                onDelete = { selection.beginDelete(scope, onDeleteChat) },
+                onDelete = {
+                    val count = selection.selectedCount
+                    if (count <= 0) return@ChatSelectionBar
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    deletedFlashCount = count
+                    selection.beginDelete(scope, onDeleteChat)
+                },
             )
+        }
+
+        AnimatedVisibility(
+            visible = deletedFlashCount != null && !selection.isActive,
+            enter = slideInVertically(
+                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
+                initialOffsetY = { it },
+            ) + fadeIn(tween(ChatSectionAnimMs, easing = FastOutSlowInEasing)),
+            exit = slideOutVertically(
+                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
+                targetOffsetY = { it },
+            ) + fadeOut(tween(ChatSectionAnimMs / 2, easing = FastOutSlowInEasing)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding(),
+        ) {
+            ChatDeletedFlash(deletedCount = deletedFlashCount ?: 0)
         }
 
         CreditsFlashOverlay(
