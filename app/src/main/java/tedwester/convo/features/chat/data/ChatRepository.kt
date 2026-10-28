@@ -225,7 +225,7 @@ class ChatRepository(context: Context) {
         writeIndex(chats)
     }
 
-    private fun deriveTitle(messages: List<ChatMessage>): String? {
+    internal fun deriveTitle(messages: List<ChatMessage>): String? {
         val first = messages.firstOrNull {
             it.author == MessageAuthor.User && !it.isVoice && it.content.isNotBlank()
         } ?: return null

@@ -31,6 +31,7 @@ import tedwester.convo.features.chat.model.Project
 import tedwester.convo.features.chat.model.ReasoningEffort
 import tedwester.convo.features.chat.model.ReasoningPreferences
 import tedwester.convo.ui.chat.modals.ModelFilterState
+import java.util.Collections
 import kotlin.math.min
 
 @Stable
@@ -138,6 +139,9 @@ class ChatState(
 
     internal var activeCompletionSessionId: Long = 0L
 
+    /** Chats with a title call in flight, so rapid completions never stack them up. */
+    internal val titlingChatIds = Collections.synchronizedSet(mutableSetOf<String>())
+
     internal fun bumpMessageListRevision() {
         messageListRevision++
     }
@@ -220,6 +224,7 @@ class ChatState(
                     isRunning = update.isRunning
                     if (!update.isRunning) {
                         refreshChatList()
+                        maybeGenerateTitle()
                     }
                 }
             }
