@@ -62,6 +62,7 @@ internal fun ChatState.sendImpl() {
             attachments = attachments,
         )
         lastSentUserMessageId = currentId
+        lastSentChatId = currentChatId
         input = ""
         clearPendingAttachments()
         persist()
@@ -196,6 +197,7 @@ internal suspend fun ChatState.sendVoiceImpl(
         isVoice = true,
     )
     lastSentUserMessageId = currentId
+    lastSentChatId = currentChatId
     persist()
 
     if (model.supportsSpeechOutput) {
@@ -285,6 +287,7 @@ private suspend fun ChatState.sendTranscriptionVoiceBody(
         attachments = listOf(attachment),
     )
     lastSentUserMessageId = currentId
+    lastSentChatId = currentChatId
     persist(bumpRecency = true)
     bumpMessageListRevision()
 

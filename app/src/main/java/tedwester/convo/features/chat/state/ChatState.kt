@@ -116,6 +116,14 @@ class ChatState(
     var lastSentUserMessageId by mutableStateOf(0L)
         internal set
 
+    /**
+     * The chat the latest send belongs to. Message ids restart per chat, so the pulse only
+     * counts when this is the chat on screen — otherwise any older chat holding the same
+     * numeric id would replay the flight on open.
+     */
+    var lastSentChatId by mutableStateOf<String?>(null)
+        internal set
+
     var conversationSessionId by mutableStateOf(0)
         internal set
 

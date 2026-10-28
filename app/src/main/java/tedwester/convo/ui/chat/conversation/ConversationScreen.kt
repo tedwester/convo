@@ -293,7 +293,9 @@ fun ConversationScreen(
                         scrollController = scrollController,
                         conversationKey = conversationKey,
                         isRunning = chatState.isRunning && isLiveSession,
-                        sendPulseMessageId = if (isLiveSession) {
+                        sendPulseMessageId = if (isLiveSession &&
+                            chatState.currentChatId == chatState.lastSentChatId
+                        ) {
                             chatState.lastSentUserMessageId
                         } else {
                             0
