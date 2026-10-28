@@ -1,0 +1,5 @@
+Convo is a local-first Android chat client for any AI model on OpenRouter.
+
+Chat with hundreds of models — text, reasoning, web search, voice, images, and video — with streaming replies, projects, pinned chats, and variant responses. Conversations stay on your device: the app needs only your own OpenRouter API key, which is encrypted on-device. No account, no tracking.
+
+Note: an OpenRouter API key is required to chat, and all AI processing happens on OpenRouter's servers.

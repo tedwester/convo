@@ -1,0 +1,5 @@
+- New bubble logo and launcher icons
+- iMessage-style send animation
+- Chat list multi-select with bulk delete
+- Variant branches keep their follow-ups
+- Edit messages together with their attachments
