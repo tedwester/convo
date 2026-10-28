@@ -26,8 +26,29 @@ private val TitleModelChain = listOf(
 
 private const val TitleRetriesPerModel = 2
 private const val TitleRetryDelayMs = 1000L
-private const val TitleMaxTokens = 32
+private const val TitleMaxTokens = 64
 private const val TitlePromptChars = 500
+
+/** A title is a few words, never a sentence and never our own prompt echoed back. */
+private const val TitleMaxChars = 40
+private const val TitleMaxWords = 7
+
+/** Vocabulary from the title prompt itself — any candidate containing these is the model
+ * parroting instructions instead of answering, and must be rejected, not applied. */
+private val TitleEchoWords = listOf(
+    "concise",
+    "conversation",
+    "json",
+    "generate",
+    "following",
+    "reply",
+    "quotation",
+    "language",
+    "emoji",
+    "instruction",
+    "summar",
+    "title",
+)
 
 internal fun ChatState.maybeGenerateTitle() {
     val chatId = currentChatId ?: return
@@ -89,9 +110,11 @@ private suspend fun ChatState.generateTitleFor(
 }
 
 internal fun buildTitlePrompt(userText: String, assistantText: String): String =
-    "Generate a concise title for the following conversation. " +
-        "Reply with only JSON like {\"title\": \"...\"}: " +
-        "2-4 words, no emojis, no quotation marks, same language as the conversation.\n\n" +
+    "Reply with ONLY a JSON object like {\"title\": \"...\"}. " +
+        "Do not explain. Do not repeat these instructions.\n\n" +
+        "The title must be 2-4 words, no emojis, no quotation marks, " +
+        "same language as the conversation.\n\n" +
+        "Conversation:\n" +
         "User: ${userText.take(TitlePromptChars)}\n" +
         "Assistant: ${assistantText.take(TitlePromptChars)}"
 
@@ -103,14 +126,30 @@ internal fun parseTitleResponse(raw: String): String? {
         if (start < 0 || end <= start) return@runCatching null
         JSONObject(raw.substring(start, end + 1)).optString("title").trim()
     }.getOrNull()
-    val candidate = jsonTitle?.takeIf { it.isNotBlank() }
-        ?: raw.lines().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
-    val cleaned = candidate
-        .trim()
+    jsonTitle?.takeIf { it.isNotBlank() }?.let { cleaned ->
+        return cleaned.cleanTitleCandidate() ?: return null
+    }
+    val fallback = raw.lines().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+    return fallback.cleanTitleCandidate()
+}
+
+/**
+ * A candidate only counts if it reads like a title: short, a few words, and nothing from
+ * the prompt's own vocabulary. Anything else is the model thinking out loud, and applying
+ * it would put instructions where the chat's name goes.
+ */
+internal fun String.cleanTitleCandidate(): String? {
+    val cleaned = trim()
         .trim('"', '“', '”', '‘', '’', '«', '»', '「', '」')
         .trim()
-        .take(60)
+        .trimEnd('.', '!', '?', ':', ';', ',')
+        .trim()
+        .take(TitleMaxChars)
         .trim()
     if (cleaned.length < 2) return null
+    if (cleaned.split(Regex("\\s+")).size > TitleMaxWords) return null
+    if (cleaned.contains('{') || cleaned.contains('}')) return null
+    val lower = cleaned.lowercase()
+    if (TitleEchoWords.any { lower.contains(it) }) return null
     return cleaned
 }
