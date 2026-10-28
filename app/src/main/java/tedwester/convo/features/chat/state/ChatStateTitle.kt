@@ -107,7 +107,7 @@ internal fun parseTitleResponse(raw: String): String? {
         ?: raw.lines().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
     val cleaned = candidate
         .trim()
-        .trim('"', '"', ''', ''', '«', '»', '「', '」')
+        .trim('"', '“', '”', '‘', '’', '«', '»', '「', '」')
         .trim()
         .take(60)
         .trim()
