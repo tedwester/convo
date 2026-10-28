@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" width="180" alt="Convo logo">
+</p>
+
 # Convo
 
 A local-first Android chat client powered by [OpenRouter](https://openrouter.ai). Bring your own API key — conversations stay on your device.
