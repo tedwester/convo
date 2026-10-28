@@ -16,7 +16,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -258,16 +257,6 @@ fun ConversationScreen(
             val displayMessages = if (isLiveSession) chatState.messages else frame.messages
             val hasFrameMessages = displayMessages.isNotEmpty()
             val conversationKey = if (isLiveSession) chatState.currentChatId else frame.chatId
-            var userBubbleAnimOnMountToken by remember(activeSession) { mutableIntStateOf(0) }
-            var hadFrameMessages by remember(activeSession) { mutableStateOf(hasFrameMessages) }
-
-            LaunchedEffect(hasFrameMessages, isLiveSession) {
-                if (!isLiveSession) return@LaunchedEffect
-                if (hasFrameMessages && !hadFrameMessages) {
-                    userBubbleAnimOnMountToken += 1
-                }
-                hadFrameMessages = hasFrameMessages
-            }
 
             LaunchedEffect(activeSession) {
                 if (isLiveSession) {
@@ -304,7 +293,11 @@ fun ConversationScreen(
                         scrollController = scrollController,
                         conversationKey = conversationKey,
                         isRunning = chatState.isRunning && isLiveSession,
-                        userBubbleAnimOnMountToken = if (isLiveSession) userBubbleAnimOnMountToken else 0,
+                        sendPulseMessageId = if (isLiveSession) {
+                            chatState.lastSentUserMessageId
+                        } else {
+                            0
+                        },
                         sendFlightOrigin = if (isLiveSession) sendFlightOrigin else null,
                         onRegenerate = { id ->
                             if (!isLiveSession) return@MessageList

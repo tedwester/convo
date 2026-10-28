@@ -94,6 +94,7 @@ internal fun UserMessage(
     message: ChatMessage,
     modifier: Modifier = Modifier,
     animToken: Int = 0,
+    startHidden: Boolean = false,
     flightOrigin: RectAnchor? = null,
     promptBarVisible: Boolean = false,
     actionsEnabled: Boolean = true,
@@ -121,7 +122,10 @@ internal fun UserMessage(
 
     // Flight progress: 1 means settled. A send drives it back to 0 and lets it spring home.
     val progress = remember { Animatable(1f) }
-    var lastAnimatedToken by remember(message.id) { mutableIntStateOf(0) }
+    // Whatever token is current the first time this bubble composes has already been
+    // handled — a chat opening, or an old item scrolling back into view, must never replay
+    // the flight. Only a token that arrives while composed starts one.
+    var lastAnimatedToken by remember(message.id) { mutableIntStateOf(animToken) }
 
     // Where the bubble comes to rest, kept by reference. It is only turned into a
     // rectangle on the frames a flight is running, so settled bubbles and keyboard
@@ -147,6 +151,11 @@ internal fun UserMessage(
     // into its resting place before it starts climbing.
     val pendingSend = animToken > lastAnimatedToken && animToken > 0
 
+    // A message that was just sent waits fully out of sight until its pulse lands. The pulse
+    // always follows in the same frame's effect, so this only ever hides the one or two
+    // frames that would otherwise flash the bubble in its resting place first.
+    val hidden = startHidden && animToken <= 0
+
     val toggleInteraction = remember { MutableInteractionSource() }
     val promptBarProgress by animateFloatAsState(
         targetValue = if (promptBarVisible) 1f else 0f,
@@ -155,7 +164,9 @@ internal fun UserMessage(
     )
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = if (hidden) 0f else 1f },
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.Top,
     ) {

@@ -19,6 +19,7 @@ fun ChatBubble(
     onTogglePromptBar: () -> Unit = {},
     onStartEdit: () -> Unit = {},
     userAnimToken: Int = 0,
+    startHidden: Boolean = false,
     flightOrigin: RectAnchor? = null,
     expectStreamedThinking: Boolean = false,
     onViewAttachment: (ChatAttachment) -> Unit = {},
@@ -33,6 +34,7 @@ fun ChatBubble(
         UserMessage(
             message = message,
             animToken = userAnimToken,
+            startHidden = startHidden,
             flightOrigin = flightOrigin,
             promptBarVisible = promptBarVisible,
             actionsEnabled = actionsEnabled,

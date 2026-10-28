@@ -332,6 +332,22 @@ class ChatRepository(context: Context) {
                     },
                 )
             }
+            if (message.variantContinuations.isNotEmpty()) {
+                put(
+                    "variantContinuations",
+                    JSONArray().apply {
+                        message.variantContinuations.forEach { branch ->
+                            put(
+                                JSONArray().apply {
+                                    branch.forEach { continuation ->
+                                        put(messageToJson(continuation))
+                                    }
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         }
 
     private fun messageFromJson(obj: JSONObject): ChatMessage {
@@ -390,6 +406,9 @@ class ChatRepository(context: Context) {
             stoppedWhileThinking = obj.optBoolean("stoppedWhileThinking", false),
             showVoiceAsTextFirst = obj.optBoolean("showVoiceAsTextFirst", false),
             voiceAutoPlayed = obj.optBoolean("voiceAutoPlayed", false),
+            variantContinuations = parseVariantContinuations(
+                obj.optJSONArray("variantContinuations"),
+            ),
         )
     }
 
@@ -499,6 +518,22 @@ class ChatRepository(context: Context) {
         return buildList {
             for (i in 0 until array.length()) {
                 add(parseAttachments(array.optJSONArray(i)))
+            }
+        }
+    }
+
+    private fun parseVariantContinuations(array: JSONArray?): List<List<ChatMessage>> {
+        if (array == null || array.length() == 0) return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val branchArray = array.optJSONArray(i) ?: continue
+                add(
+                    buildList {
+                        for (j in 0 until branchArray.length()) {
+                            add(messageFromJson(branchArray.getJSONObject(j)))
+                        }
+                    },
+                )
             }
         }
     }

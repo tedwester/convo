@@ -9,7 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -39,7 +39,7 @@ fun MessageList(
     conversationKey: Any? = null,
     scrollEnabled: Boolean = true,
     isRunning: Boolean = false,
-    userBubbleAnimOnMountToken: Int = 0,
+    sendPulseMessageId: Long = 0,
     sendFlightOrigin: RectAnchor? = null,
     onRegenerate: (Long) -> Unit = {},
     onResendUserMessage: (messageId: Long, editedText: String?) -> Unit = { _, _ -> },
@@ -68,11 +68,35 @@ fun MessageList(
         if (latest == null || latest.voiceAutoPlayed) -1L else latest.id
     }
 
-    var lastPulsedCount by remember { mutableIntStateOf(messages.size) }
     var userBubbleAnimId by remember { mutableLongStateOf(-1L) }
     var userBubbleAnimToken by remember { mutableIntStateOf(0) }
-    var lastHandledMountAnimToken by remember { mutableIntStateOf(0) }
     var selectedPromptMessageId by remember { mutableLongStateOf(-1L) }
+
+    // Each send is pulsed exactly once, no matter how often this recomposes or how far the
+    // user scrolls. Anything else that adds messages — a chat opening, history loading —
+    // never carries a send id, so those bubbles simply appear.
+    val pulsedSendIds = remember(conversationKey) { mutableSetOf<Long>() }
+
+    LaunchedEffect(sendPulseMessageId) {
+        if (sendPulseMessageId <= 0 || sendPulseMessageId in pulsedSendIds) return@LaunchedEffect
+        if (messages.none { it.id == sendPulseMessageId && it.author == MessageAuthor.User }) {
+            return@LaunchedEffect
+        }
+        pulsedSendIds += sendPulseMessageId
+        userBubbleAnimId = sendPulseMessageId
+        userBubbleAnimToken += 1
+    }
+
+    // The freshly sent message is already in the list before its pulse lands. It waits out
+    // of sight so it never flashes in its resting place before the flight starts.
+    val hiddenUserMessageId = if (sendPulseMessageId > 0 &&
+        sendPulseMessageId !in pulsedSendIds &&
+        messages.any { it.id == sendPulseMessageId && it.author == MessageAuthor.User }
+    ) {
+        sendPulseMessageId
+    } else {
+        -1L
+    }
 
     val onThinkingInteraction = remember(scrollController) {
         {
@@ -81,34 +105,6 @@ fun MessageList(
             if (!scrollController.listState.isAtEnd()) {
                 scrollController.stopFollowing()
             }
-        }
-    }
-
-    SideEffect {
-        if (!scrollEnabled) return@SideEffect
-        var pulseId = -1L
-
-        if (userBubbleAnimOnMountToken > lastHandledMountAnimToken) {
-            lastHandledMountAnimToken = userBubbleAnimOnMountToken
-            pulseId = messages.lastOrNull { it.author == MessageAuthor.User }?.id ?: -1L
-        }
-
-        val count = messages.size
-        when {
-            count > lastPulsedCount -> {
-                messages.takeLast(count - lastPulsedCount)
-                    .lastOrNull { it.author == MessageAuthor.User }
-                    ?.let { pulseId = it.id }
-            }
-            count < lastPulsedCount -> {
-                messages.lastOrNull { it.author == MessageAuthor.User }?.let { pulseId = it.id }
-            }
-        }
-        lastPulsedCount = count
-
-        if (pulseId > 0) {
-            userBubbleAnimId = pulseId
-            userBubbleAnimToken += 1
         }
     }
 
@@ -168,6 +164,7 @@ fun MessageList(
                 },
                 expectStreamedThinking = message.expectStreamedThinking && message.isStreaming,
                 userAnimToken = if (message.id == userBubbleAnimId) userBubbleAnimToken else 0,
+                startHidden = message.id == hiddenUserMessageId,
                 flightOrigin = sendFlightOrigin,
                 onViewAttachment = onViewAttachment,
                 onThinkingInteraction = onThinkingInteraction,

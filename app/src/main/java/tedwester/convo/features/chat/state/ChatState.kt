@@ -108,6 +108,14 @@ class ChatState(
     var messageListRevision by mutableStateOf(0)
         internal set
 
+    /**
+     * The user message the latest send produced. The message list plays the send animation
+     * for exactly this message, so already-sent messages never replay it when a chat opens
+     * or when old items scroll back into view.
+     */
+    var lastSentUserMessageId by mutableStateOf(0L)
+        internal set
+
     var conversationSessionId by mutableStateOf(0)
         internal set
 

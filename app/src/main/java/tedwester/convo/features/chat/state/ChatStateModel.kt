@@ -20,11 +20,16 @@ internal fun ChatState.startEditingMessageImpl(messageId: Long) {
     } ?: return
     editingMessageId = messageId
     input = message.userDisplayText()
+    // The composer's attachment strip shows what is being edited, so images and files from
+    // the message can be removed or added to before resending.
+    clearPendingAttachments()
+    message.attachments.forEach { addAttachment(it) }
 }
 
 internal fun ChatState.cancelEditingMessageImpl() {
     editingMessageId = null
     input = ""
+    clearPendingAttachments()
 }
 
 internal fun ChatState.toggleSearchImpl() {
