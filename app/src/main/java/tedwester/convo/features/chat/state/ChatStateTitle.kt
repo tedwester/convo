@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import tedwester.convo.core.network.model.ChatMessageDto
+import tedwester.convo.core.network.model.ReasoningRequest
 import tedwester.convo.features.chat.model.MessageAuthor
 
 /**
@@ -26,7 +27,7 @@ private val TitleModelChain = listOf(
 
 private const val TitleRetriesPerModel = 2
 private const val TitleRetryDelayMs = 1000L
-private const val TitleMaxTokens = 64
+private const val TitleMaxTokens = 256
 private const val TitlePromptChars = 500
 
 /** A title is a few words, never a sentence and never our own prompt echoed back. */
@@ -100,6 +101,9 @@ private suspend fun ChatState.generateTitleFor(
                     apiKey = key,
                     model = model,
                     messages = listOf(ChatMessageDto(role = "user", content = prompt)),
+                    // Titles must not spend the token budget thinking: reasoning models
+                    // would burn a small cap on thought and return an empty answer.
+                    reasoning = ReasoningRequest(effort = "none", exclude = true),
                     maxTokens = TitleMaxTokens,
                 )
             }.getOrNull()?.trim().orEmpty()
