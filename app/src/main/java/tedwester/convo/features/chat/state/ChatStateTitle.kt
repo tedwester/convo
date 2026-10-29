@@ -117,7 +117,7 @@ internal fun buildTitlePrompt(userText: String, assistantText: String): String =
     "Reply with ONLY a JSON object like {\"title\": \"...\"}. " +
         "Do not explain. Do not repeat these instructions.\n\n" +
         "The title must be 2-4 words, no emojis, no quotation marks, " +
-        "same language as the conversation.\n\n" +
+        "capitalized first letter, same language as the conversation.\n\n" +
         "Conversation:\n" +
         "User: ${userText.take(TitlePromptChars)}\n" +
         "Assistant: ${assistantText.take(TitlePromptChars)}"
@@ -155,5 +155,6 @@ internal fun String.cleanTitleCandidate(): String? {
     if (cleaned.contains('{') || cleaned.contains('}')) return null
     val lower = cleaned.lowercase()
     if (TitleEchoWords.any { lower.contains(it) }) return null
-    return cleaned
+    // Titles always open with a capital, no matter what casing the model used.
+    return cleaned.replaceFirstChar { it.uppercase() }
 }
