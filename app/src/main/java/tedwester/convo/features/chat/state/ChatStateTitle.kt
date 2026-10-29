@@ -11,21 +11,21 @@ import tedwester.convo.features.chat.model.MessageAuthor
  * AI chat titles, generated the way the industry does it: after the first exchange lands, a
  * second, hidden, throwaway completion summarizes the conversation into a few words.
  *
- * The call is tiny (a short prompt in, a few words out) and runs on a fixed chain of the
- * cheapest models — free routing first, then a near-free fallback — each retried, so the
- * feature costs effectively nothing and never bothers the user when it fails. A failed title
- * simply leaves whatever automatic title is there.
+ * The call is tiny (a short prompt in, a few words out) and runs on a fixed chain of
+ * free models, each retried, so the feature costs nothing and never bothers the user when
+ * it fails. A failed title simply leaves whatever automatic title is there.
  *
  * Titles only ever replace automatic ones: the untouched default or the truncation the
  * repository derived from the first message. A manual rename always wins and is never
  * overwritten.
  */
 private val TitleModelChain = listOf(
-    "openrouter/free",
-    "openai/gpt-oss-20b",
+    "liquid/lfm-2.5-2.6b:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "poolside/laguna-s-2.1:free",
 )
 
-private const val TitleRetriesPerModel = 2
+private const val TitleRetriesPerModel = 5
 private const val TitleRetryDelayMs = 1000L
 private const val TitleMaxTokens = 256
 private const val TitlePromptChars = 500
