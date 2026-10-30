@@ -8,6 +8,7 @@ import tedwester.convo.ui.chat.modals.ModelCategoryBadge
 import tedwester.convo.ui.chat.modals.ModelFilterState
 import tedwester.convo.ui.chat.modals.ModelInputFilter
 import tedwester.convo.ui.chat.modals.ModelOutputFilter
+import tedwester.convo.ui.chat.modals.ModelSelectorUiState
 import tedwester.convo.ui.chat.modals.ModelSortBadge
 
 class ChatModelFilterStore(context: Context) {
@@ -27,8 +28,29 @@ class ChatModelFilterStore(context: Context) {
     }
 
     fun delete(chatId: String) {
-        prefs.edit().remove(chatId).apply()
+        prefs.edit().remove(chatId).remove(uiKey(chatId)).apply()
     }
+
+    fun loadUiState(chatId: String): ModelSelectorUiState {
+        val raw = prefs.getString(uiKey(chatId), null) ?: return ModelSelectorUiState()
+        return runCatching {
+            val obj = JSONObject(raw)
+            ModelSelectorUiState(
+                filtersExpanded = obj.optBoolean(KEY_EXPANDED, true),
+                query = obj.optString(KEY_QUERY),
+            )
+        }.getOrDefault(ModelSelectorUiState())
+    }
+
+    fun saveUiState(chatId: String, state: ModelSelectorUiState) {
+        val raw = JSONObject().apply {
+            put(KEY_EXPANDED, state.filtersExpanded)
+            put(KEY_QUERY, state.query)
+        }.toString()
+        prefs.edit().putString(uiKey(chatId), raw).apply()
+    }
+
+    private fun uiKey(chatId: String): String = "$chatId.ui"
 
     private fun encode(state: ModelFilterState): String =
         JSONObject().apply {
@@ -75,5 +97,7 @@ class ChatModelFilterStore(context: Context) {
         const val KEY_FREE = "free"
         const val KEY_REASONING = "reasoning"
         const val KEY_CATEGORY = "category"
+        const val KEY_EXPANDED = "expanded"
+        const val KEY_QUERY = "query"
     }
 }

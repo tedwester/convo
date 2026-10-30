@@ -87,6 +87,8 @@ fun ModelSelectorModal(
     fixedFilters: ModelFilterState? = null,
     initialFilters: ModelFilterState = ModelFilterState(),
     onFiltersChange: (ModelFilterState) -> Unit = {},
+    initialUiState: ModelSelectorUiState = ModelSelectorUiState(),
+    onUiStateChange: (ModelSelectorUiState) -> Unit = {},
     showFilterBadges: Boolean = fixedFilters == null,
     modelFilter: (OpenRouterModel) -> Boolean = { true },
 ) {
@@ -130,6 +132,8 @@ fun ModelSelectorModal(
             fixedFilters = fixedFilters,
             initialFilters = initialFilters,
             onFiltersChange = onFiltersChange,
+            initialUiState = initialUiState,
+            onUiStateChange = onUiStateChange,
             showFilterBadges = showFilterBadges,
             modelFilter = modelFilter,
             modifier = Modifier
@@ -156,15 +160,17 @@ private fun ModelSelectorContent(
     fixedFilters: ModelFilterState?,
     initialFilters: ModelFilterState,
     onFiltersChange: (ModelFilterState) -> Unit,
+    initialUiState: ModelSelectorUiState,
+    onUiStateChange: (ModelSelectorUiState) -> Unit,
     showFilterBadges: Boolean,
     modelFilter: (OpenRouterModel) -> Boolean,
     modifier: Modifier,
 ) {
     var models by remember { mutableStateOf<List<OpenRouterModel>?>(null) }
     var loading by remember { mutableStateOf(true) }
-    var query by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf(initialUiState.query) }
     var filters by remember { mutableStateOf(fixedFilters ?: initialFilters) }
-    var filtersExpanded by remember { mutableStateOf(true) }
+    var filtersExpanded by remember { mutableStateOf(initialUiState.filtersExpanded) }
     val sheetBackground = convoModalSurface()
     val activeFilters = fixedFilters ?: filters
 
@@ -172,6 +178,16 @@ private fun ModelSelectorContent(
         if (fixedFilters != null) return
         filters = next
         onFiltersChange(next)
+    }
+
+    fun updateQuery(next: String) {
+        query = next
+        onUiStateChange(ModelSelectorUiState(filtersExpanded = filtersExpanded, query = next))
+    }
+
+    fun updateExpanded(next: Boolean) {
+        filtersExpanded = next
+        onUiStateChange(ModelSelectorUiState(filtersExpanded = next, query = query))
     }
 
     LaunchedEffect(activeFilters, apiKey) {
@@ -201,7 +217,7 @@ private fun ModelSelectorContent(
 
         ConvoSearchField(
             value = query,
-            onValueChange = { query = it },
+            onValueChange = ::updateQuery,
             placeholder = "Search models…",
             modifier = Modifier
                 .fillMaxWidth()
@@ -231,7 +247,7 @@ private fun ModelSelectorContent(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { filtersExpanded = !filtersExpanded },
+                            onClick = { updateExpanded(!filtersExpanded) },
                         ),
                 ) {
                     Icon(
@@ -330,7 +346,7 @@ private fun ModelSelectorContent(
                             Spacer(modifier = Modifier.height(8.dp))
                             TextButton(
                                 onClick = {
-                                    query = ""
+                                    updateQuery("")
                                     updateFilters(ModelFilterState())
                                 },
                             ) {
@@ -338,7 +354,7 @@ private fun ModelSelectorContent(
                             }
                         } else if (!showFilterBadges && query.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(onClick = { query = "" }) {
+                            TextButton(onClick = { updateQuery("") }) {
                                 Text("Clear search")
                             }
                         }

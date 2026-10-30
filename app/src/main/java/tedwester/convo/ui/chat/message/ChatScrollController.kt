@@ -352,7 +352,7 @@ class ChatScrollController internal constructor(
 
     /** The finger lifted. A full pull starts a new chat; otherwise the list just settles. */
     internal fun onGestureEnd() {
-        val fireNewChat = isPullArmed
+        val fireNewChat = isPullArmed && isGestureActive
         isGestureActive = false
         if (fireNewChat) {
             onPullTriggered()
@@ -564,7 +564,11 @@ fun rememberChatScrollController(
         listState.interactionSource.interactions.collect { interaction ->
             when (interaction) {
                 is DragInteraction.Start -> controller.onGestureStart()
-                is DragInteraction.Stop -> controller.onGestureEnd()
+                // A cancelled drag still means the finger is gone: settle the pull,
+                // and fire if it was armed, so the gesture can't get stuck.
+                is DragInteraction.Stop,
+                is DragInteraction.Cancel,
+                -> controller.onGestureEnd()
                 else -> Unit
             }
         }

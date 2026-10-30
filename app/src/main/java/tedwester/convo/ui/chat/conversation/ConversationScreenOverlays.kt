@@ -76,6 +76,8 @@ internal fun ConversationScreenOverlays(
             currentModelId = chatState.selectedModel?.id,
             initialFilters = chatState.modelSelectorFilters,
             onFiltersChange = chatState::updateModelSelectorFilters,
+            initialUiState = chatState.modelSelectorUiState,
+            onUiStateChange = chatState::updateModelSelectorUiState,
             onSelect = { model ->
                 chatState.selectModel(model)
                 keyStorage.saveModel(StoredModel(id = model.id, name = model.name))

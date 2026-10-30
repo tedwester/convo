@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.features.chat.model.ConversationFrame
 import tedwester.convo.ui.chat.modals.ModelFilterState
+import tedwester.convo.ui.chat.modals.ModelSelectorUiState
 
 internal fun ChatState.applyNewChatDefaultsImpl() {
     isSearchEnabled = false
@@ -73,6 +74,7 @@ internal fun ChatState.newChatImpl() {
         clearPendingAttachments()
         systemMessage = ""
         modelSelectorFilters = ModelFilterState()
+        modelSelectorUiState = ModelSelectorUiState()
         isRunning = false
         return
     }
@@ -87,6 +89,7 @@ internal fun ChatState.newChatImpl() {
     clearPendingAttachments()
     systemMessage = ""
     modelSelectorFilters = ModelFilterState()
+    modelSelectorUiState = ModelSelectorUiState()
     currentChatId = null
     currentTitle = "New chat"
     isRunning = false

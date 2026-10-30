@@ -1,10 +1,14 @@
 package tedwester.convo.ui.chat.message
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,7 +38,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -68,38 +71,26 @@ internal fun VariantPagerLayout(
         return
     }
 
-    val density = LocalDensity.current
-    val slidePx = with(density) { 56.dp.toPx() }
     var shownIndex by remember(messageId) { mutableIntStateOf(targetIndex.coerceIn(0, pageCount - 1)) }
     var outgoingIndex by remember(messageId) { mutableStateOf<Int?>(null) }
-    val incomingOffset = remember { Animatable(0f) }
     val incomingAlpha = remember { Animatable(1f) }
-    val outgoingOffset = remember { Animatable(0f) }
     val outgoingAlpha = remember { Animatable(1f) }
 
     LaunchedEffect(targetIndex, pageCount) {
         val next = targetIndex.coerceIn(0, pageCount - 1)
         if (next == shownIndex) return@LaunchedEffect
-        val forward = next > shownIndex
-        val dir = if (forward) 1f else -1f
 
         outgoingIndex = shownIndex
         shownIndex = next
-        outgoingOffset.snapTo(0f)
         outgoingAlpha.snapTo(1f)
-        incomingOffset.snapTo(dir * slidePx)
         incomingAlpha.snapTo(0f)
 
-        val spec = tween<Float>(PagerAnimMs, easing = FastOutSlowInEasing)
-        launch { outgoingOffset.animateTo(-dir * slidePx, spec) }
         launch {
             outgoingAlpha.animateTo(0f, tween(PagerAnimMs / 2, easing = FastOutSlowInEasing))
         }
-        launch { incomingOffset.animateTo(0f, spec) }
-        incomingAlpha.animateTo(1f, spec)
+        incomingAlpha.animateTo(1f, tween(PagerAnimMs, easing = FastOutSlowInEasing))
 
         outgoingIndex = null
-        outgoingOffset.snapTo(0f)
         outgoingAlpha.snapTo(1f)
     }
 
@@ -128,16 +119,9 @@ internal fun VariantPagerLayout(
                         Modifier
                             .fillMaxWidth()
                             .graphicsLayer {
-                                val isShown = index == shownIndex
-                                val isOut = index == outgoingIndex
                                 alpha = when {
-                                    isShown -> incomingAlpha.value
-                                    isOut -> outgoingAlpha.value
-                                    else -> 0f
-                                }
-                                translationX = when {
-                                    isShown -> incomingOffset.value
-                                    isOut -> outgoingOffset.value
+                                    index == shownIndex -> incomingAlpha.value
+                                    index == outgoingIndex -> outgoingAlpha.value
                                     else -> 0f
                                 }
                             },
@@ -243,27 +227,36 @@ internal fun VariantStepperRow(
     modifier: Modifier = Modifier,
     counterColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
 ) {
-    Row(
+    AnimatedContent(
+        targetState = message.variantIndex,
+        transitionSpec = {
+            fadeIn(tween(PagerAnimMs, easing = FastOutSlowInEasing)) togetherWith
+                fadeOut(tween(PagerAnimMs / 2, easing = FastOutSlowInEasing))
+        },
+        label = "variant-stepper",
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        VariantPagerButton(
-            painter = ConvoIcons.ChevronLeft(),
-            contentDescription = prevDescription,
-            enabled = actionsEnabled && !message.isAtFirstVariant(),
-            onClick = { onVariantChange(-1) },
-        )
-        VariantCounter(
-            index = message.pagerIndex,
-            total = message.variantCount,
-            color = counterColor,
-        )
-        VariantPagerButton(
-            painter = ConvoIcons.ChevronRight(),
-            contentDescription = nextDescription,
-            enabled = actionsEnabled && !message.isAtLastVariant(),
-            onClick = { onVariantChange(1) },
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            VariantPagerButton(
+                painter = ConvoIcons.ChevronLeft(),
+                contentDescription = prevDescription,
+                enabled = actionsEnabled && !message.isAtFirstVariant(),
+                onClick = { onVariantChange(-1) },
+            )
+            VariantCounter(
+                index = message.pagerIndex,
+                total = message.variantCount,
+                color = counterColor,
+            )
+            VariantPagerButton(
+                painter = ConvoIcons.ChevronRight(),
+                contentDescription = nextDescription,
+                enabled = actionsEnabled && !message.isAtLastVariant(),
+                onClick = { onVariantChange(1) },
+            )
+        }
     }
 }

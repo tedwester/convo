@@ -31,6 +31,7 @@ import tedwester.convo.features.chat.model.Project
 import tedwester.convo.features.chat.model.ReasoningEffort
 import tedwester.convo.features.chat.model.ReasoningPreferences
 import tedwester.convo.ui.chat.modals.ModelFilterState
+import tedwester.convo.ui.chat.modals.ModelSelectorUiState
 import java.util.Collections
 import kotlin.math.min
 
@@ -98,6 +99,9 @@ class ChatState(
         internal set
 
     var modelSelectorFilters by mutableStateOf(ModelFilterState())
+        internal set
+
+    var modelSelectorUiState by mutableStateOf(ModelSelectorUiState())
         internal set
 
     var isReady by mutableStateOf(false)
@@ -256,6 +260,7 @@ class ChatState(
         currentTitle = created.title
         completions.viewingChatId = created.id
         chatModelFilterStore.save(created.id, modelSelectorFilters)
+        chatModelFilterStore.saveUiState(created.id, modelSelectorUiState)
         chats = withContext(Dispatchers.IO) { repository.listChats() }
     }
 
@@ -272,6 +277,7 @@ class ChatState(
         clearPendingAttachments()
         systemMessage = ""
         modelSelectorFilters = ModelFilterState()
+        modelSelectorUiState = ModelSelectorUiState()
         currentChatId = null
         currentTitle = "New chat"
         isRunning = false
@@ -321,6 +327,7 @@ class ChatState(
         currentTitle = chat.title
         systemMessage = chat.systemMessage
         modelSelectorFilters = chatModelFilterStore.load(chat.id)
+        modelSelectorUiState = chatModelFilterStore.loadUiState(chat.id)
         replaceMessages(loadedMessages)
         currentId = loadedMessages.maxOfOrNull { it.id } ?: 0L
         input = ""
@@ -412,6 +419,8 @@ class ChatState(
     fun selectModel(model: OpenRouterModel) = selectModelImpl(model)
     fun updateModelSelectorFilters(state: ModelFilterState) =
         updateModelSelectorFiltersImpl(state)
+    fun updateModelSelectorUiState(state: ModelSelectorUiState) =
+        updateModelSelectorUiStateImpl(state)
     fun send() = sendImpl()
     suspend fun sendVoice(
         audioBytes: ByteArray,

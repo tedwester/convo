@@ -13,49 +13,27 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.launch
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.ui.chat.message.saveAttachmentToDownloads
 import tedwester.convo.ui.icons.ConvoIcons
-
-private const val ViewerMinScale = 1f
-private const val ViewerMaxScale = 5f
-private const val ViewerDoubleTapScale = 3f
-private const val ViewerStepScale = 0.5f
 
 @Composable
 fun ImageViewerDialog(
@@ -73,20 +51,9 @@ fun ImageViewerDialog(
     }
 
     // Zoom state belongs to the image on screen: a new attachment starts over at 1x.
-    var scale by remember(attachment.path) { mutableFloatStateOf(1f) }
-    var offset by remember(attachment.path) { mutableStateOf(Offset.Zero) }
+    val zoom = rememberViewerZoom(attachment.path)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    fun resetZoom() {
-        scale = 1f
-        offset = Offset.Zero
-    }
-
-    fun stepZoom(direction: Float) {
-        scale = (scale + direction * ViewerStepScale).coerceIn(ViewerMinScale, ViewerMaxScale)
-        if (scale <= 1f) offset = Offset.Zero
-    }
 
     fun download() {
         scope.launch {
@@ -126,18 +93,13 @@ fun ImageViewerDialog(
                     val halfW = with(density) { maxWidth.toPx() / 2f }
                     val halfH = with(density) { maxHeight.toPx() / 2f }
                     val transformState = rememberTransformableState { zoomChange, panChange, _ ->
-                        scale = (scale * zoomChange).coerceIn(ViewerMinScale, ViewerMaxScale)
-                        offset = if (scale <= 1f) {
-                            Offset.Zero
-                        } else {
-                            // Keep the image from sliding entirely out of view.
-                            val boundX = halfW * (scale - 1f)
-                            val boundY = halfH * (scale - 1f)
-                            Offset(
-                                x = (offset.x + panChange.x).coerceIn(-boundX, boundX),
-                                y = (offset.y + panChange.y).coerceIn(-boundY, boundY),
-                            )
-                        }
+                        zoom.applyZoom(zoomChange)
+                        // Keep the image from sliding entirely out of view.
+                        zoom.applyPan(
+                            panChange,
+                            halfW * (zoom.scale - 1f),
+                            halfH * (zoom.scale - 1f),
+                        )
                     }
                     Image(
                         bitmap = bitmap,
@@ -148,22 +110,22 @@ fun ImageViewerDialog(
                             .transformable(transformState)
                             .pointerInput(attachment.path) {
                                 detectTapGestures(
-                                    onTap = { /* absorb — keep open when tapping the image */ },
+                                    onTap = {
+                                        // At rest a tap anywhere on the image is empty
+                                        // space, so it closes. Zoomed in, taps are for
+                                        // looking around and must not dismiss.
+                                        if (!zoom.zoomedIn()) onDismiss()
+                                    },
                                     onDoubleTap = {
-                                        if (scale > 1f) {
-                                            resetZoom()
+                                        if (zoom.zoomedIn()) {
+                                            zoom.reset()
                                         } else {
-                                            scale = ViewerDoubleTapScale
+                                            zoom.zoomTo(ViewerDoubleTapScale)
                                         }
                                     },
                                 )
                             }
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                                translationX = offset.x
-                                translationY = offset.y
-                            },
+                            .viewerZoomGraphics(zoom),
                     )
                 }
             }
@@ -187,99 +149,13 @@ fun ImageViewerDialog(
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 20.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color.White.copy(alpha = 0.14f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                ViewerZoomStep(
-                    label = "−",
-                    contentDescription = "Zoom out",
-                    enabled = scale > 1f,
-                    onClick = { stepZoom(-1f) },
-                )
-                Text(
-                    text = "${(scale * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                    ),
-                    color = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = ::resetZoom,
-                        )
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                )
-                ViewerZoomStep(
-                    label = "+",
-                    contentDescription = "Zoom in",
-                    enabled = scale < ViewerMaxScale,
-                    onClick = { stepZoom(1f) },
-                )
-            }
+            ViewerZoomBar(
+                scale = zoom.scale,
+                onZoomOut = { zoom.step(-1f) },
+                onZoomIn = { zoom.step(1f) },
+                onReset = { zoom.reset() },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
-    }
-}
-
-@Composable
-private fun ViewerRoundButton(
-    painter: Painter,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.14f))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painter,
-            contentDescription = contentDescription,
-            tint = Color.White,
-            modifier = Modifier.size(20.dp),
-        )
-    }
-}
-
-@Composable
-private fun ViewerZoomStep(
-    label: String,
-    contentDescription: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 20.sp,
-            ),
-            color = Color.White.copy(alpha = if (enabled) 0.9f else 0.3f),
-        )
     }
 }

@@ -8,6 +8,7 @@ import tedwester.convo.features.chat.model.ReasoningEffort
 import tedwester.convo.features.chat.model.ReasoningPreferences
 import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.ui.chat.modals.ModelFilterState
+import tedwester.convo.ui.chat.modals.ModelSelectorUiState
 
 internal fun ChatState.onInputChangeImpl(value: String) {
     input = value
@@ -97,6 +98,14 @@ internal fun ChatState.updateModelSelectorFiltersImpl(state: ModelFilterState) {
     val id = currentChatId ?: return
     scope.launch(Dispatchers.IO) {
         chatModelFilterStore.save(id, state)
+    }
+}
+
+internal fun ChatState.updateModelSelectorUiStateImpl(state: ModelSelectorUiState) {
+    modelSelectorUiState = state
+    val id = currentChatId ?: return
+    scope.launch(Dispatchers.IO) {
+        chatModelFilterStore.saveUiState(id, state)
     }
 }
 

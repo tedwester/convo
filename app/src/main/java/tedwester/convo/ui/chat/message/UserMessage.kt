@@ -193,7 +193,7 @@ internal fun UserMessage(
             }
 
             if (textToShow.isNotBlank()) {
-                val bubbleShape = RoundedCornerShape(14.dp)
+                val bubbleShape = RoundedCornerShape(20.dp)
                 Box(
                     modifier = Modifier.onGloballyPositioned { settledAnchor.coords = it },
                 ) {

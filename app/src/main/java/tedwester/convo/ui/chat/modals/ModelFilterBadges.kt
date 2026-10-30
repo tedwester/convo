@@ -27,6 +27,11 @@ enum class ModelSortBadge(val label: String, val apiValue: String) {
     ;
 }
 
+data class ModelSelectorUiState(
+    val filtersExpanded: Boolean = true,
+    val query: String = "",
+)
+
 data class ModelFilterState(
     val inputFilters: Set<ModelInputFilter> = emptySet(),
     val outputFilters: Set<ModelOutputFilter> = emptySet(),
