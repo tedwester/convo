@@ -1,12 +1,9 @@
 package tedwester.convo.ui.chat.message
 
-import android.util.Log
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.Springimport androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -46,8 +43,6 @@ import tedwester.convo.ui.chat.PullHaptics
  * snap the list back to the bottom, which is exactly the "stuck to the bottom" feel.
  */
 private const val EndSlackPx = 1f
-
-private const val TAG = "ChatScroll"
 
 /** Distance from the newest content before the scroll-to-bottom button appears. */
 internal const val ScrollToBottomThresholdPx = 120f
@@ -355,16 +350,15 @@ class ChatScrollController internal constructor(
 
     /** The finger lifted. A full pull starts a new chat; otherwise the list just settles. */
     internal fun onGestureEnd() {
-        val fireNewChat = isPullArmed && isGestureActive
+        val fireNewChat = isPullArmed
         isGestureActive = false
+        if (fireNewChat) {
+            onPullTriggered()
+        }
         if (!isProgrammaticScroll && listState.isAtEnd()) {
             isFollowing = true
         }
         releasePull()
-        if (fireNewChat) {
-            runCatching { onPullTriggered() }
-                .onFailure { Log.w(TAG, "Pull-to-new-chat trigger failed", it) }
-        }
     }
 
     /** Re-arms following, for example when a new conversation is opened. */
@@ -562,20 +556,6 @@ fun rememberChatScrollController(
                     if (!currentCoroutineContext().isActive) throw error
                 }
             }
-    }
-
-    LaunchedEffect(listState) {
-        listState.interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is DragInteraction.Start -> controller.onGestureStart()
-                // A cancelled drag still means the finger is gone: settle the pull,
-                // and fire if it was armed, so the gesture can't get stuck.
-                is DragInteraction.Stop,
-                is DragInteraction.Cancel,
-                -> controller.onGestureEnd()
-                else -> Unit
-            }
-        }
     }
 
     return controller
