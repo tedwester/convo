@@ -659,9 +659,8 @@ fun SettingsScreen(
 
                 SettingsSection(
                     title = "Media",
-                    description = "Generated images, videos, and voice replies are kept in the " +
-                        "Convo folder on your phone. If this is off, regenerating media " +
-                        "replaces it, so you won't be able to access variants of media.",
+                    description = "Keep copies of generated images, videos, and voice replies " +
+                        "in the Convo folder on your phone, outside the app.",
                     showDividerAbove = true,
                 ) {
                 Row(

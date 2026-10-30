@@ -436,22 +436,11 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
         return
     }
 
-    // Media variants are only kept while gallery saving is on: with it off, regenerating
-    // replaces the media instead, so there are no variants to page through.
-    val keepMediaVariants = MediaPreferencesStore(context).load().saveMediaToGallery
-
+    // Media variants always accumulate from the app's private store, independent of the
+    // gallery toggle — the toggle only controls the extra copy in Download/Convo.
     when (model.modelKind) {
         ModelKind.ImageGen -> {
             val prompt = userPromptBefore(index) ?: return
-            if (!keepMediaVariants) {
-                saveTailToVariantContinuation(index)
-                removeTailAfter(index)
-                messages.removeAt(index)
-                bumpMessageListRevision()
-                persist(bumpRecency = true)
-                runImageCompletion(model, prompt)
-                return
-            }
             val existing = messages[index]
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
@@ -475,15 +464,6 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             val prompt = userPromptBefore(index).orEmpty()
             val images = userTurn.attachments.filter { it.isImage }
             if (prompt.isBlank() && images.isEmpty()) return
-            if (!keepMediaVariants) {
-                saveTailToVariantContinuation(index)
-                removeTailAfter(index)
-                messages.removeAt(index)
-                bumpMessageListRevision()
-                persist(bumpRecency = true)
-                runVideoCompletion(model, prompt, images)
-                return
-            }
             val existing = messages[index]
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
