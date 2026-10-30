@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 
 data class MediaPreferences(
 
-    val saveMediaToGallery: Boolean = true,
+    val saveMediaToGallery: Boolean = false,
 )
 
 class MediaPreferencesStore(context: Context) {
@@ -14,7 +14,7 @@ class MediaPreferencesStore(context: Context) {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun load(): MediaPreferences = MediaPreferences(
-        saveMediaToGallery = prefs.getBoolean(KEY_SAVE_MEDIA_TO_GALLERY, true),
+        saveMediaToGallery = prefs.getBoolean(KEY_SAVE_MEDIA_TO_GALLERY, false),
     )
 
     fun save(value: MediaPreferences) {
