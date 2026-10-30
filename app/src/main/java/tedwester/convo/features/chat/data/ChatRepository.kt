@@ -1,6 +1,7 @@
 package tedwester.convo.features.chat.data
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import tedwester.convo.features.chat.model.Chat
@@ -12,6 +13,8 @@ import tedwester.convo.features.chat.model.WebSearchCitation
 import tedwester.convo.features.chat.model.WebSearchStep
 import java.io.File
 import java.util.UUID
+
+private const val TAG = "ChatRepository"
 
 class ChatRepository(context: Context) {
 
@@ -40,7 +43,10 @@ class ChatRepository(context: Context) {
                 compareByDescending<Chat> { it.pinned }
                     .thenByDescending { it.updatedAt },
             )
-        }.getOrDefault(emptyList())
+        }.getOrElse { e ->
+            Log.w(TAG, "Failed to read chat index", e)
+            emptyList()
+        }
     }
 
     @Synchronized
@@ -54,7 +60,10 @@ class ChatRepository(context: Context) {
                     add(messageFromJson(array.getJSONObject(i)))
                 }
             }
-        }.getOrDefault(emptyList())
+        }.getOrElse { e ->
+            Log.w(TAG, "Failed to read messages for $chatId", e)
+            emptyList()
+        }
     }
 
     @Synchronized
@@ -179,7 +188,10 @@ class ChatRepository(context: Context) {
                     add(projectFromJson(array.getJSONObject(i)))
                 }
             }.sortedBy { it.createdAt }
-        }.getOrDefault(emptyList())
+        }.getOrElse { e ->
+            Log.w(TAG, "Failed to read projects", e)
+            emptyList()
+        }
     }
 
     @Synchronized
@@ -466,67 +478,35 @@ class ChatRepository(context: Context) {
             createdAt = obj.optLong("createdAt"),
         )
 
-    private fun parseVariants(array: JSONArray?): List<String> {
-        if (array == null || array.length() == 0) return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val text = array.optString(i)
-                if (text.isNotBlank()) add(text)
-            }
+    private fun parseVariants(array: JSONArray?): List<String> =
+        parseJsonList(array) { i, arr ->
+            arr.optString(i).takeIf { it.isNotBlank() }
         }
-    }
 
-    private fun parseStringList(array: JSONArray?): List<String> {
-        if (array == null || array.length() == 0) return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                add(array.optString(i))
-            }
-        }
-    }
+    private fun parseStringList(array: JSONArray?): List<String> =
+        parseJsonList(array) { i, arr -> arr.optString(i) }
 
     private fun parseLongNullableList(array: JSONArray?): List<Long?> {
         if (array == null || array.length() == 0) return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                add(
-                    if (array.isNull(i)) {
-                        null
-                    } else {
-                        array.optLong(i)
-                    },
-                )
-            }
+        return List(array.length()) { i ->
+            if (array.isNull(i)) null else array.optLong(i)
         }
     }
 
-    private fun parseAttachments(array: JSONArray?): List<ChatAttachment> {
-        if (array == null || array.length() == 0) return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val obj = array.optJSONObject(i) ?: continue
-                val path = obj.optString("path")
-                if (path.isBlank()) continue
-                add(
-                    ChatAttachment(
-                        id = obj.optString("id").ifBlank { path },
-                        path = path,
-                        mimeType = obj.optString("mimeType").ifBlank { null },
-                        displayName = obj.optString("displayName").ifBlank { "file" },
-                    ),
-                )
-            }
+    private fun parseAttachments(array: JSONArray?): List<ChatAttachment> =
+        parseJsonList(array) { i, arr ->
+            val obj = arr.optJSONObject(i) ?: return@parseJsonList null
+            val path = obj.optString("path").takeIf { it.isNotBlank() } ?: return@parseJsonList null
+            ChatAttachment(
+                id = obj.optString("id").ifBlank { path },
+                path = path,
+                mimeType = obj.optString("mimeType").ifBlank { null },
+                displayName = obj.optString("displayName").ifBlank { "file" },
+            )
         }
-    }
 
-    private fun parseAttachmentVariants(array: JSONArray?): List<List<ChatAttachment>> {
-        if (array == null || array.length() == 0) return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                add(parseAttachments(array.optJSONArray(i)))
-            }
-        }
-    }
+    private fun parseAttachmentVariants(array: JSONArray?): List<List<ChatAttachment>> =
+        parseNestedList(array, ::parseAttachments)
 
     private fun parseVariantContinuations(array: JSONArray?): List<List<ChatMessage>> {
         if (array == null || array.length() == 0) return emptyList()
@@ -592,26 +572,15 @@ class ChatRepository(context: Context) {
             }
         }
 
-    private fun parseWebSearchSteps(array: JSONArray?): List<WebSearchStep> {
-        if (array == null || array.length() == 0) return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                val obj = array.optJSONObject(i) ?: continue
-                add(parseWebSearchStep(obj))
-            }
+    private fun parseWebSearchSteps(array: JSONArray?): List<WebSearchStep> =
+        parseJsonList(array) { i, arr ->
+            val obj = arr.optJSONObject(i) ?: return@parseJsonList null
+            parseWebSearchStep(obj)
         }
-    }
 
     private fun parseWebSearchStepVariants(
         array: JSONArray?,
-    ): List<List<WebSearchStep>> {
-        if (array == null || array.length() == 0) return emptyList()
-        return buildList {
-            for (i in 0 until array.length()) {
-                add(parseWebSearchSteps(array.optJSONArray(i)))
-            }
-        }
-    }
+    ): List<List<WebSearchStep>> = parseNestedList(array, ::parseWebSearchSteps)
 
     private fun parseWebSearchStep(obj: JSONObject): WebSearchStep {
         val citationsArray = obj.optJSONArray("citations")
@@ -640,6 +609,31 @@ class ChatRepository(context: Context) {
             citations = citations,
             isSearching = obj.optBoolean("isSearching", false),
         )
+    }
+
+    private inline fun <T> parseJsonList(
+        array: JSONArray?,
+        parse: (index: Int, array: JSONArray) -> T?,
+    ): List<T> {
+        if (array == null || array.length() == 0) return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                val item = parse(i, array) ?: continue
+                add(item)
+            }
+        }
+    }
+
+    private inline fun <T> parseNestedList(
+        array: JSONArray?,
+        parseInner: (JSONArray?) -> List<T>,
+    ): List<List<T>> {
+        if (array == null || array.length() == 0) return emptyList()
+        return buildList {
+            for (i in 0 until array.length()) {
+                add(parseInner(array.optJSONArray(i)))
+            }
+        }
     }
 
     private companion object {

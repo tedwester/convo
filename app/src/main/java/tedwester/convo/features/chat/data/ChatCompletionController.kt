@@ -33,6 +33,9 @@ import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.EMPTY_RESPONSE_TEXT
 import tedwester.convo.features.chat.model.STOPPED_RESPONSE_TEXT
 import tedwester.convo.features.chat.model.WebSearchStep
+import tedwester.convo.features.chat.model.appendAlignedDurations
+import tedwester.convo.features.chat.model.appendAlignedReasoning
+import tedwester.convo.features.chat.model.appendAlignedSearch
 import tedwester.convo.features.chat.model.asStopped
 import java.util.concurrent.ConcurrentHashMap
 
@@ -571,42 +574,17 @@ class ChatCompletionController(
         } else {
             listOf(text)
         }
-        val nextReasoning = when {
-            session.appendVariant && prior.isNotEmpty() -> {
-                val aligned = if (priorReasoning.size == prior.size) {
-                    priorReasoning
-                } else {
-                    prior.mapIndexed { i, _ -> priorReasoning.getOrElse(i) { "" } }
-                }
-                aligned + reasoning
-            }
-            else -> listOf(reasoning)
-        }
-        val nextThoughtDurations = when {
-            session.appendVariant && prior.isNotEmpty() -> {
-                val aligned = if (priorThoughtDurations.size == prior.size) {
-                    priorThoughtDurations
-                } else {
-                    prior.mapIndexed { i, _ -> priorThoughtDurations.getOrNull(i) }
-                }
-                aligned + thoughtDurationMs
-            }
-            else -> listOf(thoughtDurationMs)
-        }
+        val appending = session.appendVariant && prior.isNotEmpty()
+        val nextReasoning = priorReasoning.appendAlignedReasoning(prior.size, appending, reasoning)
+        val nextThoughtDurations = priorThoughtDurations.appendAlignedDurations(
+            prior.size,
+            appending,
+            thoughtDurationMs,
+        )
         val finalizedWebSearch = existing.webSearchSteps.map { step ->
             step.copy(isSearching = false)
         }
-        val nextWebSearch = when {
-            session.appendVariant && prior.isNotEmpty() -> {
-                val aligned = if (priorWebSearch.size == prior.size) {
-                    priorWebSearch
-                } else {
-                    prior.mapIndexed { i, _ -> priorWebSearch.getOrElse(i) { emptyList() } }
-                }
-                aligned + listOf(finalizedWebSearch)
-            }
-            else -> listOf(finalizedWebSearch)
-        }
+        val nextWebSearch = priorWebSearch.appendAlignedSearch(prior.size, appending, finalizedWebSearch)
         session.messages[index] = existing.copy(
             content = text,
             reasoning = reasoning,

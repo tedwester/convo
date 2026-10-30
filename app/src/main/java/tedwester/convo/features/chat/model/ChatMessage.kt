@@ -88,11 +88,19 @@ data class ChatMessage(
     }
 
     fun hasAudioAttachment(): Boolean =
-        activeAttachments().any { it.mimeType?.startsWith("audio/", ignoreCase = true) == true }
+        activeAttachments().any { it.isAudio }
 
     fun hasImageAttachment(): Boolean = activeAttachments().any { it.isImage }
 
     fun hasVideoAttachment(): Boolean = activeAttachments().any { it.isVideo }
+
+    fun hasMediaAt(index: Int): Boolean =
+        attachmentsAt(index).any { it.isAudio || it.isImage || it.isVideo }
+
+    fun isAtFirstVariant(): Boolean = variantIndex <= 0
+
+    fun isAtLastVariant(): Boolean =
+        variantIndex >= (variantSlots - 1).coerceAtLeast(0)
 
     fun hidesGeneratedBody(): Boolean = hidesGeneratedBodyAt(variantIndex)
 
@@ -100,10 +108,7 @@ data class ChatMessage(
         if (isStreaming) return false
         val text = bodyTextAt(index)
         if (isAssistantStatusContent(text)) return false
-        val attachments = attachmentsAt(index)
-        return attachments.any { it.mimeType?.startsWith("audio/", ignoreCase = true) == true } ||
-            attachments.any { it.isImage } ||
-            attachments.any { it.isVideo }
+        return hasMediaAt(index)
     }
 
     /**
@@ -209,37 +214,14 @@ internal fun ChatMessage.asStopped(): ChatMessage {
     }
     val text = content.ifBlank { STOPPED_RESPONSE_TEXT }
     val nextVariants = if (appending) variants + text else listOf(text)
-    val nextReasoning = if (appending) {
-        val aligned = if (reasoningVariants.size == variants.size) {
-            reasoningVariants
-        } else {
-            variants.mapIndexed { i, _ -> reasoningVariants.getOrElse(i) { "" } }
-        }
-        aligned + reasoning
-    } else {
-        listOf(reasoning)
-    }
-    val nextDurations = if (appending) {
-        val aligned = if (thoughtDurationVariants.size == variants.size) {
-            thoughtDurationVariants
-        } else {
-            variants.mapIndexed { i, _ -> thoughtDurationVariants.getOrNull(i) }
-        }
-        aligned + thoughtDurationMs
-    } else {
-        listOf(thoughtDurationMs)
-    }
+    val nextReasoning = reasoningVariants.appendAlignedReasoning(variants.size, appending, reasoning)
+    val nextDurations = thoughtDurationVariants.appendAlignedDurations(
+        variants.size,
+        appending,
+        thoughtDurationMs,
+    )
     val finalizedSearch = webSearchSteps.map { it.copy(isSearching = false) }
-    val nextSearch = if (appending) {
-        val aligned = if (webSearchStepVariants.size == variants.size) {
-            webSearchStepVariants
-        } else {
-            variants.mapIndexed { i, _ -> webSearchStepVariants.getOrElse(i) { emptyList() } }
-        }
-        aligned + listOf(finalizedSearch)
-    } else {
-        listOf(finalizedSearch)
-    }
+    val nextSearch = webSearchStepVariants.appendAlignedSearch(variants.size, appending, finalizedSearch)
     return copy(
         content = text,
         isStreaming = false,

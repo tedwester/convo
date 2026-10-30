@@ -9,7 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -36,6 +37,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import tedwester.convo.features.chat.model.ChatMessage
+import tedwester.convo.ui.icons.ConvoIcons
 import kotlin.math.max
 
 internal const val PagerAnimMs = 220
@@ -225,6 +228,41 @@ internal fun VariantPagerButton(
             contentDescription = contentDescription,
             tint = tint,
             modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
+internal fun VariantStepperRow(
+    message: ChatMessage,
+    actionsEnabled: Boolean,
+    onVariantChange: (delta: Int) -> Unit,
+    prevDescription: String,
+    nextDescription: String,
+    modifier: Modifier = Modifier,
+    counterColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        VariantPagerButton(
+            painter = ConvoIcons.ChevronLeft(),
+            contentDescription = prevDescription,
+            enabled = actionsEnabled && !message.isAtFirstVariant(),
+            onClick = { onVariantChange(-1) },
+        )
+        VariantCounter(
+            index = message.pagerIndex,
+            total = message.variantCount,
+            color = counterColor,
+        )
+        VariantPagerButton(
+            painter = ConvoIcons.ChevronRight(),
+            contentDescription = nextDescription,
+            enabled = actionsEnabled && !message.isAtLastVariant(),
+            onClick = { onVariantChange(1) },
         )
     }
 }

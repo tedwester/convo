@@ -56,6 +56,7 @@ import tedwester.convo.core.network.OpenRouterApiKeyValidation
 import tedwester.convo.ui.components.ConvoButton
 import tedwester.convo.ui.components.ConvoIconButton
 import tedwester.convo.ui.components.ConvoTextField
+import tedwester.convo.ui.components.KeyVerificationFailedText
 import tedwester.convo.ui.components.PasswordVisibilityToggle
 import tedwester.convo.ui.components.rememberAnimatedPasswordReveal
 import tedwester.convo.ui.input.ConvoKeyboardOptions
@@ -103,7 +104,7 @@ fun OnboardingScreen(
                 api.fetchModels(apiKey = trimmedKey)
                 onComplete(trimmedKey)
             } catch (e: Exception) {
-                error = e.message ?: "Could not verify the key. Please try again."
+                error = e.message ?: KeyVerificationFailedText
             } finally {
                 isLoading = false
             }

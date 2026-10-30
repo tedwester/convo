@@ -119,11 +119,9 @@ internal fun ChatState.resendUserMessageImpl(
     // An edited resend branches like a regeneration does: the tail that followed the old
     // wording is stashed on it, and the edit becomes a new variant of the user's message
     // with its own follow-ups. Same machinery as assistant variants, same index space.
-    saveTailToVariantContinuation(index)
-    removeTailAfter(index)
     val priorTexts = existing.savedVariants()
     val priorAttachments = existing.savedAttachmentVariants()
-    prepareVariantContinuationForNewVariant(
+    beginVariantBranch(
         index,
         maxOf(priorTexts.size, priorAttachments.size),
     )
@@ -417,6 +415,12 @@ internal fun ChatState.prepareVariantContinuationForNewVariant(assistantIndex: I
     messages[assistantIndex] = message.copy(variantContinuations = continuations)
 }
 
+internal fun ChatState.beginVariantBranch(index: Int, priorSlotCount: Int) {
+    saveTailToVariantContinuation(index)
+    removeTailAfter(index)
+    prepareVariantContinuationForNewVariant(index, priorSlotCount)
+}
+
 internal fun ChatState.regenerateImpl(messageId: Long) {
     if (isRunning) return
     val model = selectedModel ?: return
@@ -432,10 +436,8 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
     if (model.supportsSpeechOutput) {
         val prompt = userPromptBefore(index) ?: return
         val existing = messages[index]
-        saveTailToVariantContinuation(index)
-        removeTailAfter(index)
         val priorVariants = existing.savedVariants()
-        prepareVariantContinuationForNewVariant(index, existing.variantSlots)
+        beginVariantBranch(index, existing.variantSlots)
         val savedContinuations = messages[index].variantContinuations
         messages[index] = existing.copy(
             content = "",
@@ -464,10 +466,8 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
         ModelKind.ImageGen -> {
             val prompt = userPromptBefore(index) ?: return
             val existing = messages[index]
-            saveTailToVariantContinuation(index)
-            removeTailAfter(index)
             val priorAttachments = existing.savedAttachmentVariants()
-            prepareVariantContinuationForNewVariant(index, existing.variantSlots)
+            beginVariantBranch(index, existing.variantSlots)
             messages[index] = existing.copy(
                 content = "",
                 attachments = emptyList(),
@@ -487,10 +487,8 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             val images = userTurn.attachments.filter { it.isImage }
             if (prompt.isBlank() && images.isEmpty()) return
             val existing = messages[index]
-            saveTailToVariantContinuation(index)
-            removeTailAfter(index)
             val priorAttachments = existing.savedAttachmentVariants()
-            prepareVariantContinuationForNewVariant(index, existing.variantSlots)
+            beginVariantBranch(index, existing.variantSlots)
             messages[index] = existing.copy(
                 content = "",
                 attachments = emptyList(),
@@ -509,10 +507,8 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             val recording = loadVoiceRecordingFromMessage(userTurn) ?: return
             val (audioBytes, format) = recording
             val existing = messages[index]
-            saveTailToVariantContinuation(index)
-            removeTailAfter(index)
             val priorVariants = existing.savedVariants()
-            prepareVariantContinuationForNewVariant(index, existing.variantSlots)
+            beginVariantBranch(index, existing.variantSlots)
             val savedContinuations = messages[index].variantContinuations
             messages[index] = existing.copy(
                 content = "",
@@ -538,10 +534,8 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
     }
 
     val existing = messages[index]
-    saveTailToVariantContinuation(index)
-    removeTailAfter(index)
     val prior = existing.savedVariants()
-    prepareVariantContinuationForNewVariant(index, existing.variantSlots)
+    beginVariantBranch(index, existing.variantSlots)
     val priorReasoning = if (existing.reasoningVariants.isNotEmpty()) {
         existing.reasoningVariants
     } else if (existing.reasoning.isNotBlank() && prior.isNotEmpty()) {
@@ -668,9 +662,7 @@ internal fun ChatState.rejectUnsupportedInputs(
 }
 
 internal fun ChatState.loadVoiceRecordingFromMessage(message: ChatMessage): Pair<ByteArray, String>? {
-    val attachment = message.attachments.firstOrNull {
-        it.mimeType?.startsWith("audio/", ignoreCase = true) == true
-    } ?: return null
+    val attachment = message.attachments.firstOrNull { it.isAudio } ?: return null
     val file = File(attachment.path)
     if (!file.exists() || !file.isFile) return null
     val bytes = runCatching { file.readBytes() }.getOrNull()?.takeIf { it.isNotEmpty() }

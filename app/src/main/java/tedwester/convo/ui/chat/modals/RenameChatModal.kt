@@ -24,6 +24,7 @@ import tedwester.convo.ui.components.ConvoBottomSheet
 import tedwester.convo.ui.components.ConvoButton
 import tedwester.convo.ui.components.ConvoTextField
 import tedwester.convo.ui.components.rememberConvoSheetController
+import tedwester.convo.ui.components.requestFocusSafely
 import tedwester.convo.ui.theme.ConvoModalTokens
 
 @Composable
@@ -42,7 +43,7 @@ fun RenameChatModal(
     val canSave = trimmed.isNotEmpty() && !saving
 
     LaunchedEffect(focusRequester) {
-        runCatching { focusRequester.requestFocus() }
+        focusRequester.requestFocusSafely()
     }
 
     fun submit() {

@@ -52,41 +52,28 @@ private const val PromptBarAnimMs = 200
 private val PromptBarTopGap = 6.dp
 
 /**
- * The send animation is the genie: the bubble you just typed is the same object that arrives
- * in the thread, so it climbs out of the compose field instead of appearing somewhere else.
- *
- * The bubble leaves the field at the end of the line you typed on — where the send button
- * sits — and travels up into the thread along a curve that bows out to the side mid-flight,
- * the way the Mac genie veers instead of going straight. While it travels it is tall and
- * narrow, the way a thread of liquid behaves when it is drawn out of a narrow opening, and it
- * relaxes into its final shape as it lands.
- *
- * The shape stretches while the text stays put: the bubble's body carries the scale, and the
- * text carries its inverse about the same corner, so the letters never smear. The text is
- * resolved once the body has opened out enough to hold it, so the message is never shown
- * twice or shown wrong.
- *
- * [flightOrigin] is where the compose field sits on screen. Without it — a chat that is
- * opening rather than a message being sent — the bubble simply scales into place.
+ * Send animation: the just-typed bubble climbs from the compose field into the thread
+ * along a side-bowing curve, stretched narrow with inverse-scaled text, relaxing on land.
+ * Without [flightOrigin] (chat opening, not a send) it just scales into place.
  */
 private val GenieSpring = spring<Float>(
     dampingRatio = 0.9f,
     stiffness = 380f,
 )
 
-/** Width the bubble is at while it is still a thread leaving the field. */
+/** Width while leaving the field. */
 private const val GenieStartWidth = 0.42f
 
-/** How much taller than usual the bubble is at that moment. */
+/** Height multiplier while leaving the field. */
 private const val GenieStartHeight = 1.6f
 
-/** How far sideways the flight bows out at the middle of its curve. */
+/** Sideways bow at mid-flight. */
 private val GenieSway = 36.dp
 
-/** How far the bubble tips over mid-flight, in degrees. Zero at both ends. */
+/** Mid-flight tilt in degrees, zero at both ends. */
 private const val GenieTiltDeg = 2.5f
 
-/** How far the shape has to open out before the text starts to resolve. */
+/** Shape openness at which text starts resolving. */
 private const val GenieTextOpenness = 0.72f
 
 @Composable
@@ -108,24 +95,20 @@ internal fun UserMessage(
     val images = remember(message.attachments) { message.attachments.filter { it.isImage } }
     val files = remember(message.attachments) {
         message.attachments.filterNot {
-            it.isImage || it.mimeType?.startsWith("audio/", ignoreCase = true) == true
+            it.isImage || it.isAudio
         }
     }
     val audioAttachment = remember(message.attachments) {
-        message.attachments.firstOrNull {
-            it.mimeType?.startsWith("audio/", ignoreCase = true) == true
-        }
+        message.attachments.firstOrNull { it.isAudio }
     }
     val textToShow = remember(message.content) { message.userDisplayText() }
 
     val bubbleGrey = if (dark) Color(0xFF2C2B29) else Color(0xFFE4E6EC)
     val onBubble = if (dark) Color(0xFFE7EAF0) else Color(0xFF1A1D23)
 
-    // Flight progress: 1 means settled. A send drives it back to 0 and lets it spring home.
-    val progress = remember { Animatable(1f) }
-    // Whatever token is current the first time this bubble composes has already been
-    // handled — a chat opening, or an old item scrolling back into view, must never replay
-    // the flight. Only a token that arrives while composed starts one.
+    // 1 = settled. A send resets to 0 and springs back.
+    val progress = remember(message.id) { Animatable(1f) }
+    // First-seen token is already handled — never replay on open or scroll-back.
     var lastAnimatedToken by remember(message.id) { mutableIntStateOf(animToken) }
 
     // Where the bubble comes to rest, kept by reference. It is only turned into a

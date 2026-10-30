@@ -41,6 +41,7 @@ fun MessageList(
     isRunning: Boolean = false,
     sendPulseMessageId: Long = 0,
     sendFlightOrigin: RectAnchor? = null,
+    onSendAnimationConsumed: () -> Unit = {},
     onRegenerate: (Long) -> Unit = {},
     onResendUserMessage: (messageId: Long, editedText: String?) -> Unit = { _, _ -> },
     onStartEditUserMessage: (messageId: Long) -> Unit = {},
@@ -68,29 +69,30 @@ fun MessageList(
         if (latest == null || latest.voiceAutoPlayed) -1L else latest.id
     }
 
-    var userBubbleAnimId by remember { mutableLongStateOf(-1L) }
-    var userBubbleAnimToken by remember { mutableIntStateOf(0) }
+    var userBubbleAnimId by remember(conversationKey) { mutableLongStateOf(-1L) }
+    var userBubbleAnimToken by remember(conversationKey) { mutableIntStateOf(0) }
     var selectedPromptMessageId by remember { mutableLongStateOf(-1L) }
 
-    // Each send is pulsed exactly once, no matter how often this recomposes or how far the
-    // user scrolls. Anything else that adds messages — a chat opening, history loading —
-    // never carries a send id, so those bubbles simply appear.
-    val pulsedSendIds = remember(conversationKey) { mutableSetOf<Long>() }
-
+    // A send is picked up exactly once: adopting it clears the marker in ChatState,
+    // so reopening the chat or rebuilding this list can never replay it. Anything
+    // that adds messages without a send (chat open, history load) sets no marker,
+    // so those bubbles just appear.
     LaunchedEffect(sendPulseMessageId) {
-        if (sendPulseMessageId <= 0 || sendPulseMessageId in pulsedSendIds) return@LaunchedEffect
+        if (sendPulseMessageId <= 0 || sendPulseMessageId == userBubbleAnimId) {
+            return@LaunchedEffect
+        }
         if (messages.none { it.id == sendPulseMessageId && it.author == MessageAuthor.User }) {
             return@LaunchedEffect
         }
-        pulsedSendIds += sendPulseMessageId
         userBubbleAnimId = sendPulseMessageId
         userBubbleAnimToken += 1
+        onSendAnimationConsumed()
     }
 
-    // The freshly sent message is already in the list before its pulse lands. It waits out
-    // of sight so it never flashes in its resting place before the flight starts.
+    // The freshly sent message is already in the list before the adoption above
+    // runs. It waits out of sight so it never flashes in its resting place first.
     val hiddenUserMessageId = if (sendPulseMessageId > 0 &&
-        sendPulseMessageId !in pulsedSendIds &&
+        sendPulseMessageId != userBubbleAnimId &&
         messages.any { it.id == sendPulseMessageId && it.author == MessageAuthor.User }
     ) {
         sendPulseMessageId

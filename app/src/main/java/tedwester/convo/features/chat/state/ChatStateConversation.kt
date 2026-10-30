@@ -26,12 +26,18 @@ internal fun ChatState.applyNewChatDefaultsImpl() {
     }
 }
 
+internal fun ChatState.consumeSendAnimation() {
+    lastSentUserMessageId = 0L
+    lastSentChatId = null
+}
+
 internal fun ChatState.openChatImpl(chatId: String) {
     completions.markChatOpened(chatId)
     if (chatId == currentChatId) {
         reconcileWithController(chatId)
         return
     }
+    consumeSendAnimation()
     completions.viewingChatId = chatId
     scope.launch {
         val live = completions.liveMessages(chatId)
@@ -60,6 +66,7 @@ internal fun ChatState.openChatImpl(chatId: String) {
 
 internal fun ChatState.newChatImpl() {
     completions.viewingChatId = null
+    consumeSendAnimation()
     if (messages.isEmpty() && currentChatId == null) {
         applyNewChatDefaultsImpl()
         input = ""

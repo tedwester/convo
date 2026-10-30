@@ -59,6 +59,7 @@ import tedwester.convo.features.chat.model.Chat
 import tedwester.convo.ui.components.ConvoIconButtonSize
 import tedwester.convo.ui.components.ConvoIconGlyphSize
 import tedwester.convo.ui.components.ConvoSearchField
+import tedwester.convo.ui.components.requestFocusSafely
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.ConvoFieldTokens
 import tedwester.convo.ui.theme.ConvoSearchHeaderTokens
@@ -117,7 +118,7 @@ fun ChatSearchModal(
                 .coerceAtLeast(0),
         )
         showBack = true
-        runCatching { focusRequester.requestFocus() }
+        focusRequester.requestFocusSafely()
         keyboardController?.show()
     }
 

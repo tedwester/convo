@@ -38,13 +38,7 @@ internal fun AssistantResponseControls(
     val muted = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
     // Media variants page along attachments rather than text, so the chevrons follow
     // the shared slot count — otherwise they stay dead on image and video replies.
-    val variantSlots = message.variantSlots
-    val canPage = variantSlots > 1
-    val atStart = message.variantIndex <= 0
-    val atEnd = message.variantIndex >= (variantSlots - 1).coerceAtLeast(0)
-    val hasAudio = message.activeAttachments().any {
-        it.mimeType?.startsWith("audio/", ignoreCase = true) == true
-    }
+    val hasAudio = message.hasAudioAttachment()
     val hasDownloadableMedia = hasAudio || message.hasVideoAttachment()
 
     Row(
@@ -102,28 +96,14 @@ internal fun AssistantResponseControls(
             }
         }
         if (message.variantCount > 1) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                VariantPagerButton(
-                    painter = ConvoIcons.ChevronLeft(),
-                    contentDescription = "Previous response",
-                    enabled = responseActionsEnabled && canPage && !atStart,
-                    onClick = { onVariantChange(-1) },
-                )
-                VariantCounter(
-                    index = message.pagerIndex,
-                    total = message.variantCount,
-                    color = muted,
-                )
-                VariantPagerButton(
-                    painter = ConvoIcons.ChevronRight(),
-                    contentDescription = "Next response",
-                    enabled = responseActionsEnabled && canPage && !atEnd,
-                    onClick = { onVariantChange(1) },
-                )
-            }
+            VariantStepperRow(
+                message = message,
+                actionsEnabled = responseActionsEnabled,
+                onVariantChange = onVariantChange,
+                prevDescription = "Previous response",
+                nextDescription = "Next response",
+                counterColor = muted,
+            )
         }
     }
 }

@@ -69,6 +69,7 @@ import tedwester.convo.ui.components.ConvoIconGlyphSize
 import tedwester.convo.ui.components.ConvoSearchField
 import tedwester.convo.ui.components.ConvoTextField
 import tedwester.convo.ui.components.rememberConvoSheetController
+import tedwester.convo.ui.components.requestFocusSafely
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.ConvoFieldTokens
 import tedwester.convo.ui.theme.ConvoModalTokens
@@ -158,7 +159,7 @@ fun ProjectsScreen(
             delay((ConvoSearchHeaderTokens.BackDelayMs - ConvoSearchHeaderTokens.ContentStartMs).toLong().coerceAtLeast(0))
             if (!searchActive) return@LaunchedEffect
             showSearchBack = true
-            runCatching { searchFocus.requestFocus() }
+            searchFocus.requestFocusSafely()
             keyboardController?.show()
         } else {
             showSearchBack = false

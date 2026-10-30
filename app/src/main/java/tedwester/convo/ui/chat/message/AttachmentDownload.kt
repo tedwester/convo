@@ -56,8 +56,7 @@ internal suspend fun saveMediaAttachmentsToGallery(
     var saved = 0
     attachments
         .filter { attachment ->
-            attachment.isImage || attachment.isVideo ||
-                attachment.mimeType?.startsWith("audio/", ignoreCase = true) == true
+            attachment.isImage || attachment.isVideo || attachment.isAudio
         }
         .forEach { attachment ->
             if (saveAttachmentToDownloads(context, attachment)) saved += 1

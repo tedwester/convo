@@ -25,6 +25,9 @@ data class ChatAttachment(
             return ext in VIDEO_EXTENSIONS
         }
 
+    val isAudio: Boolean
+        get() = mimeType?.startsWith("audio/", ignoreCase = true) == true
+
     private companion object {
         val IMAGE_EXTENSIONS = setOf(
             "jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif", "avif",

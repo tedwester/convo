@@ -77,6 +77,8 @@ import tedwester.convo.ui.components.ConvoIconButtonGap
 import tedwester.convo.ui.components.ConvoPickerField
 import tedwester.convo.ui.components.ConvoTextField
 import tedwester.convo.ui.components.ConvoToggle
+import tedwester.convo.ui.components.KeyVerificationFailedText
+import tedwester.convo.ui.components.NeedsApiKeyText
 import tedwester.convo.ui.components.PasswordVisibilityToggle
 import tedwester.convo.ui.components.VoiceModeChip
 import tedwester.convo.ui.components.rememberAnimatedPasswordReveal
@@ -223,11 +225,11 @@ fun SettingsScreen(
     }
 
     val transcriptionDisplayName = when {
-        apiKey.isBlank() -> "Save an API key first"
+        apiKey.isBlank() -> NeedsApiKeyText
         else -> formatModelDisplay(voicePreferences.transcriptionModelId, transcriptionModelName)
     }
     val replyDisplayName = when {
-        apiKey.isBlank() -> "Save an API key first"
+        apiKey.isBlank() -> NeedsApiKeyText
         else -> formatModelDisplay(voicePreferences.replyModelId, replyModelName)
     }
 
@@ -276,7 +278,7 @@ fun SettingsScreen(
                 api.fetchModels(trimmedKeyDraft)
                 onApiKeyChanged(trimmedKeyDraft)
             } catch (e: Exception) {
-                saveError = e.message ?: "Could not verify the key. Please try again."
+                saveError = e.message ?: KeyVerificationFailedText
             } finally {
                 saving = false
             }

@@ -17,6 +17,7 @@ import tedwester.convo.features.chat.data.VoiceTtsMode
 import tedwester.convo.ui.components.ConvoBottomSheet
 import tedwester.convo.ui.components.ConvoPickerField
 import tedwester.convo.ui.components.ConvoToggle
+import tedwester.convo.ui.components.NeedsApiKeyText
 import tedwester.convo.ui.components.VoiceModeChip
 import tedwester.convo.ui.components.rememberConvoSheetController
 
@@ -39,12 +40,12 @@ fun VoiceModeModal(
     val transcriptionDisplayName = if (hasApiKey) {
         formatModelSlug(voicePreferences.transcriptionModelId)
     } else {
-        "Save an API key first"
+        NeedsApiKeyText
     }
     val replyDisplayName = if (hasApiKey) {
         formatModelSlug(voicePreferences.replyModelId)
     } else {
-        "Save an API key first"
+        NeedsApiKeyText
     }
 
     ConvoBottomSheet(

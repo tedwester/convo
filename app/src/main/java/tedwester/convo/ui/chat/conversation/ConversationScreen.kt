@@ -41,6 +41,7 @@ import tedwester.convo.features.chat.data.ComposerPreferences
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.MessageAuthor
+import tedwester.convo.features.chat.state.consumeSendAnimation
 import tedwester.convo.ui.chat.RectAnchor
 import tedwester.convo.ui.chat.attachments.ImageViewerDialog
 import tedwester.convo.ui.chat.attachments.VideoViewerDialog
@@ -50,6 +51,7 @@ import tedwester.convo.ui.chat.message.ChatScrollController
 import tedwester.convo.ui.chat.message.MessageList
 import tedwester.convo.ui.chat.message.rememberChatScrollController
 import tedwester.convo.ui.chat.message.rememberConversationListState
+import tedwester.convo.ui.input.rememberDismissKeyboard
 
 @Composable
 fun ConversationScreen(
@@ -301,6 +303,7 @@ fun ConversationScreen(
                             0
                         },
                         sendFlightOrigin = if (isLiveSession) sendFlightOrigin else null,
+                        onSendAnimationConsumed = chatState::consumeSendAnimation,
                         onRegenerate = { id ->
                             if (!isLiveSession) return@MessageList
                             dismissKeyboard()

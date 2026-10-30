@@ -11,14 +11,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.delay
-import tedwester.convo.ui.input.rememberDismissKeyboard
-
-@Composable
-fun rememberDismissKeyboard(): () -> Unit = tedwester.convo.ui.input.rememberDismissKeyboard()
 
 @Composable
 fun DismissKeyboardOnLifecycle() {
-    val dismissKeyboard = rememberDismissKeyboard()
+    val dismissKeyboard = tedwester.convo.ui.input.rememberDismissKeyboard()
     val lifecycleOwner = LocalLifecycleOwner.current
     var resumeGeneration by remember { mutableIntStateOf(0) }
 

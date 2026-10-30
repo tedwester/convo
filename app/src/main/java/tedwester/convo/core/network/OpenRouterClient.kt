@@ -494,7 +494,7 @@ class OpenRouterClient(
     ): Request {
         val messagesJson = JSONArray().apply {
             messages.forEach { message ->
-                put(messageToJson(message))
+                put(chatMessageDtoToJson(message))
             }
         }
         val payload = JSONObject().apply {
@@ -529,7 +529,7 @@ class OpenRouterClient(
             .build()
     }
 
-    private fun messageToJson(message: ChatMessageDto): JSONObject =
+    private fun chatMessageDtoToJson(message: ChatMessageDto): JSONObject =
         JSONObject().apply {
             put("role", message.role)
             val audio = message.audioBase64
@@ -602,11 +602,6 @@ class OpenRouterClient(
             val data = JSONObject(body).optJSONObject("data")
                 ?: throw OpenRouterApiException("Missing key data.", response.code)
 
-            fun JSONObject.optDoubleOrNull(key: String): Double? {
-                if (!has(key) || isNull(key)) return null
-                return optDouble(key).takeUnless { it.isNaN() }
-            }
-
             val (totalCredits, totalUsage) = fetchAccountCredits(apiKey)
 
             OpenRouterKeyInfo(
@@ -631,12 +626,13 @@ class OpenRouterClient(
             if (!response.isSuccessful) return@runCatching null to null
 
             val data = JSONObject(body).optJSONObject("data") ?: return@runCatching null to null
-            fun JSONObject.optDoubleOrNull(key: String): Double? {
-                if (!has(key) || isNull(key)) return null
-                return optDouble(key).takeUnless { it.isNaN() }
-            }
             data.optDoubleOrNull("total_credits") to data.optDoubleOrNull("total_usage")
         }.getOrDefault(null to null)
+    }
+
+    private fun JSONObject.optDoubleOrNull(key: String): Double? {
+        if (!has(key) || isNull(key)) return null
+        return optDouble(key).takeUnless { it.isNaN() }
     }
 
     private suspend fun downloadGeneratedVideo(apiKey: String, url: String): GeneratedVideo =

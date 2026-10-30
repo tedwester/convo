@@ -110,17 +110,17 @@ class ChatState(
         internal set
 
     /**
-     * The user message the latest send produced. The message list plays the send animation
-     * for exactly this message, so already-sent messages never replay it when a chat opens
-     * or when old items scroll back into view.
+     * The user message the latest send produced. The message list adopts it exactly
+     * once and then clears it (see consumeSendAnimation), so opening a chat or
+     * scrolling back can never replay the send animation. Anything that adds
+     * messages without a send leaves this at 0, so those bubbles just appear.
      */
     var lastSentUserMessageId by mutableStateOf(0L)
         internal set
 
     /**
-     * The chat the latest send belongs to. Message ids restart per chat, so the pulse only
-     * counts when this is the chat on screen — otherwise any older chat holding the same
-     * numeric id would replay the flight on open.
+     * The chat the latest send belongs to. Message ids restart per chat, so the pulse
+     * only counts when this is the chat on screen. Cleared together with the id above.
      */
     var lastSentChatId by mutableStateOf<String?>(null)
         internal set

@@ -6,11 +6,9 @@ import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.AnimatedContent
@@ -23,7 +21,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -110,9 +106,7 @@ internal fun AssistantMessage(
     val pageCount = message.variantSlots
     val useVariantPager = !message.isStreaming && pageCount > 1
     val activeAttachments = message.activeAttachments()
-    val audioAttachment = activeAttachments.firstOrNull {
-        it.mimeType?.startsWith("audio/", ignoreCase = true) == true
-    }
+    val audioAttachment = activeAttachments.firstOrNull { it.isAudio }
     val voiceScript = message.copyableText()
     val bodyText = message.activeBodyText()
     val isStatusBody = isAssistantStatusContent(bodyText)
@@ -133,8 +127,7 @@ internal fun AssistantMessage(
         !shouldShowThinkingSection &&
         !showSearchActivity &&
         activeAttachments.none {
-            it.isImage || it.isVideo ||
-                it.mimeType?.startsWith("audio/", ignoreCase = true) == true
+            it.isImage || it.isVideo || it.isAudio
         }
 
     Column(
@@ -406,9 +399,7 @@ internal fun AssistantMessageActions(
     val responseActionsEnabled = actionsEnabled && controlsInteractive
     val activeAttachments = message.activeAttachments()
     val audioAttachment = remember(message.id, message.variantIndex, activeAttachments) {
-        activeAttachments.firstOrNull {
-            it.mimeType?.startsWith("audio/", ignoreCase = true) == true
-        }
+        activeAttachments.firstOrNull { it.isAudio }
     }
     val videoAttachment = remember(message.id, message.variantIndex, activeAttachments) {
         activeAttachments.firstOrNull { it.isVideo }
@@ -483,9 +474,7 @@ private fun AssistantVariantPage(
     val bodyText = message.bodyTextAt(variantIndex)
     val attachments = message.attachmentsAt(variantIndex)
     val isStatusBody = isAssistantStatusContent(bodyText)
-    val audioAttachment = attachments.firstOrNull {
-        it.mimeType?.startsWith("audio/", ignoreCase = true) == true
-    }
+    val audioAttachment = attachments.firstOrNull { it.isAudio }
     val voiceScript = message.copyableTextAt(variantIndex)
     val canToggleVoiceDisplay = audioAttachment != null && voiceScript.isNotBlank()
     var savedShowVoiceAsText by rememberSaveable(message.id, variantIndex) {
@@ -498,8 +487,7 @@ private fun AssistantVariantPage(
     val showEmptyFallback = !showResponseBody &&
         !showVoiceToggle &&
         attachments.none {
-            it.isImage || it.isVideo ||
-                it.mimeType?.startsWith("audio/", ignoreCase = true) == true
+            it.isImage || it.isVideo || it.isAudio
         }
 
     Column(
@@ -612,32 +600,6 @@ private fun VoiceReplyDisplayToggle(
 }
 
 @Composable
-internal fun MessageActionButton(
-    painter: Painter,
-    contentDescription: String,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-) {
-    val tint = MaterialTheme.colorScheme.onSurface.copy(
-        alpha = if (enabled) 0.75f else 0.3f,
-    )
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painter,
-            contentDescription = contentDescription,
-            tint = tint,
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-@Composable
 private fun AssistantAttachments(
     attachments: List<ChatAttachment>,
     onViewAttachment: (ChatAttachment) -> Unit,
@@ -654,7 +616,7 @@ private fun AssistantAttachments(
     val audio = if (hideAudio) {
         emptyList()
     } else {
-        attachments.filter { it.mimeType?.startsWith("audio/", ignoreCase = true) == true }
+        attachments.filter { it.isAudio }
     }
     if (images.isEmpty() && videos.isEmpty() && audio.isEmpty()) return
 
