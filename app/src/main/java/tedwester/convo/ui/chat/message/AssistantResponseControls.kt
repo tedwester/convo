@@ -46,9 +46,12 @@ internal fun AssistantResponseControls(
 ) {
     val muted = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
     val saved = message.savedVariants()
-    val canPage = saved.size > 1
+    // Media variants page along attachments rather than text, so the chevrons follow
+    // whichever axis is wider — otherwise they stay dead on image and video replies.
+    val variantSlots = maxOf(saved.size, message.savedAttachmentVariants().size)
+    val canPage = variantSlots > 1
     val atStart = message.variantIndex <= 0
-    val atEnd = message.variantIndex >= saved.lastIndex.coerceAtLeast(0)
+    val atEnd = message.variantIndex >= (variantSlots - 1).coerceAtLeast(0)
     val hasAudio = message.activeAttachments().any {
         it.mimeType?.startsWith("audio/", ignoreCase = true) == true
     }

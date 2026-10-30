@@ -44,6 +44,27 @@ internal suspend fun saveAudioAttachmentToDownloads(
     attachment: ChatAttachment,
 ): Boolean = saveAttachmentToDownloads(context, attachment)
 
+/**
+ * Copies generated media into the Convo folder so every image, video, and voice reply
+ * also lives on the phone outside the app's private storage. Best-effort and silent:
+ * returns how many were saved.
+ */
+internal suspend fun saveMediaAttachmentsToGallery(
+    context: Context,
+    attachments: List<ChatAttachment>,
+): Int {
+    var saved = 0
+    attachments
+        .filter { attachment ->
+            attachment.isImage || attachment.isVideo ||
+                attachment.mimeType?.startsWith("audio/", ignoreCase = true) == true
+        }
+        .forEach { attachment ->
+            if (saveAttachmentToDownloads(context, attachment)) saved += 1
+        }
+    return saved
+}
+
 internal suspend fun saveAttachmentToDownloads(
     context: Context,
     attachment: ChatAttachment,

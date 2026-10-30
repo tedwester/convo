@@ -106,6 +106,7 @@ class MainActivity : FragmentActivity() {
                                 voicePreferencesStore = app.voicePreferencesStore,
                                 searchPreferencesStore = app.searchPreferencesStore,
                                 composerPreferencesStore = app.composerPreferencesStore,
+                                mediaPreferencesStore = app.mediaPreferencesStore,
                                 apiPreferencesStore = app.apiPreferencesStore,
                                 quickSettingsStore = app.quickSettingsStore,
                                 onApiKeyChanged = { newKey -> apiKey = newKey },

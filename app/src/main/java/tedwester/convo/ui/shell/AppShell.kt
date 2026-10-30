@@ -21,6 +21,7 @@ import tedwester.convo.features.chat.data.SearchPreferences
 import tedwester.convo.features.chat.data.SearchPreferencesStore
 import tedwester.convo.features.chat.data.ComposerPreferences
 import tedwester.convo.features.chat.data.ComposerPreferencesStore
+import tedwester.convo.features.chat.data.MediaPreferencesStore
 import tedwester.convo.features.chat.data.ApiPreferences
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.data.VoicePreferencesStore
@@ -37,6 +38,7 @@ fun AppShell(
     voicePreferencesStore: VoicePreferencesStore,
     searchPreferencesStore: SearchPreferencesStore,
     composerPreferencesStore: ComposerPreferencesStore,
+    mediaPreferencesStore: MediaPreferencesStore,
     apiPreferencesStore: ApiPreferencesStore,
     quickSettingsStore: QuickSettingsStore,
     onApiKeyChanged: (String) -> Unit,
@@ -48,6 +50,7 @@ fun AppShell(
     var voicePrefs by remember { mutableStateOf(voicePreferencesStore.load()) }
     var searchPrefs by remember { mutableStateOf(searchPreferencesStore.load()) }
     var composerPrefs by remember { mutableStateOf(composerPreferencesStore.load()) }
+    var mediaPrefs by remember { mutableStateOf(mediaPreferencesStore.load()) }
     var apiPrefs by remember { mutableStateOf(apiPreferencesStore.load()) }
     var quickSettingsConfig by remember { mutableStateOf(quickSettingsStore.load()) }
 
@@ -116,6 +119,11 @@ fun AppShell(
                 onComposerPreferencesChanged = { next ->
                     composerPrefs = next
                     composerPreferencesStore.save(next)
+                },
+                mediaPreferences = mediaPrefs,
+                onMediaPreferencesChanged = { next ->
+                    mediaPrefs = next
+                    mediaPreferencesStore.save(next)
                 },
                 quickSettingsConfig = quickSettingsConfig,
                 onQuickSettingsChanged = { next ->

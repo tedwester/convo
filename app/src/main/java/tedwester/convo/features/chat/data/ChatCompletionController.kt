@@ -28,6 +28,7 @@ import tedwester.convo.core.network.model.ChatMessageDto
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.core.network.model.ReasoningRequest
 import tedwester.convo.features.chat.model.ChatAttachment
+import tedwester.convo.ui.chat.message.saveMediaAttachmentsToGallery
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.EMPTY_RESPONSE_TEXT
 import tedwester.convo.features.chat.model.STOPPED_RESPONSE_TEXT
@@ -474,13 +475,20 @@ class ChatCompletionController(
         }
     }
 
-    private fun finalizeSpecialAssistant(
+    private suspend fun finalizeSpecialAssistant(
         session: Session,
         content: String,
         attachments: List<ChatAttachment>,
     ) {
         val index = session.messages.indexOfFirst { it.id == session.assistantId }
         if (index < 0) return
+        if (attachments.isNotEmpty() &&
+            MediaPreferencesStore(app).load().saveMediaToGallery
+        ) {
+            // Every generated image, video, and voice reply also lands in the Convo folder
+            // on the phone. Best-effort and silent; the chat never waits on it.
+            saveMediaAttachmentsToGallery(app, attachments)
+        }
         val existing = session.messages[index]
         val resolvedContent = if (content.isBlank() && attachments.isEmpty()) {
             EMPTY_RESPONSE_TEXT

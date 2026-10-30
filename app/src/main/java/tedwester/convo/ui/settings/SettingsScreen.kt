@@ -63,6 +63,7 @@ import tedwester.convo.features.chat.data.ApiPreferences
 import tedwester.convo.features.chat.data.QuickSettingsConfig
 import tedwester.convo.features.chat.data.SearchPreferences
 import tedwester.convo.features.chat.data.ComposerPreferences
+import tedwester.convo.features.chat.data.MediaPreferences
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.data.VoiceTtsMode
 import tedwester.convo.features.chat.model.QuickSettingDescriptor
@@ -103,6 +104,8 @@ fun SettingsScreen(
     onSearchPreferencesChanged: (SearchPreferences) -> Unit,
     composerPreferences: ComposerPreferences = ComposerPreferences(),
     onComposerPreferencesChanged: (ComposerPreferences) -> Unit = {},
+    mediaPreferences: MediaPreferences = MediaPreferences(),
+    onMediaPreferencesChanged: (MediaPreferences) -> Unit = {},
     quickSettingsConfig: QuickSettingsConfig = QuickSettingsConfig(),
     onQuickSettingsChanged: (QuickSettingsConfig) -> Unit = {},
     apiPreferences: ApiPreferences = ApiPreferences(),
@@ -648,6 +651,41 @@ fun SettingsScreen(
                         onCheckedChange = { enabled ->
                             onComposerPreferencesChanged(
                                 composerPreferences.copy(showScrollToTopButton = enabled),
+                            )
+                        },
+                    )
+                }
+                }
+
+                SettingsSection(
+                    title = "Media",
+                    description = "Generated images, videos, and voice replies are kept in the " +
+                        "Convo folder on your phone. If this is off, regenerating media " +
+                        "replaces it, so you won't be able to access variants of media.",
+                    showDividerAbove = true,
+                ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Save media to phone",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                        Text(
+                            text = "Keep a copy in the Convo folder outside the app",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        )
+                    }
+                    ConvoToggle(
+                        checked = mediaPreferences.saveMediaToGallery,
+                        onCheckedChange = { enabled ->
+                            onMediaPreferencesChanged(
+                                mediaPreferences.copy(saveMediaToGallery = enabled),
                             )
                         },
                     )

@@ -18,6 +18,7 @@ import tedwester.convo.features.chat.data.ChatRepository
 import tedwester.convo.features.chat.data.ApiPreferencesStore
 import tedwester.convo.features.chat.data.ComposerHintsStore
 import tedwester.convo.features.chat.data.ComposerPreferencesStore
+import tedwester.convo.features.chat.data.MediaPreferencesStore
 import tedwester.convo.features.chat.data.ChatModelFilterStore
 import tedwester.convo.features.chat.data.QuickSettingsStore
 import tedwester.convo.features.chat.data.ReasoningPreferencesStore
@@ -62,6 +63,9 @@ class ConvoApp : Application(), ImageLoaderFactory {
     lateinit var composerPreferencesStore: ComposerPreferencesStore
         private set
 
+    lateinit var mediaPreferencesStore: MediaPreferencesStore
+        private set
+
     lateinit var apiPreferencesStore: ApiPreferencesStore
         private set
 
@@ -90,6 +94,7 @@ class ConvoApp : Application(), ImageLoaderFactory {
         quickSettingsStore = QuickSettingsStore(this)
         composerHintsStore = ComposerHintsStore(this)
         composerPreferencesStore = ComposerPreferencesStore(this)
+        mediaPreferencesStore = MediaPreferencesStore(this)
         apiPreferencesStore = ApiPreferencesStore(this)
         val apiPrefs = apiPreferencesStore.load()
         api = OpenRouterClient(initialReadTimeoutMinutes = apiPrefs.requestTimeoutMinutes)

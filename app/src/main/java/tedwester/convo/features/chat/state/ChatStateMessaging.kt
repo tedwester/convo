@@ -11,6 +11,7 @@ import tedwester.convo.core.network.model.ModelKind
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.core.network.model.TranscriptionRequest
 import tedwester.convo.features.chat.data.AttachmentStore
+import tedwester.convo.features.chat.data.MediaPreferencesStore
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
@@ -430,9 +431,22 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
         return
     }
 
+    // Media variants are only kept while gallery saving is on: with it off, regenerating
+    // replaces the media instead, so there are no variants to page through.
+    val keepMediaVariants = MediaPreferencesStore(context).load().saveMediaToGallery
+
     when (model.modelKind) {
         ModelKind.ImageGen -> {
             val prompt = userPromptBefore(index) ?: return
+            if (!keepMediaVariants) {
+                saveTailToVariantContinuation(index)
+                removeTailAfter(index)
+                messages.removeAt(index)
+                bumpMessageListRevision()
+                persist(bumpRecency = true)
+                runImageCompletion(model, prompt)
+                return
+            }
             val existing = messages[index]
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
@@ -456,6 +470,15 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             val prompt = userPromptBefore(index).orEmpty()
             val images = userTurn.attachments.filter { it.isImage }
             if (prompt.isBlank() && images.isEmpty()) return
+            if (!keepMediaVariants) {
+                saveTailToVariantContinuation(index)
+                removeTailAfter(index)
+                messages.removeAt(index)
+                bumpMessageListRevision()
+                persist(bumpRecency = true)
+                runVideoCompletion(model, prompt, images)
+                return
+            }
             val existing = messages[index]
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
