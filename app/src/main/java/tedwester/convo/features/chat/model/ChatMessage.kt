@@ -106,20 +106,33 @@ data class ChatMessage(
             attachments.any { it.isVideo }
     }
 
+    /**
+     * How many variants this message holds across every axis. Image and video generations
+     * variant along their attachments rather than text, so both axes count — whichever is
+     * wider decides how many pages there are.
+     */
     val variantCount: Int
-        get() = when {
-            isStreaming -> variants.size + 1
-            variants.isNotEmpty() -> variants.size
-            content.isNotBlank() -> 1
-            else -> 0
+        get() {
+            val mediaSlots = savedAttachmentVariants().size
+            return when {
+                isStreaming -> maxOf(variants.size + 1, mediaSlots + 1)
+                variants.isNotEmpty() -> maxOf(variants.size, mediaSlots)
+                mediaSlots > 0 -> mediaSlots
+                content.isNotBlank() -> 1
+                else -> 0
+            }
         }
 
     val pagerIndex: Int
-        get() = when {
-            isStreaming -> variants.size + 1
-            variants.isNotEmpty() -> variantIndex.coerceIn(0, variants.lastIndex) + 1
-            content.isNotBlank() -> 1
-            else -> 0
+        get() {
+            val mediaSlots = savedAttachmentVariants().size
+            return when {
+                isStreaming -> maxOf(variants.size + 1, mediaSlots + 1)
+                variants.isNotEmpty() -> variantIndex.coerceIn(0, variants.lastIndex) + 1
+                mediaSlots > 0 -> variantIndex.coerceIn(0, mediaSlots - 1) + 1
+                content.isNotBlank() -> 1
+                else -> 0
+            }
         }
 
     fun activeReasoning(): String {

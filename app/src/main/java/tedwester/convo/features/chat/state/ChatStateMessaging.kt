@@ -363,7 +363,10 @@ internal fun ChatState.saveTailToVariantContinuation(assistantIndex: Int) {
         emptyList()
     }
     if (currentTail.isEmpty() && message.variantContinuations.isEmpty()) return
-    val variantCount = message.savedVariants().size.coerceAtLeast(1)
+    val variantCount = maxOf(
+        message.savedVariants().size,
+        message.savedAttachmentVariants().size,
+    ).coerceAtLeast(1)
     val continuations = message.ensureVariantContinuations(variantCount).toMutableList()
     continuations[message.variantIndex.coerceIn(0, variantCount - 1)] = currentTail
     messages[assistantIndex] = message.copy(variantContinuations = continuations)
@@ -430,12 +433,22 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
     when (model.modelKind) {
         ModelKind.ImageGen -> {
             val prompt = userPromptBefore(index) ?: return
+            val existing = messages[index]
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
-            messages.removeAt(index)
-            bumpMessageListRevision()
+            val priorAttachments = existing.savedAttachmentVariants()
+            prepareVariantContinuationForNewVariant(index, priorAttachments.size)
+            messages[index] = existing.copy(
+                content = "",
+                attachments = emptyList(),
+                isStreaming = true,
+                statusLabel = "Generating image…",
+                attachmentVariants = priorAttachments,
+                variantIndex = priorAttachments.size.coerceAtLeast(0),
+                variantContinuations = messages[index].variantContinuations,
+            )
             persist(bumpRecency = true)
-            runImageCompletion(model, prompt)
+            runImageCompletion(model, prompt, assistantId = messageId, appendVariant = true)
             return
         }
         ModelKind.VideoGen -> {
@@ -443,12 +456,22 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             val prompt = userPromptBefore(index).orEmpty()
             val images = userTurn.attachments.filter { it.isImage }
             if (prompt.isBlank() && images.isEmpty()) return
+            val existing = messages[index]
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
-            messages.removeAt(index)
-            bumpMessageListRevision()
+            val priorAttachments = existing.savedAttachmentVariants()
+            prepareVariantContinuationForNewVariant(index, priorAttachments.size)
+            messages[index] = existing.copy(
+                content = "",
+                attachments = emptyList(),
+                isStreaming = true,
+                statusLabel = "Generating video…",
+                attachmentVariants = priorAttachments,
+                variantIndex = priorAttachments.size.coerceAtLeast(0),
+                variantContinuations = messages[index].variantContinuations,
+            )
             persist(bumpRecency = true)
-            runVideoCompletion(model, prompt, images)
+            runVideoCompletion(model, prompt, images, assistantId = messageId, appendVariant = true)
             return
         }
         ModelKind.Transcription -> {
@@ -548,9 +571,10 @@ internal fun ChatState.selectVariantImpl(messageId: Long, delta: Int) {
     val message = messages[index]
     if (message.isStreaming) return
     val saved = message.savedVariants()
-    if (saved.size <= 1) return
+    val slotCount = maxOf(saved.size, message.savedAttachmentVariants().size)
+    if (slotCount <= 1) return
     val oldVariant = message.variantIndex
-    val next = (oldVariant + delta).coerceIn(0, saved.lastIndex)
+    val next = (oldVariant + delta).coerceIn(0, slotCount - 1)
     if (next == oldVariant) return
 
     // Switching variants keeps each variant's own continuation: the tail that followed the
@@ -561,8 +585,8 @@ internal fun ChatState.selectVariantImpl(messageId: Long, delta: Int) {
     } else {
         emptyList()
     }
-    val continuations = message.ensureVariantContinuations(saved.size).toMutableList()
-    continuations[oldVariant] = currentTail
+    val continuations = message.ensureVariantContinuations(slotCount).toMutableList()
+    continuations[oldVariant.coerceIn(0, slotCount - 1)] = currentTail
     val restoredTail = continuations.getOrElse(next) { emptyList() }
 
     messages[index] = message

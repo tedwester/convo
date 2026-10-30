@@ -223,18 +223,33 @@ internal fun ChatState.runTranscriptionCompletion(
     }
 }
 
-internal fun ChatState.runImageCompletion(model: OpenRouterModel, prompt: String) {
+internal fun ChatState.runImageCompletion(
+    model: OpenRouterModel,
+    prompt: String,
+    assistantId: Long? = null,
+    appendVariant: Boolean = false,
+) {
     val chatId = currentChatId ?: return
     if (prompt.isBlank()) return
-    val assistantId = ++currentId
-    messages += ChatMessage(
-        id = assistantId,
-        author = MessageAuthor.Assistant,
-        content = "",
-        timestamp = System.currentTimeMillis(),
-        isStreaming = true,
-        statusLabel = "Generating image…",
-    )
+    val id = assistantId ?: ++currentId
+    if (assistantId == null) {
+        messages += ChatMessage(
+            id = id,
+            author = MessageAuthor.Assistant,
+            content = "",
+            timestamp = System.currentTimeMillis(),
+            isStreaming = true,
+            statusLabel = "Generating image…",
+        )
+    } else {
+        val index = messages.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            messages[index] = messages[index].copy(
+                isStreaming = true,
+                statusLabel = "Generating image…",
+            )
+        }
+    }
     persist()
     isRunning = true
     completions.viewingChatId = chatId
@@ -243,8 +258,8 @@ internal fun ChatState.runImageCompletion(model: OpenRouterModel, prompt: String
             chatId = chatId,
             model = model,
             messages = messages.toList(),
-            assistantId = assistantId,
-            appendVariant = false,
+            assistantId = id,
+            appendVariant = appendVariant,
             systemMessage = systemMessage,
         ),
     ) {
@@ -284,19 +299,31 @@ internal fun ChatState.runVideoCompletion(
     model: OpenRouterModel,
     prompt: String,
     referenceImages: List<ChatAttachment> = emptyList(),
+    assistantId: Long? = null,
+    appendVariant: Boolean = false,
 ) {
     val chatId = currentChatId ?: return
     val trimmed = prompt.trim()
     if (trimmed.isBlank() && referenceImages.isEmpty()) return
-    val assistantId = ++currentId
-    messages += ChatMessage(
-        id = assistantId,
-        author = MessageAuthor.Assistant,
-        content = "",
-        timestamp = System.currentTimeMillis(),
-        isStreaming = true,
-        statusLabel = "Generating video…",
-    )
+    val id = assistantId ?: ++currentId
+    if (assistantId == null) {
+        messages += ChatMessage(
+            id = id,
+            author = MessageAuthor.Assistant,
+            content = "",
+            timestamp = System.currentTimeMillis(),
+            isStreaming = true,
+            statusLabel = "Generating video…",
+        )
+    } else {
+        val index = messages.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            messages[index] = messages[index].copy(
+                isStreaming = true,
+                statusLabel = "Generating video…",
+            )
+        }
+    }
     persist()
     isRunning = true
     completions.viewingChatId = chatId
@@ -305,8 +332,8 @@ internal fun ChatState.runVideoCompletion(
             chatId = chatId,
             model = model,
             messages = messages.toList(),
-            assistantId = assistantId,
-            appendVariant = false,
+            assistantId = id,
+            appendVariant = appendVariant,
             systemMessage = systemMessage,
         ),
     ) {

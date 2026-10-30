@@ -323,7 +323,14 @@ fun ConversationScreen(
                             chatState.cancelEditingMessage()
                             chatState.selectVariant(id, delta)
                         },
-                        onViewAttachment = { if (isLiveSession) viewingAttachment = it },
+                        onViewAttachment = { attachment ->
+                            if (!isLiveSession) return@MessageList
+                            // While the chat box is open and typing, image taps don't launch
+                            // the viewer — it would open over the keyboard and break focus.
+                            // Videos keep working; downloads stay in the message actions.
+                            if (attachment.isImage && isKeyboardVisible) return@MessageList
+                            viewingAttachment = attachment
+                        },
                         onDismissKeyboard = dismissKeyboard,
                         autoPlayVoiceReplies = voicePreferences.autoPlayVoiceReplies && isLiveSession,
                         forceAutoPlayVoiceReplies = isLiveSession &&
