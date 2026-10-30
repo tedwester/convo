@@ -1,7 +1,5 @@
 package tedwester.convo.ui.chat.message
 
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import tedwester.convo.features.chat.model.ChatAttachment
@@ -127,21 +124,6 @@ fun MessageList(
                     onDismissKeyboard()
                     selectedPromptMessageId = -1L
                 })
-            }
-            .pointerInput(scrollController) {
-                // Finger down starts the gesture, finger up ends it. Observed
-                // straight from touch events, so a lift can never go missing:
-                // armed on release always means a new chat. Never consumes.
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    scrollController.onGestureStart()
-                    var lifted = false
-                    while (!lifted) {
-                        val event = awaitPointerEvent(pass = PointerEventPass.Final)
-                        if (event.changes.none { it.pressed }) lifted = true
-                    }
-                    scrollController.onGestureEnd()
-                }
             }
             .nestedScroll(scrollController.scrollConnection),
         contentPadding = contentPadding,

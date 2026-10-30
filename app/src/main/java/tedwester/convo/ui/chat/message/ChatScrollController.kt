@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -557,6 +558,16 @@ fun rememberChatScrollController(
                     if (!currentCoroutineContext().isActive) throw error
                 }
             }
+    }
+
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is DragInteraction.Start -> controller.onGestureStart()
+                is DragInteraction.Stop -> controller.onGestureEnd()
+                else -> Unit
+            }
+        }
     }
 
     return controller
