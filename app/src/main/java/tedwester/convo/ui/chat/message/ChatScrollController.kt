@@ -1,6 +1,7 @@
 package tedwester.convo.ui.chat.message
 
-import androidx.compose.animation.core.Springimport androidx.compose.animation.core.animate
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
