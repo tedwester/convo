@@ -497,14 +497,17 @@ class ChatCompletionController(
         }
         val priorVariants = existing.savedVariants()
         val priorAttachmentVariants = existing.savedAttachmentVariants()
+        val slotCount = existing.variantSlots
         val (nextVariants, nextAttachmentVariants, nextIndex) =
-            if (session.appendVariant &&
-                (priorVariants.isNotEmpty() || priorAttachmentVariants.isNotEmpty())
-            ) {
+            if (session.appendVariant && slotCount > 0) {
                 Triple(
-                    priorVariants + resolvedContent,
+                    if (priorVariants.isNotEmpty()) {
+                        priorVariants + resolvedContent
+                    } else {
+                        priorVariants
+                    },
                     priorAttachmentVariants + listOf(attachments),
-                    maxOf(priorVariants.size, priorAttachmentVariants.size),
+                    slotCount,
                 )
             } else {
                 Triple(listOf(resolvedContent), listOf(attachments), 0)

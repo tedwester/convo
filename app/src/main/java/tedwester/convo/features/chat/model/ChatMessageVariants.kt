@@ -9,11 +9,7 @@ internal fun ChatMessage.ensureVariantContinuations(variantCount: Int): List<Lis
 
 internal fun ChatMessage.withActiveVariantFields(index: Int): ChatMessage {
     val saved = savedVariants()
-    val mediaSlots = savedAttachmentVariants()
-    // Text and media variant along different axes; the wider one decides the range so image
-    // and video generations page exactly like chat replies.
-    val slotCount = maxOf(saved.size, mediaSlots.size).coerceAtLeast(1)
-    val clamped = index.coerceIn(0, slotCount - 1)
+    val clamped = clampVariantIndex(index)
     val reasoningForVariant = reasoningVariants.getOrNull(clamped)
         ?: reasoning.takeIf { clamped == variantIndex }
         ?: ""
@@ -22,7 +18,7 @@ internal fun ChatMessage.withActiveVariantFields(index: Int): ChatMessage {
     val webSearchForVariant = webSearchStepVariants.getOrNull(clamped)
         ?: webSearchSteps.takeIf { clamped == variantIndex }
         ?: emptyList()
-    val attachmentsForVariant = mediaSlots.getOrNull(clamped)
+    val attachmentsForVariant = savedAttachmentVariants().getOrNull(clamped)
         ?: attachments.takeIf { clamped == variantIndex }
         ?: emptyList()
     return copy(

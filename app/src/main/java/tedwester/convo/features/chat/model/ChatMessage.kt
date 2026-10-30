@@ -107,32 +107,32 @@ data class ChatMessage(
     }
 
     /**
-     * How many variants this message holds across every axis. Image and video generations
-     * variant along their attachments rather than text, so both axes count — whichever is
-     * wider decides how many pages there are.
+     * Variant slots across every axis. Text replies variant along their content, image and
+     * video generations along their attachments, voice along both in lockstep — but they all
+     * share one index space, so every counter, pager, clamp, and continuation below reads
+     * this instead of branching on kind. That is what makes switching work identically for
+     * chat, voice, image, and video responses.
      */
+    val variantSlots: Int
+        get() = maxOf(savedVariants().size, savedAttachmentVariants().size)
+
+    fun clampVariantIndex(index: Int): Int =
+        if (variantSlots <= 0) 0 else index.coerceIn(0, variantSlots - 1)
+
     val variantCount: Int
-        get() {
-            val mediaSlots = savedAttachmentVariants().size
-            return when {
-                isStreaming -> maxOf(variants.size + 1, mediaSlots + 1)
-                variants.isNotEmpty() -> maxOf(variants.size, mediaSlots)
-                mediaSlots > 0 -> mediaSlots
-                content.isNotBlank() -> 1
-                else -> 0
-            }
+        get() = when {
+            isStreaming -> maxOf(variants.size + 1, savedAttachmentVariants().size + 1)
+            variantSlots > 0 -> variantSlots
+            content.isNotBlank() -> 1
+            else -> 0
         }
 
     val pagerIndex: Int
-        get() {
-            val mediaSlots = savedAttachmentVariants().size
-            return when {
-                isStreaming -> maxOf(variants.size + 1, mediaSlots + 1)
-                variants.isNotEmpty() -> variantIndex.coerceIn(0, variants.lastIndex) + 1
-                mediaSlots > 0 -> variantIndex.coerceIn(0, mediaSlots - 1) + 1
-                content.isNotBlank() -> 1
-                else -> 0
-            }
+        get() = when {
+            isStreaming -> maxOf(variants.size + 1, savedAttachmentVariants().size + 1)
+            variantSlots > 0 -> clampVariantIndex(variantIndex) + 1
+            content.isNotBlank() -> 1
+            else -> 0
         }
 
     fun activeReasoning(): String {

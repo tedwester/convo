@@ -107,7 +107,7 @@ internal fun AssistantMessage(
         mutableStateOf(false)
     }
     val showSearchResultsPill = searchCitations.isNotEmpty() && responseHasStarted
-    val pageCount = maxOf(message.savedVariants().size, message.savedAttachmentVariants().size)
+    val pageCount = message.variantSlots
     val useVariantPager = !message.isStreaming && pageCount > 1
     val activeAttachments = message.activeAttachments()
     val audioAttachment = activeAttachments.firstOrNull {

@@ -372,10 +372,7 @@ internal fun ChatState.saveTailToVariantContinuation(assistantIndex: Int) {
         emptyList()
     }
     if (currentTail.isEmpty() && message.variantContinuations.isEmpty()) return
-    val variantCount = maxOf(
-        message.savedVariants().size,
-        message.savedAttachmentVariants().size,
-    ).coerceAtLeast(1)
+    val variantCount = message.variantSlots.coerceAtLeast(1)
     val continuations = message.ensureVariantContinuations(variantCount).toMutableList()
     continuations[message.variantIndex.coerceIn(0, variantCount - 1)] = currentTail
     messages[assistantIndex] = message.copy(variantContinuations = continuations)
@@ -416,7 +413,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
         saveTailToVariantContinuation(index)
         removeTailAfter(index)
         val priorVariants = existing.savedVariants()
-        prepareVariantContinuationForNewVariant(index, priorVariants.size)
+        prepareVariantContinuationForNewVariant(index, existing.variantSlots)
         val savedContinuations = messages[index].variantContinuations
         messages[index] = existing.copy(
             content = "",
@@ -459,7 +456,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
             val priorAttachments = existing.savedAttachmentVariants()
-            prepareVariantContinuationForNewVariant(index, priorAttachments.size)
+            prepareVariantContinuationForNewVariant(index, existing.variantSlots)
             messages[index] = existing.copy(
                 content = "",
                 attachments = emptyList(),
@@ -491,7 +488,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
             val priorAttachments = existing.savedAttachmentVariants()
-            prepareVariantContinuationForNewVariant(index, priorAttachments.size)
+            prepareVariantContinuationForNewVariant(index, existing.variantSlots)
             messages[index] = existing.copy(
                 content = "",
                 attachments = emptyList(),
@@ -513,7 +510,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
             saveTailToVariantContinuation(index)
             removeTailAfter(index)
             val priorVariants = existing.savedVariants()
-            prepareVariantContinuationForNewVariant(index, priorVariants.size)
+            prepareVariantContinuationForNewVariant(index, existing.variantSlots)
             val savedContinuations = messages[index].variantContinuations
             messages[index] = existing.copy(
                 content = "",
@@ -542,7 +539,7 @@ internal fun ChatState.regenerateImpl(messageId: Long) {
     saveTailToVariantContinuation(index)
     removeTailAfter(index)
     val prior = existing.savedVariants()
-    prepareVariantContinuationForNewVariant(index, prior.size)
+    prepareVariantContinuationForNewVariant(index, existing.variantSlots)
     val priorReasoning = if (existing.reasoningVariants.isNotEmpty()) {
         existing.reasoningVariants
     } else if (existing.reasoning.isNotBlank() && prior.isNotEmpty()) {
@@ -601,8 +598,7 @@ internal fun ChatState.selectVariantImpl(messageId: Long, delta: Int) {
     if (index < 0) return
     val message = messages[index]
     if (message.isStreaming) return
-    val saved = message.savedVariants()
-    val slotCount = maxOf(saved.size, message.savedAttachmentVariants().size)
+    val slotCount = message.variantSlots
     if (slotCount <= 1) return
     val oldVariant = message.variantIndex
     val next = (oldVariant + delta).coerceIn(0, slotCount - 1)

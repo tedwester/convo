@@ -45,10 +45,9 @@ internal fun AssistantResponseControls(
     modifier: Modifier = Modifier,
 ) {
     val muted = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-    val saved = message.savedVariants()
     // Media variants page along attachments rather than text, so the chevrons follow
-    // whichever axis is wider — otherwise they stay dead on image and video replies.
-    val variantSlots = maxOf(saved.size, message.savedAttachmentVariants().size)
+    // the shared slot count — otherwise they stay dead on image and video replies.
+    val variantSlots = message.variantSlots
     val canPage = variantSlots > 1
     val atStart = message.variantIndex <= 0
     val atEnd = message.variantIndex >= (variantSlots - 1).coerceAtLeast(0)
