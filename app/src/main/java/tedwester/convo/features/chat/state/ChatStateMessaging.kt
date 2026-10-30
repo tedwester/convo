@@ -12,6 +12,8 @@ import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.core.network.model.TranscriptionRequest
 import tedwester.convo.features.chat.data.AttachmentStore
 import tedwester.convo.features.chat.data.MediaPreferencesStore
+import tedwester.convo.ui.chat.message.saveAudioBytesToDownloads
+import tedwester.convo.ui.chat.message.saveMediaAttachmentsToGallery
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
@@ -199,6 +201,9 @@ internal suspend fun ChatState.sendVoiceImpl(
     )
     lastSentUserMessageId = currentId
     lastSentChatId = currentChatId
+    if (MediaPreferencesStore(context).load().saveMediaToGallery) {
+        saveAudioBytesToDownloads(context, audioBytes, format)
+    }
     persist()
 
     if (model.supportsSpeechOutput) {
@@ -289,6 +294,9 @@ private suspend fun ChatState.sendTranscriptionVoiceBody(
     )
     lastSentUserMessageId = currentId
     lastSentChatId = currentChatId
+    if (MediaPreferencesStore(context).load().saveMediaToGallery) {
+        saveMediaAttachmentsToGallery(context, listOf(attachment))
+    }
     persist(bumpRecency = true)
     bumpMessageListRevision()
 

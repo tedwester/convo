@@ -82,11 +82,19 @@ internal suspend fun saveAttachmentToDownloads(
     }
     val displayName = attachment.displayName.ifBlank { fallback }
 
+    // Everything lands in the Convo folder, compartmentalized by media type. Documents
+    // and anything else stay at the top level.
+    val folder = when {
+        attachment.isImage -> "Download/Convo/Images"
+        attachment.isVideo -> "Download/Convo/Videos"
+        mime.startsWith("audio/", ignoreCase = true) -> "Download/Convo/Audio"
+        else -> "Download/Convo"
+    }
     val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
     val values = ContentValues().apply {
         put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
         put(MediaStore.MediaColumns.MIME_TYPE, mime)
-        put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/Convo")
+        put(MediaStore.MediaColumns.RELATIVE_PATH, folder)
         put(MediaStore.MediaColumns.IS_PENDING, 1)
     }
 
@@ -95,6 +103,41 @@ internal suspend fun saveAttachmentToDownloads(
         resolver.openOutputStream(uri)?.use { out ->
             src.inputStream().use { input -> input.copyTo(out) }
         } ?: run {
+            resolver.delete(uri, null, null)
+            return@withContext false
+        }
+        values.clear()
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+        true
+    } catch (e: Exception) {
+        resolver.delete(uri, null, null)
+        false
+    }
+}
+
+/**
+ * Saves raw recorded audio (a mic recording that was never kept as a file) into the
+ * Convo folder's Audio compartment.
+ */
+internal suspend fun saveAudioBytesToDownloads(
+    context: Context,
+    audioBytes: ByteArray,
+    format: String,
+): Boolean = withContext(Dispatchers.IO) {
+    if (audioBytes.isEmpty()) return@withContext false
+    val resolver = context.contentResolver
+    val displayName = "voice_${System.currentTimeMillis()}.$format"
+    val values = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+        put(MediaStore.MediaColumns.MIME_TYPE, "audio/$format")
+        put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/Convo/Audio")
+        put(MediaStore.MediaColumns.IS_PENDING, 1)
+    }
+    val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+        ?: return@withContext false
+    try {
+        resolver.openOutputStream(uri)?.use { it.write(audioBytes) } ?: run {
             resolver.delete(uri, null, null)
             return@withContext false
         }

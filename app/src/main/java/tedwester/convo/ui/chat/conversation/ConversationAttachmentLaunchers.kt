@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import tedwester.convo.features.chat.ChatState
 import tedwester.convo.features.chat.data.AttachmentStore
+import tedwester.convo.features.chat.data.MediaPreferencesStore
+import tedwester.convo.ui.chat.message.saveMediaAttachmentsToGallery
 import java.io.File
 
 internal class ConversationAttachmentLaunchers(
@@ -75,6 +77,11 @@ internal fun rememberConversationAttachmentLaunchers(
                     )
                 } ?: return@launch
                 chatState.addAttachment(attachment)
+                // A photo taken in the app never reaches the gallery on its own, so a
+                // copy goes to the Convo folder while the toggle is on.
+                if (MediaPreferencesStore(context).load().saveMediaToGallery) {
+                    saveMediaAttachmentsToGallery(context, listOf(attachment))
+                }
                 onAttachmentIngested()
             }
         } else {
