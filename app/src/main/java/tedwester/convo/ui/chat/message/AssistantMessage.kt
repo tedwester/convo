@@ -36,9 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
@@ -388,7 +386,6 @@ internal fun AssistantMessageActions(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val controlsAlpha = rememberResponseControlsAlpha(
         messageId = message.id,
@@ -413,9 +410,8 @@ internal fun AssistantMessageActions(
         controlsAlpha = controlsAlpha,
         onRegenerate = onRegenerate,
         onCopy = {
-            val text = message.copyableText()
-            if (text.isNotBlank()) {
-                clipboard.setText(AnnotatedString(text))
+            if (!copyTextAndImagesToClipboard(context, message.copyableText(), message.copyableImages())) {
+                Toast.makeText(context, "Couldn’t copy", Toast.LENGTH_SHORT).show()
             }
         },
         onShare = {

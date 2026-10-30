@@ -80,6 +80,12 @@ data class ChatMessage(
         return text.trim()
     }
 
+    fun copyableImages(): List<ChatAttachment> =
+        activeAttachments().filter { it.isImage }
+
+    fun hasCopyableContent(): Boolean =
+        copyableText().isNotBlank() || copyableImages().isNotEmpty()
+
     fun activeBodyText(): String = bodyTextAt(variantIndex)
 
     fun bodyTextAt(index: Int): String {

@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.sp
 
 internal const val ViewerMinScale = 1f
 internal const val ViewerMaxScale = 5f
-internal const val ViewerDoubleTapScale = 3f
 internal const val ViewerStepScale = 0.5f
 
 internal class ViewerZoom {

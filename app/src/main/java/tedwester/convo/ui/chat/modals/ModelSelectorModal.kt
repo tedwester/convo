@@ -39,7 +39,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -344,18 +343,32 @@ private fun ModelSelectorContent(
                         )
                         if (showFilterBadges && (activeFilters.hasActiveFilters || query.isNotEmpty())) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(
-                                onClick = {
-                                    updateQuery("")
-                                    updateFilters(ModelFilterState())
-                                },
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                Text("Clear filters & search")
+                                FilterBadge(
+                                    label = "Clear filters & search",
+                                    selected = true,
+                                    isClear = true,
+                                    onClick = {
+                                        updateQuery("")
+                                        updateFilters(ModelFilterState())
+                                    },
+                                )
                             }
                         } else if (!showFilterBadges && query.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(onClick = { updateQuery("") }) {
-                                Text("Clear search")
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                FilterBadge(
+                                    label = "Clear search",
+                                    selected = true,
+                                    isClear = true,
+                                    onClick = { updateQuery("") },
+                                )
                             }
                         }
                     }

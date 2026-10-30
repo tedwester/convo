@@ -61,7 +61,7 @@ internal fun AssistantResponseControls(
                 onClick = { onRegenerate?.invoke() },
             )
             CopyButton(
-                enabled = controlsVisible && message.copyableText().isNotBlank(),
+                enabled = controlsVisible && message.hasCopyableContent(),
                 onCopy = onCopy,
             )
             MessageActionButton(

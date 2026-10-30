@@ -6,6 +6,7 @@ import org.json.JSONObject
 import tedwester.convo.core.network.model.ChatMessageDto
 import tedwester.convo.core.network.model.ReasoningRequest
 import tedwester.convo.features.chat.model.MessageAuthor
+import tedwester.convo.features.chat.model.isAssistantStatusContent
 
 /**
  * AI chat titles, generated the way the industry does it: after the first exchange lands, a
@@ -59,11 +60,14 @@ internal fun ChatState.maybeGenerateTitle() {
         ?.userDisplayText()
         ?.takeIf { it.isNotBlank() }
         ?: return
-    val assistantText = snapshot
+    val assistantRaw = snapshot
         .firstOrNull { it.author == MessageAuthor.Assistant && !it.isStreaming }
         ?.content
         ?.takeIf { it.isNotBlank() }
         ?: return
+    // Error replies ("⚠ ...", stops, empty notices) say nothing about the topic,
+    // so the title model only gets the user's prompt for those.
+    val assistantText = assistantRaw.takeUnless { isAssistantStatusContent(it) }.orEmpty()
     val current = chats.firstOrNull { it.id == chatId } ?: return
     val automatic = current.title == "New chat" ||
         current.title == repository.deriveTitle(snapshot)
@@ -113,14 +117,20 @@ private suspend fun ChatState.generateTitleFor(
     return null
 }
 
-internal fun buildTitlePrompt(userText: String, assistantText: String): String =
-    "Reply with ONLY a JSON object like {\"title\": \"...\"}. " +
+internal fun buildTitlePrompt(userText: String, assistantText: String): String {
+    val conversation = buildString {
+        append("User: ${userText.take(TitlePromptChars)}\n")
+        if (assistantText.isNotBlank()) {
+            append("Assistant: ${assistantText.take(TitlePromptChars)}")
+        }
+    }.trimEnd()
+    return "Reply with ONLY a JSON object like {\"title\": \"...\"}. " +
         "Do not explain. Do not repeat these instructions.\n\n" +
         "The title must be 2-4 words, no emojis, no quotation marks, " +
         "capitalized first letter, same language as the conversation.\n\n" +
         "Conversation:\n" +
-        "User: ${userText.take(TitlePromptChars)}\n" +
-        "Assistant: ${assistantText.take(TitlePromptChars)}"
+        conversation
+}
 
 internal fun parseTitleResponse(raw: String): String? {
     if (raw.isBlank()) return null

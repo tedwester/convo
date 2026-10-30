@@ -46,10 +46,22 @@ fun VideoViewerDialog(
     onDismiss: () -> Unit,
 ) {
     var playing by remember(attachment.path) { mutableStateOf(true) }
+    var videoView by remember(attachment.path) { mutableStateOf<VideoView?>(null) }
     val zoom = rememberViewerZoom(attachment.path)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+
+    // The video renders on its own surface, which doesn't fade with the dialog —
+    // it would pop out while everything else dissolves. Stopping and hiding it
+    // first leaves only the backdrop to fade.
+    fun dismissCleanly() {
+        videoView?.apply {
+            stopPlayback()
+            visibility = android.view.View.GONE
+        }
+        onDismiss()
+    }
 
     fun download() {
         scope.launch {
@@ -76,7 +88,7 @@ fun VideoViewerDialog(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = onDismiss,
+                    onClick = ::dismissCleanly,
                 ),
         ) {
             BoxWithConstraints(
@@ -98,6 +110,7 @@ fun VideoViewerDialog(
                 AndroidView(
                     factory = { factoryContext ->
                         VideoView(factoryContext).apply {
+                            videoView = this
                             setVideoPath(attachment.path)
                             setOnPreparedListener { player ->
                                 player.isLooping = true
@@ -116,20 +129,19 @@ fun VideoViewerDialog(
                             view.pause()
                         }
                     },
-                    onRelease = { it.stopPlayback() },
+                    onRelease = {
+                        videoView = null
+                        it.stopPlayback()
+                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .transformable(transformState)
                         .pointerInput(attachment.path) {
+                            // Single tap only, so play/pause answers the moment the
+                            // finger lifts instead of waiting out a double-tap.
+                            // Zoom stays on pinch and the buttons below.
                             detectTapGestures(
                                 onTap = { playing = !playing },
-                                onDoubleTap = {
-                                    if (zoom.zoomedIn()) {
-                                        zoom.reset()
-                                    } else {
-                                        zoom.zoomTo(ViewerDoubleTapScale)
-                                    }
-                                },
                             )
                         }
                         .viewerZoomGraphics(zoom),
@@ -170,7 +182,7 @@ fun VideoViewerDialog(
                 ViewerRoundButton(
                     painter = ConvoIcons.Close(),
                     contentDescription = "Close",
-                    onClick = onDismiss,
+                    onClick = ::dismissCleanly,
                 )
             }
 

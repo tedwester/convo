@@ -109,19 +109,15 @@ fun ImageViewerDialog(
                             .fillMaxSize()
                             .transformable(transformState)
                             .pointerInput(attachment.path) {
+                                // Single tap only: with no double-tap to wait for, this
+                                // fires the moment the finger lifts, so exiting is
+                                // instant. Zoom stays on pinch and the buttons below.
                                 detectTapGestures(
                                     onTap = {
                                         // At rest a tap anywhere on the image is empty
                                         // space, so it closes. Zoomed in, taps are for
                                         // looking around and must not dismiss.
                                         if (!zoom.zoomedIn()) onDismiss()
-                                    },
-                                    onDoubleTap = {
-                                        if (zoom.zoomedIn()) {
-                                            zoom.reset()
-                                        } else {
-                                            zoom.zoomTo(ViewerDoubleTapScale)
-                                        }
                                     },
                                 )
                             }

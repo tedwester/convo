@@ -34,10 +34,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import android.widget.Toast
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import tedwester.convo.features.chat.model.ChatAttachment
@@ -91,7 +91,7 @@ internal fun UserMessage(
     onViewAttachment: (ChatAttachment) -> Unit = {},
 ) {
     val dark = isSystemInDarkTheme()
-    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     val images = remember(message.attachments) { message.attachments.filter { it.isImage } }
     val files = remember(message.attachments) {
         message.attachments.filterNot {
@@ -312,11 +312,11 @@ internal fun UserMessage(
                         .graphicsLayer { alpha = promptBarProgress },
                 ) {
                     UserPromptControls(
-                        copyEnabled = textToShow.isNotBlank(),
+                        copyEnabled = textToShow.isNotBlank() || message.copyableImages().isNotEmpty(),
                         editEnabled = actionsEnabled,
                         onCopy = {
-                            if (textToShow.isNotBlank()) {
-                                clipboard.setText(AnnotatedString(textToShow))
+                            if (!copyTextAndImagesToClipboard(context, textToShow, message.copyableImages())) {
+                                Toast.makeText(context, "Couldn’t copy", Toast.LENGTH_SHORT).show()
                             }
                         },
                         onEdit = onStartEdit,

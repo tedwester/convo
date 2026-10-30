@@ -1,5 +1,6 @@
 package tedwester.convo.ui.chat.message
 
+import android.util.Log
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -45,6 +46,8 @@ import tedwester.convo.ui.chat.PullHaptics
  * snap the list back to the bottom, which is exactly the "stuck to the bottom" feel.
  */
 private const val EndSlackPx = 1f
+
+private const val TAG = "ChatScroll"
 
 /** Distance from the newest content before the scroll-to-bottom button appears. */
 internal const val ScrollToBottomThresholdPx = 120f
@@ -354,13 +357,14 @@ class ChatScrollController internal constructor(
     internal fun onGestureEnd() {
         val fireNewChat = isPullArmed && isGestureActive
         isGestureActive = false
-        if (fireNewChat) {
-            onPullTriggered()
-        }
         if (!isProgrammaticScroll && listState.isAtEnd()) {
             isFollowing = true
         }
         releasePull()
+        if (fireNewChat) {
+            runCatching { onPullTriggered() }
+                .onFailure { Log.w(TAG, "Pull-to-new-chat trigger failed", it) }
+        }
     }
 
     /** Re-arms following, for example when a new conversation is opened. */

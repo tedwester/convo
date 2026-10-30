@@ -1,6 +1,7 @@
 package tedwester.convo.ui.chat.message
 
 import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -13,6 +14,50 @@ import kotlinx.coroutines.withContext
 
 internal fun shareAudioAttachment(context: Context, attachment: ChatAttachment): Boolean =
     shareAttachment(context, attachment, "Share voice message")
+
+/**
+ * Copies text and images to the clipboard. Text goes in as a plain-text item and
+ * each image as a URI item, so pasting keeps both. Videos are skipped: they are
+ * too large to move through the clipboard.
+ */
+internal fun copyTextAndImagesToClipboard(
+    context: Context,
+    text: String,
+    images: List<ChatAttachment>,
+): Boolean {
+    val existing = images.filter { File(it.path).exists() }
+    if (text.isBlank() && existing.isEmpty()) return false
+    return runCatching {
+        val clipboard =
+            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = if (text.isNotBlank()) {
+            ClipData.newPlainText("message", text)
+        } else {
+            val first = existing.first()
+            ClipData.newUri(
+                context.contentResolver,
+                first.displayName,
+                contentUriFor(context, first),
+            )
+        }
+        val uriItems = if (text.isNotBlank()) existing else existing.drop(1)
+        uriItems.forEach { image ->
+            clip.addItem(
+                context.contentResolver,
+                ClipData.Item(contentUriFor(context, image)),
+            )
+        }
+        clipboard.setPrimaryClip(clip)
+        true
+    }.getOrDefault(false)
+}
+
+private fun contentUriFor(context: Context, attachment: ChatAttachment): android.net.Uri =
+    FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        File(attachment.path),
+    )
 
 internal fun shareAttachment(
     context: Context,
