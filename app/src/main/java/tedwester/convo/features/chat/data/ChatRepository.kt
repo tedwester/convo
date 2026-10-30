@@ -309,11 +309,17 @@ class ChatRepository(context: Context) {
                     },
                 )
             }
+            // The active variant index is meaningless without variants, but media
+            // generations variant along attachments with no text variants at all — so the
+            // index persists whenever either axis has slots, or reopening the chat would
+            // silently drop back to the first image or video.
             if (message.variants.isNotEmpty()) {
                 put(
                     "variants",
                     JSONArray().apply { message.variants.forEach { put(it) } },
                 )
+            }
+            if (message.variants.isNotEmpty() || message.attachmentVariants.isNotEmpty()) {
                 put("variantIndex", message.variantIndex)
             }
             if (message.attachments.isNotEmpty()) {
