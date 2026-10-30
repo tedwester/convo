@@ -40,6 +40,7 @@ fun ChatBubble(
             actionsEnabled = actionsEnabled,
             onTogglePromptBar = onTogglePromptBar,
             onStartEdit = onStartEdit,
+            onVariantSwipe = onVariantSwipe,
             onViewAttachment = onViewAttachment,
             modifier = modifier,
         )

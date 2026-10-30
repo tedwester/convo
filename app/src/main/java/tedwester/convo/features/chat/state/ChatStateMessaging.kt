@@ -106,13 +106,35 @@ internal fun ChatState.resendUserMessageImpl(
         return
     }
 
-    if (updated != existing) {
-        messages[index] = updated
+    if (updated == existing) {
+        if (index + 1 < messages.size) {
+            messages.removeRange(index + 1, messages.size)
+            bumpMessageListRevision()
+        }
+        persist(bumpRecency = true)
+        startReplyForLatestUserMessage()
+        return
     }
-    if (index + 1 < messages.size) {
-        messages.removeRange(index + 1, messages.size)
-        bumpMessageListRevision()
-    }
+
+    // An edited resend branches like a regeneration does: the tail that followed the old
+    // wording is stashed on it, and the edit becomes a new variant of the user's message
+    // with its own follow-ups. Same machinery as assistant variants, same index space.
+    saveTailToVariantContinuation(index)
+    removeTailAfter(index)
+    val priorTexts = existing.savedVariants()
+    val priorAttachments = existing.savedAttachmentVariants()
+    prepareVariantContinuationForNewVariant(
+        index,
+        maxOf(priorTexts.size, priorAttachments.size),
+    )
+    messages[index] = existing.copy(
+        content = updated.content,
+        attachments = updated.attachments,
+        variants = priorTexts + updated.content,
+        attachmentVariants = priorAttachments + listOf(updated.attachments),
+        variantIndex = maxOf(priorTexts.size, priorAttachments.size),
+        variantContinuations = messages[index].variantContinuations,
+    )
     persist(bumpRecency = true)
     startReplyForLatestUserMessage()
 }

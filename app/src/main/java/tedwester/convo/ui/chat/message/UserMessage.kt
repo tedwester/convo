@@ -100,6 +100,7 @@ internal fun UserMessage(
     actionsEnabled: Boolean = true,
     onTogglePromptBar: () -> Unit = {},
     onStartEdit: () -> Unit = {},
+    onVariantSwipe: (delta: Int) -> Unit = {},
     onViewAttachment: (ChatAttachment) -> Unit = {},
 ) {
     val dark = isSystemInDarkTheme()
@@ -309,6 +310,17 @@ internal fun UserMessage(
             }
             }
 
+            // Own variants page exactly like assistant replies do: each edited resend is a
+            // variant with its own follow-ups, and the chevrons walk the shared index space.
+            if (message.variantCount > 1) {
+                UserVariantStepper(
+                    message = message,
+                    actionsEnabled = actionsEnabled,
+                    onVariantSwipe = onVariantSwipe,
+                    modifier = Modifier.align(Alignment.End),
+                )
+            }
+
             if (promptBarProgress > 0f) {
                 Box(
                     modifier = Modifier
@@ -332,3 +344,4 @@ internal fun UserMessage(
         }
     }
 }
+

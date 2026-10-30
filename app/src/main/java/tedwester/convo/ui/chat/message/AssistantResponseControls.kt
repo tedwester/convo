@@ -1,13 +1,5 @@
 ﻿package tedwester.convo.ui.chat.message
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,7 +19,6 @@ import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.ui.components.CopyButton
 import tedwester.convo.ui.icons.ConvoIcons
 import tedwester.convo.ui.theme.AssistantSerifFamily
-import tedwester.convo.ui.theme.InterFontFamily
 
 @Composable
 internal fun AssistantResponseControls(
@@ -121,28 +112,11 @@ internal fun AssistantResponseControls(
                     enabled = responseActionsEnabled && canPage && !atStart,
                     onClick = { onVariantChange(-1) },
                 )
-                AnimatedContent(
-                    targetState = message.pagerIndex to message.variantCount,
-                    transitionSpec = {
-                        (fadeIn(tween(PagerAnimMs, easing = FastOutSlowInEasing)) togetherWith
-                            fadeOut(tween(PagerAnimMs / 2, easing = FastOutSlowInEasing)))
-                            .using(SizeTransform(clip = false) { _, _ -> snap() })
-                    },
-                    contentAlignment = Alignment.Center,
-                    label = "variant-pager-label",
-                ) { (index, total) ->
-                    Text(
-                        text = "$index/$total",
-                        style = TextStyle(
-                            fontFamily = InterFontFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp,
-                            letterSpacing = 0.02.sp,
-                            color = muted,
-                        ),
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                    )
-                }
+                VariantCounter(
+                    index = message.pagerIndex,
+                    total = message.variantCount,
+                    color = muted,
+                )
                 VariantPagerButton(
                     painter = ConvoIcons.ChevronRight(),
                     contentDescription = "Next response",
