@@ -153,10 +153,16 @@ fun ConversationScreen(
     // Leaving this chat ends its call: switching chats disposes this scope, and
     // navigating away drops it too. Either way the microphone and playback stop
     // here rather than leaking into the next screen.
+    var lastChatId by remember { mutableStateOf(chatState.currentChatId) }
     DisposableEffect(chatState.currentChatId) {
+        lastChatId = chatState.currentChatId
         onDispose {
-            voiceRecording.cancelRecording()
-            dictation.cancel()
+            // A null previous id means the chat was created mid-turn, not left:
+            // killing the call then would stop the very first reply.
+            if (lastChatId != null) {
+                voiceRecording.cancelRecording()
+                dictation.cancel()
+            }
         }
     }
 
@@ -530,7 +536,7 @@ fun ConversationScreen(
                     (model?.supportsWebSearch == true || composerHintsPending ||
                         ((model?.supportsVoiceSelection == true ||
                             voiceRecording.isOrbVisible) &&
-                            voiceReplyModel?.supportsWebSearch != false)),
+                            voiceReplyModel?.supportsWebSearch == true)),
                 isSearchEnabled = chatState.isSearchEnabled,
                 onToggleSearch = chatState::toggleSearch,
                 showReasoningToggle = !isTranscriptionOnly &&

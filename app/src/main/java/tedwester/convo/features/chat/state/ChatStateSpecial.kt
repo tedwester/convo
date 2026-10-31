@@ -107,7 +107,7 @@ internal fun ChatState.runSpeechReply(
                         additionalSystemMessage = conversationSystem,
                     ),
                     enableWebSearch = isSearchEnabled &&
-                        replyModel?.supportsWebSearch != false,
+                        replyModel?.supportsWebSearch == true,
                     maxTokens = apiPreferencesStore.load().maxTokens,
                 )
             } else {
