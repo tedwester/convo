@@ -173,6 +173,55 @@ class ChatRepository(context: Context) {
         updateChat(chatId) { it.copy(projectId = validProjectId) }
     }
 
+    /**
+     * Bulk variants of the setters above. One index read and one write for the
+     * whole set, so multi-select actions refresh the list once instead of once
+     * per chat.
+     */
+    @Synchronized
+    fun deleteChats(chatIds: Set<String>) {
+        if (chatIds.isEmpty()) return
+        val chats = listChats().filterNot { it.id in chatIds }
+        writeIndex(chats)
+        chatIds.forEach { messageFile(it).delete() }
+        if (getActiveChatId() in chatIds) {
+            setActiveChatId(chats.firstOrNull()?.id)
+        }
+    }
+
+    @Synchronized
+    fun setChatsPinned(chatIds: Set<String>, pinned: Boolean) {
+        if (chatIds.isEmpty()) return
+        writeIndex(
+            listChats().map { chat ->
+                if (chat.id in chatIds) chat.copy(pinned = pinned) else chat
+            },
+        )
+    }
+
+    @Synchronized
+    fun setChatsArchived(chatIds: Set<String>, archived: Boolean) {
+        if (chatIds.isEmpty()) return
+        writeIndex(
+            listChats().map { chat ->
+                if (chat.id in chatIds) chat.copy(archived = archived) else chat
+            },
+        )
+    }
+
+    @Synchronized
+    fun setChatsProject(chatIds: Set<String>, projectId: String?) {
+        if (chatIds.isEmpty()) return
+        val validProjectId = projectId?.takeIf { id ->
+            listProjects().any { it.id == id }
+        }
+        writeIndex(
+            listChats().map { chat ->
+                if (chat.id in chatIds) chat.copy(projectId = validProjectId) else chat
+            },
+        )
+    }
+
     @Synchronized
     fun setChatSystemMessage(chatId: String, systemMessage: String) {
         updateChat(chatId) { it.copy(systemMessage = systemMessage) }

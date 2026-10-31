@@ -396,14 +396,20 @@ class ChatState(
     fun openChat(chatId: String) = openChatImpl(chatId)
     fun newChat() = newChatImpl()
     fun deleteChat(chatId: String) = deleteChatImpl(chatId)
+    fun deleteChats(chatIds: Set<String>) = deleteChatsImpl(chatIds)
     fun pinChat(chatId: String, pinned: Boolean = true) = pinChatImpl(chatId, pinned)
+    fun pinChats(chatIds: Set<String>, pinned: Boolean) = pinChatsImpl(chatIds, pinned)
     fun archiveChat(chatId: String, archived: Boolean = true) = archiveChatImpl(chatId, archived)
+    fun archiveChats(chatIds: Set<String>, archived: Boolean) =
+        archiveChatsImpl(chatIds, archived)
     fun renameChat(chatId: String, title: String) = renameChatImpl(chatId, title)
     fun createProject(name: String, description: String) = createProjectImpl(name, description)
     fun deleteProject(projectId: String) = deleteProjectImpl(projectId)
     fun projectNameExists(name: String): Boolean = projectNameExistsImpl(name)
     fun assignChatToProject(chatId: String, projectId: String?) =
         assignChatToProjectImpl(chatId, projectId)
+    fun assignChatsToProject(chatIds: Set<String>, projectId: String?) =
+        assignChatsToProjectImpl(chatIds, projectId)
     fun onInputChange(value: String) = onInputChangeImpl(value)
     fun startEditingMessage(messageId: Long) = startEditingMessageImpl(messageId)
     fun cancelEditingMessage() = cancelEditingMessageImpl()

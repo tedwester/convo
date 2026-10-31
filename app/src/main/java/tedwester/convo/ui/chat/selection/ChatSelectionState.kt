@@ -76,9 +76,10 @@ class ChatSelectionState {
 
     /**
      * Starts a bulk delete: the selection drops out of mode, its rows fade, and once that
-     * animation has landed [onDelete] runs for each id.
+     * animation has landed [onDelete] runs once for the whole set, so the list only
+     * refreshes a single time no matter how many chats were checked.
      */
-    fun beginDelete(scope: CoroutineScope, onDelete: (String) -> Unit) {
+    fun beginDelete(scope: CoroutineScope, onDelete: (Set<String>) -> Unit) {
         val ids = selectedIds
         if (ids.isEmpty()) return
         exitingIds = ids
@@ -86,7 +87,7 @@ class ChatSelectionState {
         isActive = false
         scope.launch {
             delay(ChatSectionAnimMs.toLong())
-            ids.forEach(onDelete)
+            onDelete(ids)
             exitingIds = emptySet()
         }
     }

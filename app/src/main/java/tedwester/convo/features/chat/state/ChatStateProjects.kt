@@ -35,3 +35,13 @@ internal fun ChatState.assignChatToProjectImpl(chatId: String, projectId: String
         chats = withContext(Dispatchers.IO) { repository.listChats() }
     }
 }
+
+internal fun ChatState.assignChatsToProjectImpl(chatIds: Set<String>, projectId: String?) {
+    if (chatIds.isEmpty()) return
+    scope.launch {
+        withContext(Dispatchers.IO) {
+            repository.setChatsProject(chatIds, projectId)
+        }
+        chats = withContext(Dispatchers.IO) { repository.listChats() }
+    }
+}

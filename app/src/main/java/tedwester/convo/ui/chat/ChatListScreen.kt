@@ -110,10 +110,14 @@ fun ChatListScreen(
     onOpenChat: (String) -> Unit,
     onNewChat: () -> Unit,
     onDeleteChat: (String) -> Unit,
+    onDeleteChats: (Set<String>) -> Unit,
     onPinChat: (String, Boolean) -> Unit,
+    onPinChats: (Set<String>, Boolean) -> Unit,
     onArchiveChat: (String, Boolean) -> Unit,
+    onArchiveChats: (Set<String>, Boolean) -> Unit,
     onRenameChat: (String, String) -> Unit,
     onAssignChatToProject: (String, String?) -> Unit,
+    onAssignChatsToProject: (Set<String>, String?) -> Unit,
     onCreateProject: (String, String) -> Unit,
     onDeleteProject: (String) -> Unit,
     onOpenSettings: () -> Unit,
@@ -417,7 +421,7 @@ fun ChatListScreen(
                     if (count <= 0) return@ChatSelectionBar
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                     deletedFlashCount = count
-                    selection.beginDelete(scope, onDeleteChat)
+                    selection.beginDelete(scope, onDeleteChats)
                 },
                 onArchive = {
                     val ids = selection.selectedIds
@@ -425,7 +429,7 @@ fun ChatListScreen(
                     val unarchive = ids.all { id ->
                         chats.firstOrNull { it.id == id }?.archived == true
                     }
-                    ids.forEach { onArchiveChat(it, !unarchive) }
+                    onArchiveChats(ids, !unarchive)
                     selection.clear()
                 },
                 onPin = {
@@ -434,7 +438,7 @@ fun ChatListScreen(
                     val unpin = ids.all { id ->
                         chats.firstOrNull { it.id == id }?.pinned == true
                     }
-                    ids.forEach { onPinChat(it, !unpin) }
+                    onPinChats(ids, !unpin)
                     selection.clear()
                 },
                 onAddToProject = {
@@ -560,7 +564,7 @@ fun ChatListScreen(
                 projects = projects,
                 selectedProjectId = commonProject,
                 onSelect = { projectId ->
-                    ids.forEach { onAssignChatToProject(it, projectId) }
+                    onAssignChatsToProject(ids, projectId)
                     selection.clear()
                     bulkAssigning = false
                 },

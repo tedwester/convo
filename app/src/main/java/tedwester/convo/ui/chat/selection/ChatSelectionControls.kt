@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -247,9 +248,13 @@ internal fun ChatDeletedFlash(
             .padding(bottom = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        DockSurface(modifier = Modifier.height(52.dp)) {
+        DockSurface(
+            modifier = Modifier
+                .height(52.dp)
+                .wrapContentWidth(),
+        ) {
             Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {

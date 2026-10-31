@@ -126,9 +126,32 @@ internal fun ChatState.deleteChatImpl(chatId: String) {
     }
 }
 
+internal fun ChatState.deleteChatsImpl(chatIds: Set<String>) {
+    if (chatIds.isEmpty()) return
+    chatIds.forEach { completions.discard(it) }
+    scope.launch {
+        withContext(Dispatchers.IO) {
+            repository.deleteChats(chatIds)
+            chatIds.forEach { chatModelFilterStore.delete(it) }
+        }
+        chats = withContext(Dispatchers.IO) { repository.listChats() }
+        if (currentChatId in chatIds) {
+            clearCurrentChat()
+        }
+    }
+}
+
 internal fun ChatState.pinChatImpl(chatId: String, pinned: Boolean = true) {
     scope.launch {
         withContext(Dispatchers.IO) { repository.setChatPinned(chatId, pinned) }
+        chats = withContext(Dispatchers.IO) { repository.listChats() }
+    }
+}
+
+internal fun ChatState.pinChatsImpl(chatIds: Set<String>, pinned: Boolean) {
+    if (chatIds.isEmpty()) return
+    scope.launch {
+        withContext(Dispatchers.IO) { repository.setChatsPinned(chatIds, pinned) }
         chats = withContext(Dispatchers.IO) { repository.listChats() }
     }
 }
@@ -139,6 +162,17 @@ internal fun ChatState.archiveChatImpl(chatId: String, archived: Boolean = true)
         val listed = withContext(Dispatchers.IO) { repository.listChats() }
         chats = listed
         if (archived && chatId == currentChatId) {
+            clearCurrentChat()
+        }
+    }
+}
+
+internal fun ChatState.archiveChatsImpl(chatIds: Set<String>, archived: Boolean) {
+    if (chatIds.isEmpty()) return
+    scope.launch {
+        withContext(Dispatchers.IO) { repository.setChatsArchived(chatIds, archived) }
+        chats = withContext(Dispatchers.IO) { repository.listChats() }
+        if (archived && currentChatId in chatIds) {
             clearCurrentChat()
         }
     }
