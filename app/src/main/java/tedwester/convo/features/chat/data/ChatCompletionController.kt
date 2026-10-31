@@ -175,10 +175,7 @@ class ChatCompletionController(
 
     fun startSpecial(
         request: SpecialGenerationRequest,
-        work: suspend (
-            updateStatus: suspend (String) -> Unit,
-            updateAttachments: suspend (List<ChatAttachment>) -> Unit,
-        ) -> SpecialGenerationOutcome,
+        work: suspend (updateStatus: suspend (String) -> Unit) -> SpecialGenerationOutcome,
     ): Long {
         val session = replaceSession(
             chatId = request.chatId,
@@ -419,10 +416,7 @@ class ChatCompletionController(
 
     private suspend fun runSpecial(
         session: Session,
-        work: suspend (
-            updateStatus: suspend (String) -> Unit,
-            updateAttachments: suspend (List<ChatAttachment>) -> Unit,
-        ) -> SpecialGenerationOutcome,
+        work: suspend (updateStatus: suspend (String) -> Unit) -> SpecialGenerationOutcome,
     ) {
         val updateStatus: suspend (String) -> Unit = { label ->
             if (!session.userStopped) {
@@ -438,24 +432,8 @@ class ChatCompletionController(
                 }
             }
         }
-        val updateAttachments: suspend (List<ChatAttachment>) -> Unit = { attachments ->
-            if (!session.userStopped) {
-                sessionMutex.withLock {
-                    if (session.userStopped) return@withLock
-                    val index = session.messages.indexOfFirst { it.id == session.assistantId }
-                    if (index >= 0) {
-                        session.messages[index] = session.messages[index].copy(
-                            attachments = attachments,
-                        )
-                    }
-                }
-                if (!session.userStopped) {
-                    emitUpdate(session, isRunning = true)
-                }
-            }
-        }
         try {
-            val outcome = work(updateStatus, updateAttachments)
+            val outcome = work(updateStatus)
             currentCoroutineContext().ensureActive()
             if (session.userStopped) return
             sessionMutex.withLock {
