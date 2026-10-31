@@ -25,11 +25,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import tedwester.convo.core.audio.DeviceSpeechRecognition
-import tedwester.convo.core.audio.DeviceSpeechSession
 import tedwester.convo.core.audio.VoiceRecorder
 import tedwester.convo.features.chat.ChatState
-import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.data.VoiceTtsMode
 import tedwester.convo.features.chat.model.MessageAuthor
 
@@ -66,7 +63,6 @@ internal fun rememberConversationVoiceRecording(
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     val voiceRecorder = remember { VoiceRecorder(context) }
-    val deviceSession = remember { DeviceSpeechSession(context.applicationContext) }
     val jobs = remember { VoiceSendJobs() }
 
     var isRecording by remember { mutableStateOf(false) }
@@ -82,7 +78,6 @@ internal fun rememberConversationVoiceRecording(
         jobs.transcribe?.cancel()
         jobs.transcribe = null
         voiceRecorder.cancel()
-        deviceSession.cancel()
         playbackStopToken += 1
         if (sessionActive && chatState.isRunning) chatState.interruptInFlight()
         isRecording = false
@@ -103,7 +98,6 @@ internal fun rememberConversationVoiceRecording(
         jobs.transcribe?.cancel()
         jobs.transcribe = null
         voiceRecorder.cancel()
-        deviceSession.cancel()
         playbackStopToken += 1
         if (chatState.isRunning) chatState.interruptInFlight()
         isRecording = false
@@ -121,15 +115,10 @@ internal fun rememberConversationVoiceRecording(
     fun pauseListening() {
         if (!sessionActive || !isRecording) return
         voiceRecorder.cancel()
-        deviceSession.cancel()
         isRecording = false
         listeningPaused = true
         recordingAmplitudes = List(24) { 0f }
     }
-
-    fun useOnDeviceTranscription(): Boolean =
-        chatState.voiceStore.load().transcriptionModelId ==
-            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID
 
     fun startRecording() {
         if (isTranscribing || isRecording) return
@@ -138,13 +127,6 @@ internal fun rememberConversationVoiceRecording(
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
         val prefs = chatState.voiceStore.load()
-        val onDevice = prefs.transcriptionModelId ==
-            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID
-        if (onDevice && !DeviceSpeechRecognition.isRecognitionAvailable(context)) {
-            Toast.makeText(context, "On-device transcription unavailable", Toast.LENGTH_SHORT)
-                .show()
-            return
-        }
         if (!transcriptionOnly && prefs.mode != VoiceTtsMode.Conversation &&
             !prefs.seenCallConversationNotice
         ) {
@@ -155,7 +137,6 @@ internal fun rememberConversationVoiceRecording(
         runCatching { voiceRecorder.start() }
             .onSuccess {
                 if (!transcriptionOnly) sessionActive = true
-                if (onDevice && !transcriptionOnly) deviceSession.start()
                 isRecording = true
                 recordingElapsedMs = 0L
                 recordingAmplitudes = List(24) { 0f }
@@ -212,21 +193,7 @@ internal fun rememberConversationVoiceRecording(
                 return@launch
             }
             val transcript = try {
-                if (useOnDeviceTranscription()) {
-                    val text = deviceSession.stopAndGetFinal()
-                    if (text.isNullOrBlank() &&
-                        deviceSession.lastError?.let { it in DeviceSpeechSession.LANGUAGE_ERRORS } == true
-                    ) {
-                        Toast.makeText(
-                            context,
-                            "Download the offline language pack, then try again",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                    text
-                } else {
-                    chatState.transcribeRecording(recording.bytes, recording.format)
-                }
+                chatState.transcribeRecording(recording.bytes, recording.format)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -296,7 +263,6 @@ internal fun rememberConversationVoiceRecording(
         onDispose {
             jobs.transcribe?.cancel()
             voiceRecorder.cancel()
-            deviceSession.cancel()
         }
     }
 

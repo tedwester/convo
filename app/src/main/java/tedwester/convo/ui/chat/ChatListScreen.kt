@@ -57,7 +57,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -66,8 +65,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import tedwester.convo.core.audio.deviceSpeechSublabel
-import tedwester.convo.core.audio.rememberDeviceSpeechLanguages
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.features.chat.model.Chat
 import tedwester.convo.features.chat.model.Project
@@ -82,7 +79,6 @@ import tedwester.convo.ui.chat.modals.ModelOutputFilter
 import tedwester.convo.ui.chat.modals.ModelSelectorModal
 import tedwester.convo.ui.chat.modals.QuickSettingsDock
 import tedwester.convo.ui.chat.modals.RenameChatModal
-import tedwester.convo.ui.chat.modals.SelectorTopOption
 import tedwester.convo.ui.chat.modals.VoiceModeModal
 import tedwester.convo.ui.chat.selection.ChatSelectionBar
 import tedwester.convo.ui.chat.selection.rememberChatSelectionState
@@ -183,7 +179,6 @@ fun ChatListScreen(
     var showTranscriptionPicker by remember { mutableStateOf(false) }
     var showReplyPicker by remember { mutableStateOf(false) }
     var showVoiceModeSheet by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     var creditsFlash by remember { mutableStateOf<CreditsFlashContent?>(null) }
 
     val quickSettings = buildQuickSettings(
@@ -455,7 +450,6 @@ fun ChatListScreen(
         }
 
         if (showTranscriptionPicker && api != null) {
-            val deviceLanguages = rememberDeviceSpeechLanguages()
             ModelSelectorModal(
                 apiKey = apiKey,
                 api = api,
@@ -466,22 +460,6 @@ fun ChatListScreen(
                 ),
                 showFilterBadges = false,
                 modelFilter = { it.hasTranscriptionOutput },
-                topOptions = listOf(
-                    SelectorTopOption(
-                        label = "On-device",
-                        sublabel = deviceSpeechSublabel(context, deviceLanguages),
-                        selected = voicePreferences.transcriptionModelId ==
-                            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID,
-                        onClick = {
-                            onVoicePreferencesChanged(
-                                voicePreferences.copy(
-                                    transcriptionModelId =
-                                        VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID,
-                                ),
-                            )
-                        },
-                    ),
-                ),
                 onSelect = { model ->
                     onVoicePreferencesChanged(
                         voicePreferences.copy(transcriptionModelId = model.id),

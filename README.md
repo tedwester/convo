@@ -30,7 +30,7 @@
 
 - Chat with any model available on OpenRouter
 - Streaming replies, reasoning, web search, voice, images, and video
-- Voice call mode with live transcription, including on-device transcription
+- Voice call mode with live transcription
 - File attachments the model can actually read, image copy, media gallery
 - Variant responses, per-chat model filters, projects, pinned chats
 - Optional biometric app lock

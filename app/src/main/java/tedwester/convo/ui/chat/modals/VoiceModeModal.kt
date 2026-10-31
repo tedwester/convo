@@ -38,13 +38,7 @@ fun VoiceModeModal(
     val hasApiKey = apiKey.isNotBlank()
 
     val transcriptionDisplayName = if (hasApiKey) {
-        if (voicePreferences.transcriptionModelId ==
-            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID
-        ) {
-            "On-device"
-        } else {
-            formatModelSlug(voicePreferences.transcriptionModelId)
-        }
+        formatModelSlug(voicePreferences.transcriptionModelId)
     } else {
         NeedsApiKeyText
     }

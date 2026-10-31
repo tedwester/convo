@@ -28,9 +28,6 @@ data class VoicePreferences(
         const val DEFAULT_TRANSCRIPTION_MODEL = "openai/gpt-4o-mini-transcribe"
         const val DEFAULT_REPLY_MODEL = "particle-ai/particle-1"
 
-        /** Transcription handled by the phone itself instead of an OpenRouter model. */
-        const val LOCAL_TRANSCRIPTION_MODEL_ID = "on-device"
-
         const val CONVERSATION_REPLY_SYSTEM_MESSAGE =
             "Optimize for verbal conversation, keep your reply to about 100 words and stay concise. " +
                 "Do not use markdown — your response will be spoken aloud in a voice conversation."
@@ -109,7 +106,8 @@ class VoicePreferencesStore(context: Context) {
             transcriptionModelId = prefs.getString(
                 KEY_STT_MODEL,
                 VoicePreferences.DEFAULT_TRANSCRIPTION_MODEL,
-            ) ?: VoicePreferences.DEFAULT_TRANSCRIPTION_MODEL,
+            )?.takeIf { it.isNotBlank() && it != LEGACY_LOCAL_TRANSCRIPTION_MODEL_ID }
+                ?: VoicePreferences.DEFAULT_TRANSCRIPTION_MODEL,
             replyModelId = prefs.getString(
                 KEY_REPLY_MODEL,
                 VoicePreferences.DEFAULT_REPLY_MODEL,
@@ -139,6 +137,7 @@ class VoicePreferencesStore(context: Context) {
         const val KEY_MODE = "tts_mode"
         const val KEY_STT_MODEL = "stt_model"
         const val KEY_REPLY_MODEL = "reply_model"
+        const val LEGACY_LOCAL_TRANSCRIPTION_MODEL_ID = "on-device"
         const val KEY_TRANSCRIBE_VOICE_REPLIES = "transcribe_voice_replies"
         const val KEY_SHOW_VOICE_REPLIES_AS_TEXT_FIRST = "show_voice_replies_as_text_first"
         const val KEY_AUTO_PLAY_VOICE_REPLIES = "auto_play_voice_replies"
