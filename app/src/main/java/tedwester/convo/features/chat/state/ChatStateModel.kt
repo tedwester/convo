@@ -35,8 +35,22 @@ internal fun ChatState.cancelEditingMessageImpl() {
 
 internal fun ChatState.toggleSearchImpl() {
     val model = selectedModel ?: return
-    if (!model.supportsWebSearch) return
+    if (!model.supportsWebSearch && !voiceReplySupportsSearch()) return
     isSearchEnabled = !isSearchEnabled
+}
+
+/**
+ * Whether the voice reply model can search. The composer toggle answers to the
+ * chat model, but in voice mode the reply comes from this model instead, so it
+ * gets a vote too. Unknown models count as no: search must be confirmed present.
+ */
+private fun ChatState.voiceReplySupportsSearch(): Boolean {
+    if (selectedModel?.usesIntegratedConversationReply == true) {
+        return selectedModel?.supportsWebSearch == true
+    }
+    val replyModelId = voiceStore.load().replyModelId.takeIf { it.isNotBlank() }
+        ?: return false
+    return api.findCachedModel(replyModelId)?.supportsWebSearch == true
 }
 
 internal fun ChatState.toggleReasoningImpl() {
