@@ -5,6 +5,7 @@ import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import tedwester.convo.core.network.model.ChatMessageDto
+import tedwester.convo.core.network.model.FilePayload
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.core.network.model.ReasoningRequest
 import tedwester.convo.features.chat.data.CompletionRequest
@@ -47,11 +48,15 @@ internal suspend fun ChatState.buildApiHistoryFrom(
                 ChatMessageDto(role = "assistant", content = message.apiContent())
             } else {
                 val images = message.attachments.filter { it.isImage }
-                val files = message.attachments.filterNot { it.isImage }
+                val media = message.attachments.filter { it.isAudio || it.isVideo }
+                val documents = message.attachments.filter {
+                    !it.isImage && !it.isAudio && !it.isVideo
+                }
                 ChatMessageDto(
                     role = "user",
-                    content = apiPromptForUserMessage(message.content, files, images.isNotEmpty()),
+                    content = apiPromptForUserMessage(message.content, media, images.isNotEmpty()),
                     imageDataUrls = images.mapNotNull { encodeImageDataUrl(it) },
+                    fileParts = documents.mapNotNull { encodeFilePayload(it) },
                 )
             }
         }
@@ -90,6 +95,39 @@ internal fun ChatState.encodeImageDataUrl(attachment: ChatAttachment): String? {
     val mime = attachment.mimeType?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
     val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
     return "data:$mime;base64,$b64"
+}
+
+/** Files larger than this ride along as a filename note instead of a payload. */
+private const val MaxFilePartBytes = 10 * 1024 * 1024
+
+internal fun ChatState.encodeFilePayload(attachment: ChatAttachment): FilePayload? {
+    val file = File(attachment.path)
+    if (!file.exists() || !file.isFile) return null
+    if (file.length() > MaxFilePartBytes || file.length() == 0L) return null
+    val bytes = runCatching { file.readBytes() }.getOrNull()?.takeIf { it.isNotEmpty() }
+        ?: return null
+    val mime = attachment.mimeType?.takeIf { it.contains('/') }
+        ?: mimeForFileName(attachment.displayName.ifBlank { attachment.path })
+    val name = attachment.displayName.ifBlank { file.name }
+    return FilePayload(
+        filename = name,
+        dataUrl = "data:$mime;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}",
+    )
+}
+
+private fun mimeForFileName(name: String): String = when (
+    name.substringAfterLast('.', "").lowercase()
+) {
+    "pdf" -> "application/pdf"
+    "txt", "md", "markdown", "csv", "json", "xml", "yaml", "yml", "log" -> "text/plain"
+    "doc" -> "application/msword"
+    "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    "xls" -> "application/vnd.ms-excel"
+    "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    "ppt" -> "application/vnd.ms-powerpoint"
+    "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    "html", "htm" -> "text/html"
+    else -> "application/octet-stream"
 }
 
 internal fun ChatState.runCompletion(

@@ -535,8 +535,9 @@ class OpenRouterClient(
             val audio = message.audioBase64
             val format = message.audioFormat
             val images = message.imageDataUrls
+            val files = message.fileParts
             val multimodal = (!audio.isNullOrBlank() && !format.isNullOrBlank()) ||
-                images.isNotEmpty()
+                images.isNotEmpty() || files.isNotEmpty()
             if (multimodal) {
                 put(
                     "content",
@@ -557,6 +558,20 @@ class OpenRouterClient(
                                         "image_url",
                                         JSONObject().apply {
                                             put("url", dataUrl)
+                                        },
+                                    )
+                                },
+                            )
+                        }
+                        files.forEach { file ->
+                            put(
+                                JSONObject().apply {
+                                    put("type", "file")
+                                    put(
+                                        "file",
+                                        JSONObject().apply {
+                                            put("filename", file.filename)
+                                            put("file_data", file.dataUrl)
                                         },
                                     )
                                 },

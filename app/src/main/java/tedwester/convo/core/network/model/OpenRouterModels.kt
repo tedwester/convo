@@ -435,6 +435,13 @@ data class ChatMessageDto(
     val audioFormat: String? = null,
 
     val imageDataUrls: List<String> = emptyList(),
+
+    val fileParts: List<FilePayload> = emptyList(),
+)
+
+data class FilePayload(
+    val filename: String,
+    val dataUrl: String,
 )
 
 data class OpenRouterKeyInfo(
