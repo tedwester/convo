@@ -1,8 +1,10 @@
 package tedwester.convo.core.network
 
 import android.util.Base64
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -285,19 +287,30 @@ class OpenRouterClient(
     override suspend fun createImage(
         apiKey: String,
         request: ImageRequest,
+        onPartialImage: (suspend (image: GeneratedImage, index: Int) -> Unit)?,
     ): ImageResult = withContext(Dispatchers.IO) {
-        val payload = JSONObject().apply {
-            put("model", request.model)
-            put("prompt", request.prompt)
-            put("n", request.n.coerceIn(1, 10))
-            request.resolution?.takeIf { it.isNotBlank() }?.let { put("resolution", it) }
-            request.aspectRatio?.takeIf { it.isNotBlank() }?.let { put("aspect_ratio", it) }
-            request.outputFormat?.takeIf { it.isNotBlank() }?.let { put("output_format", it) }
+        if (request.stream && onPartialImage != null) {
+            runCatching {
+                createImageStream(apiKey, request, onPartialImage)
+            }.getOrElse { e ->
+                if (e is CancellationException) throw e
+                // Models without streaming support fail fast here (failures are
+                // never billed), so falling back costs nothing.
+                createImageBuffered(apiKey, request)
+            }
+        } else {
+            createImageBuffered(apiKey, request)
         }
+    }
+
+    private suspend fun createImageBuffered(
+        apiKey: String,
+        request: ImageRequest,
+    ): ImageResult = withContext(Dispatchers.IO) {
         val httpRequest = Request.Builder()
             .url(BASE_URL + "/api/v1/images")
             .header("Authorization", "Bearer $apiKey")
-            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .post(imagePayload(request, stream = false).toString().toRequestBody(JSON_MEDIA_TYPE))
             .build()
 
         val response = client.newCall(httpRequest).execute()
@@ -308,7 +321,100 @@ class OpenRouterClient(
                 code = response.code,
             )
         }
+        parseImageResult(body, response.code)
+    }
 
+    private suspend fun createImageStream(
+        apiKey: String,
+        request: ImageRequest,
+        onPartialImage: suspend (image: GeneratedImage, index: Int) -> Unit,
+    ): ImageResult = withContext(Dispatchers.IO) {
+        val httpRequest = Request.Builder()
+            .url(BASE_URL + "/api/v1/images")
+            .header("Authorization", "Bearer $apiKey")
+            .post(imagePayload(request, stream = true).toString().toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+        val call = client.newCall(httpRequest)
+        try {
+            val response = call.execute()
+            val contentType = response.header("Content-Type").orEmpty()
+            val body = response.body
+                ?: throw OpenRouterApiException("Image response had no body.", response.code)
+            body.use {
+                if (!response.isSuccessful) {
+                    throw OpenRouterApiException(
+                        message = parseErrorMessage(body.string(), response.code),
+                        code = response.code,
+                    )
+                }
+                if (!contentType.contains("text/event-stream", ignoreCase = true)) {
+                    // The model ignored the stream flag: same payload, buffered shape.
+                    return@withContext parseImageResult(body.string(), response.code)
+                }
+                val source = body.source()
+                var completed: ImageResult? = null
+                while (currentCoroutineContext().isActive && !source.exhausted()) {
+                    val line = source.readUtf8Line() ?: break
+                    if (line.isBlank() || !line.startsWith("data:")) continue
+                    val data = line.removePrefix("data:").trim()
+                    if (data == "[DONE]") break
+                    val event = runCatching { JSONObject(data) }.getOrNull() ?: continue
+                    when (event.optString("type")) {
+                        "image_generation.partial_image" -> {
+                            val b64 = event.optString("b64_json")
+                            if (b64.isBlank()) continue
+                            val decoded = runCatching {
+                                Base64.decode(b64, Base64.DEFAULT)
+                            }.getOrNull() ?: continue
+                            val mediaType = event.optString("media_type").ifBlank { "image/png" }
+                            onPartialImage(
+                                GeneratedImage(bytes = decoded, mediaType = mediaType),
+                                event.optInt("partial_image_index", 0),
+                            )
+                        }
+                        "image_generation.completed" -> {
+                            val b64 = event.optString("b64_json")
+                            if (b64.isBlank()) continue
+                            val decoded = runCatching {
+                                Base64.decode(b64, Base64.DEFAULT)
+                            }.getOrNull() ?: continue
+                            val mediaType = event.optString("media_type").ifBlank { "image/png" }
+                            completed = ImageResult(
+                                images = listOf(
+                                    GeneratedImage(bytes = decoded, mediaType = mediaType),
+                                ),
+                            )
+                        }
+                        "error" -> {
+                            val detail = event.optJSONObject("error")
+                                ?.optString("message")
+                                .takeIf { !it.isNullOrBlank() }
+                                ?: "Image generation failed."
+                            throw OpenRouterApiException(detail, response.code)
+                        }
+                    }
+                }
+                completed
+                    ?: throw OpenRouterApiException("Image stream ended with no image data.", 0)
+            }
+        } catch (e: CancellationException) {
+            call.cancel()
+            throw e
+        }
+    }
+
+    private fun imagePayload(request: ImageRequest, stream: Boolean): JSONObject =
+        JSONObject().apply {
+            put("model", request.model)
+            put("prompt", request.prompt)
+            put("n", request.n.coerceIn(1, 10))
+            if (stream) put("stream", true)
+            request.resolution?.takeIf { it.isNotBlank() }?.let { put("resolution", it) }
+            request.aspectRatio?.takeIf { it.isNotBlank() }?.let { put("aspect_ratio", it) }
+            request.outputFormat?.takeIf { it.isNotBlank() }?.let { put("output_format", it) }
+        }
+
+    private fun parseImageResult(body: String, code: Int): ImageResult {
         val data = JSONObject(body).optJSONArray("data") ?: JSONArray()
         val images = buildList {
             for (i in 0 until data.length()) {
@@ -330,6 +436,7 @@ class OpenRouterClient(
     override suspend fun createVideo(
         apiKey: String,
         request: VideoRequest,
+        onStatus: (suspend (status: String) -> Unit)?,
     ): VideoResult {
         val submitJson = withContext(Dispatchers.IO) {
             val payload = JSONObject().apply {
@@ -390,6 +497,14 @@ class OpenRouterClient(
         }
 
         var status = submitJson.optString("status")
+        var lastReportedStatus: String? = null
+        suspend fun reportStatus(next: String) {
+            if (next.isNotBlank() && next != lastReportedStatus) {
+                lastReportedStatus = next
+                onStatus?.invoke(next)
+            }
+        }
+        reportStatus(status)
         var jobJson = submitJson
         if (status !in VIDEO_TERMINAL_STATUSES) {
             val jobId = submitJson.optString("id")
@@ -426,6 +541,7 @@ class OpenRouterClient(
                     JSONObject(body)
                 }
                 status = jobJson.optString("status")
+                reportStatus(status)
             }
         }
 

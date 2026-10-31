@@ -2,6 +2,7 @@ package tedwester.convo.core.network
 
 import kotlinx.coroutines.flow.Flow
 import tedwester.convo.core.network.model.ChatMessageDto
+import tedwester.convo.core.network.model.GeneratedImage
 import tedwester.convo.core.network.model.ImageRequest
 import tedwester.convo.core.network.model.ImageResult
 import tedwester.convo.core.network.model.ModelListQuery
@@ -52,11 +53,13 @@ interface OpenRouterApi {
     suspend fun createImage(
         apiKey: String,
         request: ImageRequest,
+        onPartialImage: (suspend (image: GeneratedImage, index: Int) -> Unit)? = null,
     ): ImageResult
 
     suspend fun createVideo(
         apiKey: String,
         request: VideoRequest,
+        onStatus: (suspend (status: String) -> Unit)? = null,
     ): VideoResult
 
     suspend fun transcribeAudio(

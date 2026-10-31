@@ -5,7 +5,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import tedwester.convo.core.audio.PcmAudio
+import tedwester.convo.core.network.model.GeneratedImage
 import tedwester.convo.core.network.model.ImageRequest
 import tedwester.convo.core.network.model.OpenRouterModel
 import tedwester.convo.core.network.model.SpeechRequest
@@ -71,7 +73,7 @@ internal fun ChatState.runSpeechReply(
             appendVariant = appendVariant,
             systemMessage = systemMessage,
         ),
-    ) { updateStatus ->
+    ) { updateStatus, _ ->
         var ttsInput = ""
         try {
             ttsInput = if (conversation) {
@@ -191,7 +193,7 @@ internal fun ChatState.runTranscriptionCompletion(
             appendVariant = appendVariant,
             systemMessage = systemMessage,
         ),
-    ) { updateStatus ->
+    ) { updateStatus, _ ->
         updateStatus("Transcribing…")
         try {
             val transcript = withContext(Dispatchers.IO) {
@@ -262,14 +264,28 @@ internal fun ChatState.runImageCompletion(
             appendVariant = appendVariant,
             systemMessage = systemMessage,
         ),
-    ) {
+    ) { _, updateAttachments ->
         try {
+            var previewCount = 0
             val result = withContext(Dispatchers.IO) {
                 api.createImage(
                     apiKey = apiKey,
-                    request = ImageRequest(model = model.id, prompt = prompt),
+                    request = ImageRequest(model = model.id, prompt = prompt, stream = true),
+                    onPartialImage = { image, _ ->
+                        try {
+                            previewCount += 1
+                            val preview = writePartialPreview(image, id, previewCount)
+                            if (preview != null) {
+                                updateAttachments(listOf(preview))
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                        }
+                    },
                 )
             }
+            deletePartialPreviews(id)
             val stamp = System.currentTimeMillis()
             val attachments = result.images.mapIndexedNotNull { i, img ->
                 AttachmentStore.ingestBytes(
@@ -285,13 +301,49 @@ internal fun ChatState.runImageCompletion(
                 SpecialGenerationOutcome(content = "", attachments = attachments)
             }
         } catch (e: CancellationException) {
+            deletePartialPreviews(id)
             throw e
         } catch (e: Exception) {
+            deletePartialPreviews(id)
             SpecialGenerationOutcome(
                 content = "⚠ ${e.message ?: "Image generation failed"}",
                 success = false,
             )
         }
+    }
+}
+
+/** Latest partial render, kept in its own file so the viewer never shows a stale frame. */
+private fun ChatState.writePartialPreview(
+    image: GeneratedImage,
+    assistantId: Long,
+    previewCount: Int,
+): ChatAttachment? {
+    if (image.bytes.isEmpty()) return null
+    val dir = File(context.cacheDir, "partial_previews").also { it.mkdirs() }
+    dir.listFiles()?.forEach { existing ->
+        if (existing.name.startsWith("partial_${assistantId}_") &&
+            existing.name != "partial_${assistantId}_$previewCount.${extForMime(image.mediaType)}"
+        ) {
+            runCatching { existing.delete() }
+        }
+    }
+    val dest = File(dir, "partial_${assistantId}_$previewCount.${extForMime(image.mediaType)}")
+    runCatching { dest.outputStream().use { it.write(image.bytes) } }.getOrNull()
+        ?: return null
+    return ChatAttachment(
+        id = "partial_$assistantId",
+        path = dest.absolutePath,
+        mimeType = image.mediaType,
+        displayName = "preview",
+    )
+}
+
+private fun ChatState.deletePartialPreviews(assistantId: Long) {
+    runCatching {
+        File(context.cacheDir, "partial_previews").listFiles()
+            ?.filter { it.name.startsWith("partial_${assistantId}_") }
+            ?.forEach { it.delete() }
     }
 }
 
@@ -336,7 +388,7 @@ internal fun ChatState.runVideoCompletion(
             appendVariant = appendVariant,
             systemMessage = systemMessage,
         ),
-    ) {
+    ) { updateStatus, _ ->
         try {
             val dataUrls = withContext(Dispatchers.IO) {
                 referenceImages.mapNotNull { encodeImageDataUrl(it) }
@@ -357,6 +409,12 @@ internal fun ChatState.runVideoCompletion(
                     frameImages = frameImages,
                     inputReferences = dataUrls.drop(2),
                 ),
+                onStatus = { status ->
+                    when (status) {
+                        "pending", "queued" -> updateStatus("Queued…")
+                        else -> updateStatus("Generating video…")
+                    }
+                },
             )
             val stamp = System.currentTimeMillis()
             val attachments = result.videos.mapIndexedNotNull { i, video ->

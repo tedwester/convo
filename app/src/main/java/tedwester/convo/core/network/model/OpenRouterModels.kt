@@ -359,6 +359,7 @@ data class ImageRequest(
     val resolution: String? = null,
     val aspectRatio: String? = null,
     val outputFormat: String? = null,
+    val stream: Boolean = false,
 )
 
 data class GeneratedImage(
