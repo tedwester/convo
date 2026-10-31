@@ -128,12 +128,6 @@ internal fun rememberConversationVoiceRecording(
         recordingAmplitudes = List(24) { 0f }
     }
 
-    fun resumeListening() {
-        listeningPaused = false
-        if (!sessionActive || isRecording || isTranscribing || chatState.isRunning) return
-        startRecording()
-    }
-
     fun useOnDeviceTranscription(): Boolean =
         chatState.voiceStore.load().transcriptionModelId ==
             VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID
@@ -167,6 +161,12 @@ internal fun rememberConversationVoiceRecording(
                 recordingElapsedMs = 0L
                 recordingAmplitudes = List(24) { 0f }
             }
+    }
+
+    fun resumeListening() {
+        listeningPaused = false
+        if (!sessionActive || isRecording || isTranscribing || chatState.isRunning) return
+        startRecording()
     }
 
     fun stopAndSendRecording() {
