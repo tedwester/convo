@@ -144,7 +144,7 @@ private fun ComposerTextInput(
         isRecording -> "Listening..."
         isVoiceSession && isRunning -> "Thinking..."
         isVoiceSession && isAwaitingVoicePlayback -> "Speaking..."
-        isVoiceSession -> "Listening..."
+        isVoiceSession -> "Waiting..."
         else -> placeholder
     }
 
@@ -542,7 +542,7 @@ fun InputBar(
                             SearchToggleButton(
                                 dark = dark,
                                 enabled = isSearchEnabled,
-                                isRecording = isVoiceSession || isDictating,
+                                isRecording = isDictating,
                                 highlighted = activeHint == ComposerHint.Search,
                                 onClick = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)

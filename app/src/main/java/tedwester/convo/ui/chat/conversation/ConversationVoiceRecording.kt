@@ -101,6 +101,7 @@ internal fun rememberConversationVoiceRecording(
      * playing — but stays in the call. The hands-free loop picks listening back up.
      */
     fun interruptResponse() {
+        if (isRecording && !chatState.isRunning && !isTranscribing) return
         jobs.transcribe?.cancel()
         jobs.transcribe = null
         voiceRecorder.cancel()
