@@ -250,6 +250,7 @@ fun InputBar(
     recordingElapsedMs: Long = 0L,
     onMicClick: () -> Unit = {},
     onStopVoiceSession: () -> Unit = {},
+    onInterruptVoiceSession: () -> Unit = {},
     isDictating: Boolean = false,
     isTranscribing: Boolean = false,
     dictationAmplitudes: List<Float> = emptyList(),
@@ -390,7 +391,7 @@ fun InputBar(
                         isVoiceTranscribing -> VoiceOrbMode.Transcribing
                         else -> VoiceOrbMode.Waiting
                     },
-                    onTap = onStopVoiceSession,
+                    onTap = onInterruptVoiceSession,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = VoiceOrbBottomGap)

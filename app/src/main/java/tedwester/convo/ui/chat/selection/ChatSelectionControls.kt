@@ -14,7 +14,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -225,56 +223,6 @@ internal fun ChatSelectionBar(
                     painter = ConvoIcons.X(),
                     contentDescription = "Cancel",
                     onClick = onCancel,
-                )
-            }
-        }
-    }
-}
-
-/**
- * Brief confirmation shown in the dock corner after a bulk delete, in place of the quick
- * settings bar. Same surface as the other docks, so it reads as the corner's current state
- * rather than a popup.
- */
-@Composable
-internal fun ChatDeletedFlash(
-    deletedCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        DockSurface(
-            modifier = Modifier
-                .height(52.dp)
-                .wrapContentWidth(),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    painter = ConvoIcons.Check(),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = if (deletedCount == 1) {
-                        "1 chat deleted"
-                    } else {
-                        "$deletedCount chats deleted"
-                    },
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 15.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
                 )
             }
         }

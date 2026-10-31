@@ -34,6 +34,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
@@ -74,6 +75,13 @@ private val ModelSelectorHorizontalPadding = 20.dp
 private const val ModelFetchRetryMs = 2_000L
 private const val FilterAnimMs = 220
 
+data class SelectorTopOption(
+    val label: String,
+    val sublabel: String,
+    val selected: Boolean,
+    val onClick: () -> Unit,
+)
+
 @Composable
 fun ModelSelectorModal(
     apiKey: String,
@@ -88,6 +96,7 @@ fun ModelSelectorModal(
     onFiltersChange: (ModelFilterState) -> Unit = {},
     initialUiState: ModelSelectorUiState = ModelSelectorUiState(),
     onUiStateChange: (ModelSelectorUiState) -> Unit = {},
+    topOptions: List<SelectorTopOption> = emptyList(),
     showFilterBadges: Boolean = fixedFilters == null,
     modelFilter: (OpenRouterModel) -> Boolean = { true },
 ) {
@@ -133,6 +142,7 @@ fun ModelSelectorModal(
             onFiltersChange = onFiltersChange,
             initialUiState = initialUiState,
             onUiStateChange = onUiStateChange,
+            topOptions = topOptions,
             showFilterBadges = showFilterBadges,
             modelFilter = modelFilter,
             modifier = Modifier
@@ -161,6 +171,7 @@ private fun ModelSelectorContent(
     onFiltersChange: (ModelFilterState) -> Unit,
     initialUiState: ModelSelectorUiState,
     onUiStateChange: (ModelSelectorUiState) -> Unit,
+    topOptions: List<SelectorTopOption>,
     showFilterBadges: Boolean,
     modelFilter: (OpenRouterModel) -> Boolean,
     modifier: Modifier,
@@ -222,6 +233,20 @@ private fun ModelSelectorContent(
                 .fillMaxWidth()
                 .padding(horizontal = ModelSelectorHorizontalPadding),
         )
+
+        if (topOptions.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            topOptions.forEach { option ->
+                TopOptionRow(option = option)
+            }
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                modifier = Modifier.padding(
+                    horizontal = ModelSelectorHorizontalPadding,
+                    vertical = 10.dp,
+                ),
+            )
+        }
 
         if (showFilterBadges) {
             Spacer(modifier = Modifier.height(10.dp))
@@ -395,6 +420,51 @@ private fun ModelSelectorContent(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TopOptionRow(option: SelectorTopOption) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ModelSelectorHorizontalPadding)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (option.selected) {
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.06f)
+                } else {
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.02f)
+                },
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = option.onClick,
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = option.label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = option.sublabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            )
+        }
+        if (option.selected) {
+            Icon(
+                painter = ConvoIcons.Check(),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }

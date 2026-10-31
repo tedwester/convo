@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -55,6 +57,7 @@ fun MessageList(
     onVoiceAutoPlayStarted: (Long) -> Unit = {},
     onVoicePlaybackFinished: () -> Unit = {},
     onVoicePlaybackPaused: () -> Unit = {},
+    onAudioPlaybackStarted: () -> Unit = {},
 ) {
     val autoPlayMessageId = if (suppressAutoPlay ||
         (!autoPlayVoiceReplies && !forceAutoPlayVoiceReplies)
@@ -72,6 +75,10 @@ fun MessageList(
     var userBubbleAnimId by remember(conversationKey) { mutableLongStateOf(-1L) }
     var userBubbleAnimToken by remember(conversationKey) { mutableIntStateOf(0) }
     var selectedPromptMessageId by remember { mutableLongStateOf(-1L) }
+    val playbackCoordinator = rememberAudioPlaybackCoordinator()
+    SideEffect {
+        playbackCoordinator.onPlaybackStarted = onAudioPlaybackStarted
+    }
 
     // A send is picked up exactly once: adopting it clears the marker in ChatState,
     // so reopening the chat or rebuilding this list can never replay it. Anything
@@ -112,7 +119,10 @@ fun MessageList(
 
     val itemKeyPrefix = conversationKey ?: "new"
 
-    LazyColumn(
+    CompositionLocalProvider(
+        LocalAudioPlaybackCoordinator provides playbackCoordinator,
+    ) {
+        LazyColumn(
         state = listState,
         modifier = modifier
             .fillMaxSize()
@@ -177,6 +187,7 @@ fun MessageList(
                 onVoicePlaybackPaused = onVoicePlaybackPaused,
                 modifier = Modifier.padding(bottom = ChatBubbleBottomGap),
             )
+            }
         }
     }
 }

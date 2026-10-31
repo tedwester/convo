@@ -5,6 +5,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import tedwester.convo.core.audio.PcmAudio
 import tedwester.convo.core.network.model.ImageRequest
 import tedwester.convo.core.network.model.OpenRouterModel
@@ -27,11 +28,14 @@ internal fun ChatState.runSpeechReply(
     userText: String,
     assistantId: Long? = null,
     appendVariant: Boolean = false,
+    forceConversation: Boolean = false,
 ) {
     val chatId = currentChatId ?: return
     if (userText.isBlank()) return
     val prefs = voiceStore.load()
-    val conversation = prefs.mode == VoiceTtsMode.Conversation
+    // Voice calls are always conversations: the back-and-forth needs a reply model
+    // no matter what the speak-my-words setting says.
+    val conversation = forceConversation || prefs.mode == VoiceTtsMode.Conversation
     val showTextFirst = prefs.showVoiceRepliesAsTextFirst
     val id = assistantId ?: ++currentId
     val label = if (conversation) "Thinking of a reply…" else "Generating audio…"
@@ -83,10 +87,15 @@ internal fun ChatState.runSpeechReply(
                         VoicePreferences.DEFAULT_REPLY_MODEL
                     }
                 }
+                val replyModel = if (model.usesIntegratedConversationReply) {
+                    model
+                } else {
+                    api.findCachedModel(replyModelId)
+                }
                 val conversationSystem = VoicePreferences.buildConversationReplySystemMessage(
                     voiceModel = model,
                     replyModelId = replyModelId,
-                    replyModel = api.findCachedModel(replyModelId),
+                    replyModel = replyModel,
                     voiceId = resolveTtsVoice(model),
                 )
                 api.chatCompletion(
@@ -97,6 +106,8 @@ internal fun ChatState.runSpeechReply(
                         assistantIndex.takeIf { it >= 0 },
                         additionalSystemMessage = conversationSystem,
                     ),
+                    enableWebSearch = isSearchEnabled &&
+                        replyModel?.supportsWebSearch != false,
                     maxTokens = apiPreferencesStore.load().maxTokens,
                 )
             } else {

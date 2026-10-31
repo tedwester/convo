@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -143,7 +144,20 @@ fun ConversationScreen(
     }
 
     LaunchedEffect(isSurfaceActive) {
-        if (isSurfaceActive) chatState.reconcile()
+        if (isSurfaceActive) {
+            chatState.reconcile()
+            voiceRecording.resumeListening()
+        }
+    }
+
+    // Leaving this chat ends its call: switching chats disposes this scope, and
+    // navigating away drops it too. Either way the microphone and playback stop
+    // here rather than leaking into the next screen.
+    DisposableEffect(chatState.currentChatId) {
+        onDispose {
+            voiceRecording.cancelRecording()
+            dictation.cancel()
+        }
     }
 
     ConversationSurfaceInactiveEffect(
@@ -344,10 +358,19 @@ fun ConversationScreen(
                             if (isLiveSession) chatState.markVoiceAutoPlayed(id)
                         },
                         onVoicePlaybackFinished = {
-                            if (isLiveSession) voiceRecording.onVoicePlaybackFinished()
+                            if (isLiveSession) {
+                                voiceRecording.onVoicePlaybackFinished()
+                                voiceRecording.resumeListening()
+                            }
                         },
                         onVoicePlaybackPaused = {
-                            if (isLiveSession) voiceRecording.onVoicePlaybackPaused()
+                            if (isLiveSession) {
+                                voiceRecording.onVoicePlaybackPaused()
+                                voiceRecording.resumeListening()
+                            }
+                        },
+                        onAudioPlaybackStarted = {
+                            if (isLiveSession) voiceRecording.pauseListening()
                         },
                         contentPadding = PaddingValues(
                             start = 18.dp,
@@ -435,6 +458,9 @@ fun ConversationScreen(
         ) {
             val model = chatState.selectedModel
             val isTranscriptionOnly = model?.usesTranscriptionComposer == true
+            val voiceReplyModel = voicePreferences.replyModelId
+                .takeIf { it.isNotBlank() }
+                ?.let(api::findCachedModel)
             val showComposerHints = composerHintsPending &&
                 isSurfaceActive &&
                 !voiceRecording.isOrbVisible &&
@@ -501,7 +527,10 @@ fun ConversationScreen(
                     pendingVoiceSelector = true
                 },
                 showSearchToggle = !isTranscriptionOnly &&
-                    (model?.supportsWebSearch == true || composerHintsPending),
+                    (model?.supportsWebSearch == true || composerHintsPending ||
+                        ((model?.supportsVoiceSelection == true ||
+                            voiceRecording.isOrbVisible) &&
+                            voiceReplyModel?.supportsWebSearch != false)),
                 isSearchEnabled = chatState.isSearchEnabled,
                 onToggleSearch = chatState::toggleSearch,
                 showReasoningToggle = !isTranscriptionOnly &&
@@ -547,6 +576,7 @@ fun ConversationScreen(
                 recordingElapsedMs = voiceRecording.recordingElapsedMs,
                 onMicClick = voiceRecording.onMicClick,
                 onStopVoiceSession = voiceRecording.cancelRecording,
+                onInterruptVoiceSession = voiceRecording.interruptResponse,
                 isDictating = dictation.isActive,
                 isTranscribing = dictation.isTranscribing,
                 dictationAmplitudes = dictation.amplitudes,

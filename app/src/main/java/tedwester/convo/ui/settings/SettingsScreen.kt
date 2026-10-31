@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tedwester.convo.core.network.OpenRouterApi
+import tedwester.convo.core.audio.DeviceSpeechRecognition
 import tedwester.convo.core.network.OpenRouterApiKeyValidation
 import tedwester.convo.core.network.model.OpenRouterKeyInfo
 import tedwester.convo.core.security.AppLockManager
@@ -71,6 +73,7 @@ import tedwester.convo.features.chat.model.availableQuickSettings
 import tedwester.convo.ui.chat.modals.ModelFilterState
 import tedwester.convo.ui.chat.modals.ModelOutputFilter
 import tedwester.convo.ui.chat.modals.ModelSelectorModal
+import tedwester.convo.ui.chat.modals.SelectorTopOption
 import tedwester.convo.ui.components.ConvoButton
 import tedwester.convo.ui.components.ConvoIconButton
 import tedwester.convo.ui.components.ConvoIconButtonGap
@@ -119,6 +122,7 @@ fun SettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     val dismissKeyboard = rememberDismissKeyboard()
     val bg = MaterialTheme.colorScheme.background
 
@@ -226,6 +230,8 @@ fun SettingsScreen(
 
     val transcriptionDisplayName = when {
         apiKey.isBlank() -> NeedsApiKeyText
+        voicePreferences.transcriptionModelId ==
+            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID -> "On-device"
         else -> formatModelDisplay(voicePreferences.transcriptionModelId, transcriptionModelName)
     }
     val replyDisplayName = when {
@@ -825,6 +831,23 @@ fun SettingsScreen(
                 ),
                 showFilterBadges = false,
                 modelFilter = { it.hasTranscriptionOutput },
+                topOptions = listOf(
+                    SelectorTopOption(
+                        label = "On-device",
+                        sublabel = DeviceSpeechRecognition.statusLabel(context),
+                        selected = voicePreferences.transcriptionModelId ==
+                            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID,
+                        onClick = {
+                            transcriptionModelName = "On-device"
+                            onVoicePreferencesChanged(
+                                voicePreferences.copy(
+                                    transcriptionModelId =
+                                        VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID,
+                                ),
+                            )
+                        },
+                    ),
+                ),
                 onSelect = { model ->
                     transcriptionModelName = model.name
                     onVoicePreferencesChanged(

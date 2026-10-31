@@ -22,8 +22,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import tedwester.convo.core.audio.DeviceSpeechRecognition
+import tedwester.convo.core.audio.DeviceSpeechSession
 import tedwester.convo.core.audio.VoiceRecorder
 import tedwester.convo.features.chat.ChatState
+import tedwester.convo.features.chat.data.VoicePreferences
 
 internal class ConversationDictation(
     val isActive: Boolean,
@@ -45,12 +48,17 @@ internal fun rememberConversationDictation(
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     val voiceRecorder = remember { VoiceRecorder(context) }
+    val deviceSession = remember { DeviceSpeechSession(context.applicationContext) }
 
     var isActive by remember { mutableStateOf(false) }
     var isTranscribing by remember { mutableStateOf(false) }
     var transcribeJob by remember { mutableStateOf<Job?>(null) }
     var amplitudes by remember { mutableStateOf(List(DictationAmplitudeCount) { 0f }) }
     var scrollPhase by remember { mutableFloatStateOf(0f) }
+
+    fun useOnDeviceTranscription(): Boolean =
+        chatState.voiceStore.load().transcriptionModelId ==
+            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID
 
     fun showFailedToast() {
         Toast.makeText(context, "Couldn’t transcribe audio", Toast.LENGTH_SHORT).show()
@@ -60,6 +68,7 @@ internal fun rememberConversationDictation(
         transcribeJob?.cancel()
         transcribeJob = null
         voiceRecorder.cancel()
+        deviceSession.cancel()
         isTranscribing = false
         isActive = false
         amplitudes = List(DictationAmplitudeCount) { 0f }
@@ -70,6 +79,14 @@ internal fun rememberConversationDictation(
         onBeforeStart()
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
+        if (useOnDeviceTranscription()) {
+            if (!DeviceSpeechRecognition.isRecognitionAvailable(context)) {
+                Toast.makeText(context, "On-device transcription unavailable", Toast.LENGTH_SHORT)
+                    .show()
+                return
+            }
+            deviceSession.start()
+        }
         runCatching { voiceRecorder.start() }
             .onSuccess {
                 amplitudes = List(DictationAmplitudeCount) { 0f }
@@ -99,7 +116,11 @@ internal fun rememberConversationDictation(
         isTranscribing = true
         transcribeJob = scope.launch {
             val transcript = try {
-                chatState.transcribeRecording(recording.bytes, recording.format)
+                if (useOnDeviceTranscription()) {
+                    deviceSession.stopAndGetFinal()
+                } else {
+                    chatState.transcribeRecording(recording.bytes, recording.format)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -139,6 +160,7 @@ internal fun rememberConversationDictation(
         onDispose {
             transcribeJob?.cancel()
             voiceRecorder.cancel()
+            deviceSession.cancel()
         }
     }
 

@@ -57,6 +57,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -65,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import tedwester.convo.core.audio.DeviceSpeechRecognition
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.features.chat.model.Chat
 import tedwester.convo.features.chat.model.Project
@@ -79,15 +81,12 @@ import tedwester.convo.ui.chat.modals.ModelOutputFilter
 import tedwester.convo.ui.chat.modals.ModelSelectorModal
 import tedwester.convo.ui.chat.modals.QuickSettingsDock
 import tedwester.convo.ui.chat.modals.RenameChatModal
+import tedwester.convo.ui.chat.modals.SelectorTopOption
 import tedwester.convo.ui.chat.modals.VoiceModeModal
 import tedwester.convo.ui.chat.selection.ChatSelectionBar
-import tedwester.convo.ui.chat.selection.ChatDeletedFlash
 import tedwester.convo.ui.chat.selection.rememberChatSelectionState
 
 private const val ProjectsPageAnimMs = 300
-
-/** How long the bulk-delete confirmation pill stays up. */
-private const val DeletedFlashMs = 1600L
 
 private val SectionAnimSpec = tween<Float>(ChatSectionAnimMs, easing = FastOutSlowInEasing)
 private val SectionSizeAnimSpec: FiniteAnimationSpec<IntSize> =
@@ -150,14 +149,6 @@ fun ChatListScreen(
     LaunchedEffect(selection.isActive) {
         if (selection.isActive) dockIntroPlayed = true
     }
-    // How many chats the last bulk delete removed. Shown briefly as a confirmation pill in
-    // the dock corner, in place of the quick settings bar.
-    var deletedFlashCount by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(deletedFlashCount) {
-        if (deletedFlashCount == null) return@LaunchedEffect
-        kotlinx.coroutines.delay(DeletedFlashMs)
-        deletedFlashCount = null
-    }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val haptics = LocalHapticFeedback.current
@@ -191,6 +182,7 @@ fun ChatListScreen(
     var showTranscriptionPicker by remember { mutableStateOf(false) }
     var showReplyPicker by remember { mutableStateOf(false) }
     var showVoiceModeSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     var creditsFlash by remember { mutableStateOf<CreditsFlashContent?>(null) }
 
     val quickSettings = buildQuickSettings(
@@ -376,11 +368,10 @@ fun ChatListScreen(
             }
         }
 
-        // The corner holds one thing at a time: quick settings, the selection bar, or the
-        // delete confirmation. Each slides straight down off-screen when it leaves and rises
-        // back the same way.
+        // The corner holds one thing at a time: quick settings or the selection bar.
+        // Each slides straight down off-screen when it leaves and rises back the same way.
         AnimatedVisibility(
-            visible = !selection.isActive && deletedFlashCount == null,
+            visible = !selection.isActive,
             enter = slideInVertically(
                 animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
                 initialOffsetY = { it },
@@ -417,10 +408,8 @@ fun ChatListScreen(
                 selectedCount = selection.selectedCount,
                 onCancel = { selection.clear() },
                 onDelete = {
-                    val count = selection.selectedCount
-                    if (count <= 0) return@ChatSelectionBar
+                    if (selection.selectedCount <= 0) return@ChatSelectionBar
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    deletedFlashCount = count
                     selection.beginDelete(scope, onDeleteChats)
                 },
                 onArchive = {
@@ -445,23 +434,6 @@ fun ChatListScreen(
                     if (selection.selectedCount > 0) bulkAssigning = true
                 },
             )
-        }
-
-        AnimatedVisibility(
-            visible = deletedFlashCount != null && !selection.isActive,
-            enter = slideInVertically(
-                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
-                initialOffsetY = { it },
-            ) + fadeIn(tween(ChatSectionAnimMs, easing = FastOutSlowInEasing)),
-            exit = slideOutVertically(
-                animationSpec = tween(ChatSectionAnimMs, easing = FastOutSlowInEasing),
-                targetOffsetY = { it },
-            ) + fadeOut(tween(ChatSectionAnimMs / 2, easing = FastOutSlowInEasing)),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding(),
-        ) {
-            ChatDeletedFlash(deletedCount = deletedFlashCount ?: 0)
         }
 
         CreditsFlashOverlay(
@@ -492,6 +464,22 @@ fun ChatListScreen(
                 ),
                 showFilterBadges = false,
                 modelFilter = { it.hasTranscriptionOutput },
+                topOptions = listOf(
+                    SelectorTopOption(
+                        label = "On-device",
+                        sublabel = DeviceSpeechRecognition.statusLabel(context),
+                        selected = voicePreferences.transcriptionModelId ==
+                            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID,
+                        onClick = {
+                            onVoicePreferencesChanged(
+                                voicePreferences.copy(
+                                    transcriptionModelId =
+                                        VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID,
+                                ),
+                            )
+                        },
+                    ),
+                ),
                 onSelect = { model ->
                     onVoicePreferencesChanged(
                         voicePreferences.copy(transcriptionModelId = model.id),

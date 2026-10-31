@@ -93,8 +93,8 @@ internal fun AudioPlaybackRow(
     val latestOnPlaybackFinished = rememberUpdatedState(onPlaybackFinished)
     val latestOnPlaybackPaused = rememberUpdatedState(onPlaybackPaused)
     var hasAutoPlayed by remember(path) { mutableStateOf(false) }
-    var didAutoPlay by remember(path) { mutableStateOf(false) }
-    val latestDidAutoPlay = rememberUpdatedState(didAutoPlay)
+    var playSlot by remember(path) { mutableIntStateOf(-1) }
+    val coordinator = LocalAudioPlaybackCoordinator.current
 
     LaunchedEffect(player, isPlaying) {
         while (isPlaying && player != null) {
@@ -151,7 +151,7 @@ internal fun AudioPlaybackRow(
                         (SystemClock.elapsedRealtime() - playStartElapsed).toFloat()
                     if (elapsed > durationMs) durationMs = elapsed
                     positionMs = durationMs
-                    if (latestDidAutoPlay.value) latestOnPlaybackFinished.value()
+                    latestOnPlaybackFinished.value()
                 }
                 mediaPlayer.setOnErrorListener { _, _, _ ->
                     isPreparing = false
@@ -203,6 +203,7 @@ internal fun AudioPlaybackRow(
         }
         playStartOffsetMs = positionMs
         playStartElapsed = SystemClock.elapsedRealtime()
+        playSlot = coordinator?.claim() ?: -1
         runCatching { existing.start() }
             .onSuccess { isPlaying = true }
     }
@@ -214,7 +215,7 @@ internal fun AudioPlaybackRow(
                 runCatching { existing.pause() }
                 existing.seekClosest(positionMs.toInt())
                 isPlaying = false
-                if (latestDidAutoPlay.value) latestOnPlaybackPaused.value()
+                latestOnPlaybackPaused.value()
             } else {
                 startPlayback(existing)
             }
@@ -225,7 +226,6 @@ internal fun AudioPlaybackRow(
         if (!autoPlay || hasAutoPlayed || isPreparing) return@LaunchedEffect
         val existing = player ?: return@LaunchedEffect
         hasAutoPlayed = true
-        didAutoPlay = true
         latestOnAutoPlayStarted.value()
         startPlayback(existing)
     }
@@ -237,6 +237,15 @@ internal fun AudioPlaybackRow(
             runCatching { existing.pause() }
             isPlaying = false
         }
+    }
+
+    val coordinatorSlot = coordinator?.generation
+    LaunchedEffect(coordinatorSlot, playSlot) {
+        if (!isPlaying) return@LaunchedEffect
+        if (coordinatorSlot == null || coordinatorSlot == playSlot) return@LaunchedEffect
+        val existing = player ?: return@LaunchedEffect
+        runCatching { existing.pause() }
+        isPlaying = false
     }
 
     if (!showUi) return

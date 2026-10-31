@@ -2,6 +2,7 @@ package tedwester.convo.ui.chat.conversation
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -24,8 +25,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import tedwester.convo.core.audio.DeviceSpeechRecognition
+import tedwester.convo.core.audio.DeviceSpeechSession
 import tedwester.convo.core.audio.VoiceRecorder
 import tedwester.convo.features.chat.ChatState
+import tedwester.convo.features.chat.data.VoicePreferences
+import tedwester.convo.features.chat.data.VoiceTtsMode
 import tedwester.convo.features.chat.model.MessageAuthor
 
 internal class ConversationVoiceRecording(
@@ -37,6 +42,9 @@ internal class ConversationVoiceRecording(
     val recordingElapsedMs: Long,
     val onMicClick: () -> Unit,
     val cancelRecording: () -> Unit,
+    val interruptResponse: () -> Unit,
+    val pauseListening: () -> Unit,
+    val resumeListening: () -> Unit,
     val playbackStopToken: Int,
     val onVoicePlaybackFinished: () -> Unit,
     val onVoicePlaybackPaused: () -> Unit,
@@ -58,6 +66,7 @@ internal fun rememberConversationVoiceRecording(
     val keyboardController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
     val voiceRecorder = remember { VoiceRecorder(context) }
+    val deviceSession = remember { DeviceSpeechSession(context.applicationContext) }
     val jobs = remember { VoiceSendJobs() }
 
     var isRecording by remember { mutableStateOf(false) }
@@ -65,6 +74,7 @@ internal fun rememberConversationVoiceRecording(
     var sessionActive by remember { mutableStateOf(false) }
     var expectPlayback by remember { mutableStateOf(false) }
     var hadVoiceTurn by remember { mutableStateOf(false) }
+    var listeningPaused by remember { mutableStateOf(false) }
     var playbackStopToken by remember { mutableIntStateOf(0) }
     var recordingAmplitudes by remember { mutableStateOf(List(24) { 0f }) }
     var recordingElapsedMs by remember { mutableLongStateOf(0L) }
@@ -73,6 +83,7 @@ internal fun rememberConversationVoiceRecording(
         jobs.transcribe?.cancel()
         jobs.transcribe = null
         voiceRecorder.cancel()
+        deviceSession.cancel()
         playbackStopToken += 1
         if (sessionActive && chatState.isRunning) chatState.interruptInFlight()
         isRecording = false
@@ -80,18 +91,78 @@ internal fun rememberConversationVoiceRecording(
         sessionActive = false
         expectPlayback = false
         hadVoiceTurn = false
+        listeningPaused = false
         recordingElapsedMs = 0L
         recordingAmplitudes = List(24) { 0f }
     }
 
+    /**
+     * Stops whatever is happening right now — recording, transcribing, responding,
+     * playing — but stays in the call. The hands-free loop picks listening back up.
+     */
+    fun interruptResponse() {
+        jobs.transcribe?.cancel()
+        jobs.transcribe = null
+        voiceRecorder.cancel()
+        deviceSession.cancel()
+        playbackStopToken += 1
+        if (chatState.isRunning) chatState.interruptInFlight()
+        isRecording = false
+        isTranscribing = false
+        expectPlayback = false
+        listeningPaused = false
+        recordingElapsedMs = 0L
+        recordingAmplitudes = List(24) { 0f }
+    }
+
+    /**
+     * Drops the microphone while audio plays, keeping the call alive. Listening
+     * resumes through [resumeListening] once playback stops.
+     */
+    fun pauseListening() {
+        if (!sessionActive || !isRecording) return
+        voiceRecorder.cancel()
+        deviceSession.cancel()
+        isRecording = false
+        listeningPaused = true
+        recordingAmplitudes = List(24) { 0f }
+    }
+
+    fun resumeListening() {
+        listeningPaused = false
+        if (!sessionActive || isRecording || isTranscribing || chatState.isRunning) return
+        startRecording()
+    }
+
+    fun useOnDeviceTranscription(): Boolean =
+        chatState.voiceStore.load().transcriptionModelId ==
+            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID
+
     fun startRecording() {
         if (isTranscribing || isRecording) return
+        listeningPaused = false
         onRecordingStarted()
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
+        val prefs = chatState.voiceStore.load()
+        val onDevice = prefs.transcriptionModelId ==
+            VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID
+        if (onDevice && !DeviceSpeechRecognition.isRecognitionAvailable(context)) {
+            Toast.makeText(context, "On-device transcription unavailable", Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+        if (!transcriptionOnly && prefs.mode != VoiceTtsMode.Conversation &&
+            !prefs.seenCallConversationNotice
+        ) {
+            Toast.makeText(context, "Voice calls always use conversation mode", Toast.LENGTH_LONG)
+                .show()
+            chatState.voiceStore.save(prefs.copy(seenCallConversationNotice = true))
+        }
         runCatching { voiceRecorder.start() }
             .onSuccess {
                 if (!transcriptionOnly) sessionActive = true
+                if (onDevice && !transcriptionOnly) deviceSession.start()
                 isRecording = true
                 recordingElapsedMs = 0L
                 recordingAmplitudes = List(24) { 0f }
@@ -139,7 +210,11 @@ internal fun rememberConversationVoiceRecording(
                 return@launch
             }
             val transcript = try {
-                chatState.transcribeRecording(recording.bytes, recording.format)
+                if (useOnDeviceTranscription()) {
+                    deviceSession.stopAndGetFinal()
+                } else {
+                    chatState.transcribeRecording(recording.bytes, recording.format)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -210,6 +285,7 @@ internal fun rememberConversationVoiceRecording(
         onDispose {
             jobs.transcribe?.cancel()
             voiceRecorder.cancel()
+            deviceSession.cancel()
         }
     }
 
@@ -256,8 +332,8 @@ internal fun rememberConversationVoiceRecording(
         }
     }
 
-    LaunchedEffect(isRunning, sessionActive, isTranscribing, isRecording, expectPlayback, transcriptionOnly) {
-        if (transcriptionOnly || !sessionActive || isRunning || isTranscribing || isRecording || expectPlayback) {
+    LaunchedEffect(isRunning, sessionActive, isTranscribing, isRecording, expectPlayback, listeningPaused, transcriptionOnly) {
+        if (transcriptionOnly || !sessionActive || isRunning || isTranscribing || isRecording || expectPlayback || listeningPaused) {
             return@LaunchedEffect
         }
         latestStartRecording.value()
@@ -280,6 +356,9 @@ internal fun rememberConversationVoiceRecording(
         recordingElapsedMs = recordingElapsedMs,
         onMicClick = ::onMicClick,
         cancelRecording = ::resetIdle,
+        interruptResponse = ::interruptResponse,
+        pauseListening = ::pauseListening,
+        resumeListening = ::resumeListening,
         playbackStopToken = playbackStopToken,
         onVoicePlaybackFinished = ::onVoicePlaybackFinished,
         onVoicePlaybackPaused = ::onVoicePlaybackPaused,

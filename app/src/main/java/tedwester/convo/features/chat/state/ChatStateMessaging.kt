@@ -227,7 +227,7 @@ internal suspend fun ChatState.sendVoiceImpl(
     persist()
 
     if (model.supportsSpeechOutput) {
-        runSpeechReply(model, spoken)
+        runSpeechReply(model, spoken, forceConversation = true)
         return
     }
 
@@ -259,6 +259,11 @@ internal suspend fun ChatState.transcribeRecordingImpl(
             VoicePreferences.DEFAULT_TRANSCRIPTION_MODEL
         }
     }
+    // On-device transcription runs live during recording through the system speech
+    // service, which takes microphone input rather than audio files. Reaching here
+    // with it selected means the live path was skipped, so bail instead of sending
+    // the id to the API as a model name.
+    if (transcriptionModelId == VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID) return null
     return withContext(Dispatchers.IO) {
         try {
             api.transcribeAudio(

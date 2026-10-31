@@ -21,10 +21,15 @@ data class VoicePreferences(
     val showVoiceRepliesAsTextFirst: Boolean = false,
 
     val autoPlayVoiceReplies: Boolean = false,
+
+    val seenCallConversationNotice: Boolean = false,
 ) {
     companion object {
-        const val DEFAULT_TRANSCRIPTION_MODEL = "openai/whisper-large-v3"
-        const val DEFAULT_REPLY_MODEL = "openai/gpt-4o-mini"
+        const val DEFAULT_TRANSCRIPTION_MODEL = "openai/gpt-4o-mini-transcribe"
+        const val DEFAULT_REPLY_MODEL = "particle-ai/particle-1"
+
+        /** Transcription handled by the phone itself instead of an OpenRouter model. */
+        const val LOCAL_TRANSCRIPTION_MODEL_ID = "on-device"
 
         const val CONVERSATION_REPLY_SYSTEM_MESSAGE =
             "Optimize for verbal conversation, keep your reply to about 100 words and stay concise. " +
@@ -114,6 +119,7 @@ class VoicePreferencesStore(context: Context) {
                 legacyTextOnly,
             ),
             autoPlayVoiceReplies = prefs.getBoolean(KEY_AUTO_PLAY_VOICE_REPLIES, false),
+            seenCallConversationNotice = prefs.getBoolean(KEY_SEEN_CALL_NOTICE, false),
         )
     }
 
@@ -124,6 +130,7 @@ class VoicePreferencesStore(context: Context) {
             .putString(KEY_REPLY_MODEL, value.replyModelId.trim())
             .putBoolean(KEY_SHOW_VOICE_REPLIES_AS_TEXT_FIRST, value.showVoiceRepliesAsTextFirst)
             .putBoolean(KEY_AUTO_PLAY_VOICE_REPLIES, value.autoPlayVoiceReplies)
+            .putBoolean(KEY_SEEN_CALL_NOTICE, value.seenCallConversationNotice)
             .apply()
     }
 
@@ -135,5 +142,6 @@ class VoicePreferencesStore(context: Context) {
         const val KEY_TRANSCRIBE_VOICE_REPLIES = "transcribe_voice_replies"
         const val KEY_SHOW_VOICE_REPLIES_AS_TEXT_FIRST = "show_voice_replies_as_text_first"
         const val KEY_AUTO_PLAY_VOICE_REPLIES = "auto_play_voice_replies"
+        const val KEY_SEEN_CALL_NOTICE = "seen_call_conversation_notice"
     }
 }
