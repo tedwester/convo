@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 
@@ -19,10 +20,12 @@ internal fun MessageActionButton(
     contentDescription: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    tint: Color? = null,
 ) {
-    val tint = MaterialTheme.colorScheme.onSurface.copy(
-        alpha = if (enabled) 0.75f else 0.3f,
-    )
+    val resolvedTint = tint?.copy(alpha = if (enabled) tint.alpha else tint.alpha * 0.4f)
+        ?: MaterialTheme.colorScheme.onSurface.copy(
+            alpha = if (enabled) 0.75f else 0.3f,
+        )
     Box(
         modifier = Modifier
             .size(36.dp)
@@ -33,7 +36,7 @@ internal fun MessageActionButton(
         Icon(
             painter = painter,
             contentDescription = contentDescription,
-            tint = tint,
+            tint = resolvedTint,
             modifier = Modifier.size(18.dp),
         )
     }

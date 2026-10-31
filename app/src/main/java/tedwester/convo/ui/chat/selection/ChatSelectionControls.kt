@@ -13,9 +13,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,19 +29,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tedwester.convo.ui.chat.ChatMenuDestructive
 import tedwester.convo.ui.chat.ChatSectionAnimMs
+import tedwester.convo.ui.chat.message.MessageActionButton
 import tedwester.convo.ui.components.DockSurface
 import tedwester.convo.ui.icons.ConvoIcons
 
@@ -152,14 +148,19 @@ internal fun SelectionCheckbox(
 /**
  * Bar shown while chats are selected. It takes over the quick settings dock's spot so the two
  * never compete for the same corner, and rides the same [DockSurface] so the swap reads as one
- * object changing rather than two docks fighting.
+ * object changing rather than two docks fighting. Count on the left, actions on the right.
  */
 @Composable
-internal fun ChatSelectionBar(    selectedCount: Int,
+internal fun ChatSelectionBar(
+    selectedCount: Int,
     onCancel: () -> Unit,
     onDelete: () -> Unit,
+    onArchive: () -> Unit,
+    onPin: () -> Unit,
+    onAddToProject: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val hasSelection = selectedCount > 0
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -174,15 +175,9 @@ internal fun ChatSelectionBar(    selectedCount: Int,
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SelectionBarAction(
-                    label = "Cancel",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                    onClick = onCancel,
-                )
-
                 Text(
                     text = if (selectedCount == 1) {
                         "1 selected"
@@ -194,61 +189,45 @@ internal fun ChatSelectionBar(    selectedCount: Int,
                         fontSize = 15.sp,
                     ),
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp),
+                    textAlign = TextAlign.Start,
                 )
 
-                SelectionBarAction(
-                    label = "Delete",
-                    color = ChatMenuDestructive,
-                    enabled = selectedCount > 0,
-                    emphasized = true,
+                MessageActionButton(
+                    painter = ConvoIcons.Trash2(),
+                    contentDescription = "Delete",
+                    enabled = hasSelection,
+                    tint = ChatMenuDestructive,
                     onClick = onDelete,
+                )
+                MessageActionButton(
+                    painter = ConvoIcons.Archive(),
+                    contentDescription = "Archive",
+                    enabled = hasSelection,
+                    onClick = onArchive,
+                )
+                MessageActionButton(
+                    painter = ConvoIcons.Pin(),
+                    contentDescription = "Pin",
+                    enabled = hasSelection,
+                    onClick = onPin,
+                )
+                MessageActionButton(
+                    painter = ConvoIcons.FolderPlus(),
+                    contentDescription = "Add to project",
+                    enabled = hasSelection,
+                    onClick = onAddToProject,
+                )
+                MessageActionButton(
+                    painter = ConvoIcons.X(),
+                    contentDescription = "Cancel",
+                    onClick = onCancel,
                 )
             }
         }
     }
-}
-
-@Composable
-private fun SelectionBarAction(
-    label: String,
-    color: Color,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    emphasized: Boolean = false,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed && enabled) 0.94f else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 420f),
-        label = "selectionActionScale",
-    )
-
-    Text(
-        text = label,
-        style = MaterialTheme.typography.bodyLarge.copy(
-            fontWeight = if (emphasized) FontWeight.Medium else FontWeight.Normal,
-            fontSize = 15.sp,
-        ),
-        color = if (enabled) color else color.copy(alpha = 0.35f),
-        modifier = Modifier
-            .pressScale(scale)
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            )
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-    )
-}
-
-private fun Modifier.pressScale(scale: Float): Modifier = graphicsLayer {
-    scaleX = scale
-    scaleY = scale
 }
 
 /**

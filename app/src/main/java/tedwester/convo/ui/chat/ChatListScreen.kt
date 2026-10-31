@@ -135,6 +135,7 @@ fun ChatListScreen(
     var showSearch by remember { mutableStateOf(false) }
     var showProjects by rememberSaveable { mutableStateOf(false) }
     var assigningChatId by remember { mutableStateOf<String?>(null) }
+    var bulkAssigning by remember { mutableStateOf(false) }
     var renamingChatId by remember { mutableStateOf<String?>(null) }
     var recentsExpanded by rememberSaveable { mutableStateOf(true) }
     var archiveExpanded by rememberSaveable { mutableStateOf(false) }
@@ -418,6 +419,27 @@ fun ChatListScreen(
                     deletedFlashCount = count
                     selection.beginDelete(scope, onDeleteChat)
                 },
+                onArchive = {
+                    val ids = selection.selectedIds
+                    if (ids.isEmpty()) return@ChatSelectionBar
+                    val unarchive = ids.all { id ->
+                        chats.firstOrNull { it.id == id }?.archived == true
+                    }
+                    ids.forEach { onArchiveChat(it, !unarchive) }
+                    selection.clear()
+                },
+                onPin = {
+                    val ids = selection.selectedIds
+                    if (ids.isEmpty()) return@ChatSelectionBar
+                    val unpin = ids.all { id ->
+                        chats.firstOrNull { it.id == id }?.pinned == true
+                    }
+                    ids.forEach { onPinChat(it, !unpin) }
+                    selection.clear()
+                },
+                onAddToProject = {
+                    if (selection.selectedCount > 0) bulkAssigning = true
+                },
             )
         }
 
@@ -526,6 +548,23 @@ fun ChatListScreen(
                 selectedProjectId = chat?.projectId,
                 onSelect = { projectId -> onAssignChatToProject(chatId, projectId) },
                 onDismiss = { assigningChatId = null },
+            )
+        }
+
+        if (bulkAssigning) {
+            val ids = selection.selectedIds
+            val commonProject = ids.mapNotNull { id ->
+                chats.firstOrNull { it.id == id }?.projectId
+            }.distinct().singleOrNull()
+            ProjectPickerOverlay(
+                projects = projects,
+                selectedProjectId = commonProject,
+                onSelect = { projectId ->
+                    ids.forEach { onAssignChatToProject(it, projectId) }
+                    selection.clear()
+                    bulkAssigning = false
+                },
+                onDismiss = { bulkAssigning = false },
             )
         }
 
