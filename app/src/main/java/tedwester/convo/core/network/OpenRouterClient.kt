@@ -428,7 +428,7 @@ class OpenRouterClient(
             }
         }
         if (images.isEmpty()) {
-            throw OpenRouterApiException("Image response contained no image data.", response.code)
+            throw OpenRouterApiException("Image response contained no image data.", code)
         }
         ImageResult(images = images)
     }
