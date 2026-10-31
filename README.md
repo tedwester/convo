@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="180" alt="Convo logo">
+  <img src="assets/convo.png" width="180" alt="Convo logo">
 </p>
 
 # Convo

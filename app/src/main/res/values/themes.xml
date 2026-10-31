@@ -4,4 +4,15 @@
     <style name="Theme.Convo" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
     </style>
+
+    <style name="Theme.Convo.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_dots_animated</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_dots_animated</item>
+        <item name="windowSplashScreenAnimationDuration">900</item>
+        <item name="android:windowSplashScreenAnimationDuration">900</item>
+        <item name="android:windowSplashScreenBehavior">icon_preferred</item>
+        <item name="postSplashScreenTheme">@style/Theme.Convo</item>
+    </style>
 </resources>

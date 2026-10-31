@@ -1,0 +1,42 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <path
+        android:name="dot00"
+        android:fillColor="#F1F0EF"
+        android:pathData="M 90.49,105.65 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot01"
+        android:fillColor="#F1F0EF"
+        android:pathData="M 129.30,105.65 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot02"
+        android:fillColor="#6B6868"
+        android:pathData="M 167.66,105.65 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot10"
+        android:fillColor="#F1F0EF"
+        android:pathData="M 90.49,143.54 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot11"
+        android:fillColor="#6B6868"
+        android:pathData="M 129.30,143.54 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot12"
+        android:fillColor="#6B6868"
+        android:pathData="M 167.66,143.54 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot20"
+        android:fillColor="#F1F0EF"
+        android:pathData="M 90.49,181.89 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot21"
+        android:fillColor="#F1F0EF"
+        android:pathData="M 129.30,181.89 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+    <path
+        android:name="dot22"
+        android:fillColor="#6B6868"
+        android:pathData="M 167.66,181.89 a 14.70,14.70 0 1,0 29.40,0 a 14.70,14.70 0 1,0 -29.40,0" />
+</vector>
