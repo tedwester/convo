@@ -430,7 +430,7 @@ class OpenRouterClient(
         if (images.isEmpty()) {
             throw OpenRouterApiException("Image response contained no image data.", code)
         }
-        ImageResult(images = images)
+        return ImageResult(images = images)
     }
 
     override suspend fun createVideo(
