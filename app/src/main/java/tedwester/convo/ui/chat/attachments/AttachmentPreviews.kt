@@ -35,11 +35,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import tedwester.convo.features.chat.model.ChatAttachment
+import tedwester.convo.ui.icons.ConvoIcons
 import java.io.File
 
 internal fun decodeSampledBitmap(
@@ -216,12 +219,7 @@ fun AttachmentFileBadge(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val ext = attachment.displayName
-                .substringAfterLast('.', missingDelimiterValue = "")
-                .uppercase()
-                .takeIf { it.isNotBlank() && it.length <= 5 }
-                ?: attachment.mimeType?.substringAfter('/')?.uppercase()?.take(6)
-                ?: "FILE"
+            val ext = attachmentKindLabel(attachment)
             Text(
                 text = ext,
                 style = MaterialTheme.typography.labelSmall,
@@ -233,6 +231,81 @@ fun AttachmentFileBadge(
         }
     }
 }
+
+/**
+ * Compact file card for chat bubbles: a tile with the file icon and kind up
+ * top, the name underneath. Sits in a wrapping row next to the photo thumbs
+ * instead of the full-width composer-style badge.
+ */
+@Composable
+fun AttachmentFileCard(
+    attachment: ChatAttachment,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val dark = isSystemInDarkTheme()
+    val tile = RoundedCornerShape(14.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.widthIn(max = 96.dp),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(width = 76.dp, height = 62.dp)
+                .clip(tile)
+                .background(if (dark) Color(0xFF2A2A2A) else Color(0xFFF0F1F4))
+                .border(
+                    width = 1.dp,
+                    color = if (dark) Color(0xFF3A3A3A) else Color(0xFFE2E5EB),
+                    shape = tile,
+                )
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Icon(
+                    painter = ConvoIcons.File(),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp),
+                )
+                Text(
+                    text = attachmentKindLabel(attachment),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        }
+        Text(
+            text = attachment.displayName,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .padding(top = 3.dp)
+                .widthIn(max = 96.dp),
+        )
+    }
+}
+
+private fun attachmentKindLabel(attachment: ChatAttachment): String =
+    attachment.displayName
+        .substringAfterLast('.', missingDelimiterValue = "")
+        .uppercase()
+        .takeIf { it.isNotBlank() && it.length <= 5 }
+        ?: attachment.mimeType?.substringAfter('/')?.uppercase()?.take(6)
+        ?: "FILE"
 
 @Composable
 private fun RemoveChip(

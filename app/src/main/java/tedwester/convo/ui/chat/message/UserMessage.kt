@@ -12,6 +12,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.ui.chat.RectAnchor
-import tedwester.convo.ui.chat.attachments.AttachmentFileBadge
+import tedwester.convo.ui.chat.attachments.AttachmentFileCard
 import tedwester.convo.ui.chat.attachments.AttachmentImageThumb
 import kotlin.math.PI
 import kotlin.math.sin
@@ -168,31 +169,7 @@ internal fun UserMessage(
                         onClick = onTogglePromptBar,
                     ),
             ) {
-            if (images.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    images.take(4).forEach { attachment ->
-                        AttachmentImageThumb(
-                            attachment = attachment,
-                            onRemove = null,
-                            onClick = { onViewAttachment(attachment) },
-                            size = 72.dp,
-                        )
-                    }
-                }
-            }
-
-            if (files.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    files.forEach { attachment ->
-                        AttachmentFileBadge(
-                            attachment = attachment,
-                            onRemove = null,
-                        )
-                    }
-                }
-            }
-
-            if (textToShow.isNotBlank()) {
+            if (images.isNotEmpty() || files.isNotEmpty() || textToShow.isNotBlank()) {
                 val bubbleShape = RoundedCornerShape(20.dp)
                 Box(
                     modifier = Modifier.onGloballyPositioned { settledAnchor.coords = it },
@@ -230,10 +207,47 @@ internal fun UserMessage(
                                 }
                                 // Anchored at the corner that sits over the send button.
                                 transformOrigin = TransformOrigin(1f, 1f)
-                            }
-                            .clip(bubbleShape)
-                            .background(bubbleGrey),
+                            },
                     ) {
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            if (images.isNotEmpty()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    images.take(4).forEach { attachment ->
+                                        AttachmentImageThumb(
+                                            attachment = attachment,
+                                            onRemove = null,
+                                            onClick = { onViewAttachment(attachment) },
+                                            size = 72.dp,
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (files.isNotEmpty()) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(
+                                        6.dp,
+                                        Alignment.End,
+                                    ),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    files.forEach { attachment ->
+                                        AttachmentFileCard(
+                                            attachment = attachment,
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (textToShow.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(bubbleShape)
+                                        .background(bubbleGrey),
+                                ) {
                         Text(
                             text = textToShow,
                             style = MaterialTheme.typography.bodyLarge.copy(
@@ -281,6 +295,9 @@ internal fun UserMessage(
                                 }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                         )
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -52,11 +52,34 @@ internal suspend fun ChatState.buildApiHistoryFrom(
                 val documents = message.attachments.filter {
                     !it.isImage && !it.isAudio && !it.isVideo
                 }
+                val inlineBlocks = mutableListOf<String>()
+                val partDocs = mutableListOf<ChatAttachment>()
+                documents.forEach { doc ->
+                    val inline = if (isInlineTextFile(doc)) readInlineText(doc) else null
+                    if (inline != null) {
+                        inlineBlocks.add("Attached file ${inline.first}:\n${inline.second}")
+                    } else {
+                        partDocs.add(doc)
+                    }
+                }
+                val contentWithInline = buildString {
+                    append(message.content)
+                    inlineBlocks.forEach { append("\n\n$it") }
+                }
+                val encoded = partDocs.mapNotNull { doc ->
+                    encodeFilePayload(doc)?.let { doc to it }
+                }
+                val encodedDocs = encoded.map { it.first }.toSet()
+                val notedDocs = partDocs.filter { it !in encodedDocs }
                 ChatMessageDto(
                     role = "user",
-                    content = apiPromptForUserMessage(message.content, media, images.isNotEmpty()),
+                    content = apiPromptForUserMessage(
+                        contentWithInline,
+                        media + notedDocs,
+                        images.isNotEmpty(),
+                    ),
                     imageDataUrls = images.mapNotNull { encodeImageDataUrl(it) },
-                    fileParts = documents.mapNotNull { encodeFilePayload(it) },
+                    fileParts = encoded.map { it.second },
                 )
             }
         }
@@ -99,6 +122,35 @@ internal fun ChatState.encodeImageDataUrl(attachment: ChatAttachment): String? {
 
 /** Files larger than this ride along as a filename note instead of a payload. */
 private const val MaxFilePartBytes = 10 * 1024 * 1024
+
+/** Inline text stops here; longer text files go as file parts instead. */
+private const val MaxInlineTextChars = 20_000
+private const val MaxInlineTextBytes = 256 * 1024
+
+private val InlineTextExtensions = setOf(
+    "txt", "md", "markdown", "csv", "json", "xml", "yaml", "yml", "log",
+    "html", "htm", "java", "kt", "kts", "py", "js", "ts", "tsx", "c", "h",
+    "cpp", "hpp", "cs", "css", "scss", "sql", "sh", "r", "rb", "go", "rs",
+    "swift", "php", "ini", "cfg", "conf", "toml", "tex",
+)
+
+internal fun isInlineTextFile(attachment: ChatAttachment): Boolean {
+    if (attachment.mimeType?.startsWith("text/") == true) return true
+    return attachment.displayName.substringAfterLast('.', "")
+        .ifBlank { attachment.path.substringAfterLast('.', "") }
+        .lowercase() in InlineTextExtensions
+}
+
+internal fun readInlineText(attachment: ChatAttachment): Pair<String, String>? {
+    val file = File(attachment.path)
+    if (!file.exists() || !file.isFile) return null
+    if (file.length() > MaxInlineTextBytes || file.length() == 0L) return null
+    val text = runCatching {
+        file.readBytes().toString(Charsets.UTF_8)
+    }.getOrNull()?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val name = attachment.displayName.ifBlank { file.name }
+    return name to text.take(MaxInlineTextChars)
+}
 
 internal fun ChatState.encodeFilePayload(attachment: ChatAttachment): FilePayload? {
     val file = File(attachment.path)
