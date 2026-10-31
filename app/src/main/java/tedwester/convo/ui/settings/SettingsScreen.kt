@@ -57,7 +57,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tedwester.convo.core.network.OpenRouterApi
-import tedwester.convo.core.audio.DeviceSpeechRecognition
+import tedwester.convo.core.audio.deviceSpeechSublabel
+import tedwester.convo.core.audio.rememberDeviceSpeechLanguages
 import tedwester.convo.core.network.OpenRouterApiKeyValidation
 import tedwester.convo.core.network.model.OpenRouterKeyInfo
 import tedwester.convo.core.security.AppLockManager
@@ -821,6 +822,7 @@ fun SettingsScreen(
         }
 
         if (visible && showTranscriptionPicker) {
+            val deviceLanguages = rememberDeviceSpeechLanguages()
             ModelSelectorModal(
                 apiKey = apiKey,
                 api = api,
@@ -834,7 +836,7 @@ fun SettingsScreen(
                 topOptions = listOf(
                     SelectorTopOption(
                         label = "On-device",
-                        sublabel = DeviceSpeechRecognition.statusLabel(context),
+                        sublabel = deviceSpeechSublabel(context, deviceLanguages),
                         selected = voicePreferences.transcriptionModelId ==
                             VoicePreferences.LOCAL_TRANSCRIPTION_MODEL_ID,
                         onClick = {

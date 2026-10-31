@@ -117,7 +117,17 @@ internal fun rememberConversationDictation(
         transcribeJob = scope.launch {
             val transcript = try {
                 if (useOnDeviceTranscription()) {
-                    deviceSession.stopAndGetFinal()
+                    val text = deviceSession.stopAndGetFinal()
+                    if (text.isNullOrBlank() &&
+                        deviceSession.lastError?.let { it in DeviceSpeechSession.LANGUAGE_ERRORS } == true
+                    ) {
+                        Toast.makeText(
+                            context,
+                            "Download the offline language pack, then try again",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                    text
                 } else {
                     chatState.transcribeRecording(recording.bytes, recording.format)
                 }

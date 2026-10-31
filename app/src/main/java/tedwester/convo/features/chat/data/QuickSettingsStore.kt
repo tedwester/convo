@@ -14,6 +14,7 @@ data class QuickSettingsConfig(
             QuickSettingIds.CREDITS,
             QuickSettingIds.NEW_CHAT,
             QuickSettingIds.KEEP_SEARCH_ON,
+            QuickSettingIds.VOICE_MODE,
         )
 
         const val MAX_ITEMS = 5
@@ -32,7 +33,18 @@ class QuickSettingsStore(context: Context) {
         val ids = raw.split(SEPARATOR)
             .filter { it.isNotBlank() && it !in RetiredQuickSettingItems }
         if (ids.isEmpty()) return QuickSettingsConfig()
-        return QuickSettingsConfig(items = ids.distinct().take(QuickSettingsConfig.MAX_ITEMS))
+        val items = ids.distinct().take(QuickSettingsConfig.MAX_ITEMS).toMutableList()
+        // Voice mode joined the defaults late. Existing installs pick it up once
+        // when there is room; the stamp keeps a deliberate removal removed.
+        if (prefs.getInt(KEY_DEFAULTS_VERSION, 0) < DEFAULTS_WITH_VOICE_MODE) {
+            if (QuickSettingIds.VOICE_MODE !in items &&
+                items.size < QuickSettingsConfig.MAX_ITEMS
+            ) {
+                items.add(QuickSettingIds.VOICE_MODE)
+            }
+            prefs.edit().putInt(KEY_DEFAULTS_VERSION, DEFAULTS_WITH_VOICE_MODE).apply()
+        }
+        return QuickSettingsConfig(items = items)
     }
 
     fun save(value: QuickSettingsConfig) {
@@ -49,5 +61,7 @@ class QuickSettingsStore(context: Context) {
         const val PREFS = "convo_quick_settings_prefs"
         const val KEY_ITEMS = "items"
         const val SEPARATOR = ","
+        const val KEY_DEFAULTS_VERSION = "defaults_version"
+        const val DEFAULTS_WITH_VOICE_MODE = 1
     }
 }

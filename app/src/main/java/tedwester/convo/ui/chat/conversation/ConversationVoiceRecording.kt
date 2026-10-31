@@ -73,7 +73,6 @@ internal fun rememberConversationVoiceRecording(
     var isTranscribing by remember { mutableStateOf(false) }
     var sessionActive by remember { mutableStateOf(false) }
     var expectPlayback by remember { mutableStateOf(false) }
-    var hadVoiceTurn by remember { mutableStateOf(false) }
     var listeningPaused by remember { mutableStateOf(false) }
     var playbackStopToken by remember { mutableIntStateOf(0) }
     var recordingAmplitudes by remember { mutableStateOf(List(24) { 0f }) }
@@ -90,7 +89,6 @@ internal fun rememberConversationVoiceRecording(
         isTranscribing = false
         sessionActive = false
         expectPlayback = false
-        hadVoiceTurn = false
         listeningPaused = false
         recordingElapsedMs = 0L
         recordingAmplitudes = List(24) { 0f }
@@ -179,7 +177,10 @@ internal fun rememberConversationVoiceRecording(
         recordingAmplitudes = List(24) { 0f }
         if (recording == null || recording.durationMs < MinVoiceMs) {
             isTranscribing = false
-            if (hadVoiceTurn && sessionActive) {
+            // A dud capture must never end the call: the first recording in
+            // particular can come back empty while the mic warms up. Stay in
+            // the session and listen again instead of dropping everything.
+            if (sessionActive) {
                 startRecording()
             } else {
                 resetIdle()
@@ -212,7 +213,17 @@ internal fun rememberConversationVoiceRecording(
             }
             val transcript = try {
                 if (useOnDeviceTranscription()) {
-                    deviceSession.stopAndGetFinal()
+                    val text = deviceSession.stopAndGetFinal()
+                    if (text.isNullOrBlank() &&
+                        deviceSession.lastError?.let { it in DeviceSpeechSession.LANGUAGE_ERRORS } == true
+                    ) {
+                        Toast.makeText(
+                            context,
+                            "Download the offline language pack, then try again",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                    text
                 } else {
                     chatState.transcribeRecording(recording.bytes, recording.format)
                 }
@@ -242,7 +253,6 @@ internal fun rememberConversationVoiceRecording(
             if (!isActive) return@launch
             isTranscribing = false
             jobs.transcribe = null
-            hadVoiceTurn = true
             expectPlayback = chatState.isRunning &&
                 chatState.selectedModel?.supportsSpeechOutput == true
         }
