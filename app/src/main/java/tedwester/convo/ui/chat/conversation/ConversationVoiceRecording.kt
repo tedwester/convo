@@ -149,6 +149,16 @@ internal fun rememberConversationVoiceRecording(
         startRecording()
     }
 
+    fun callEndedSuffix(): String =
+        if (transcriptionOnly) "" else " — voice call ended"
+
+    fun failTurn(message: String, endCall: Boolean = true) {
+        isTranscribing = false
+        jobs.transcribe = null
+        Toast.makeText(context, message + callEndedSuffix(), Toast.LENGTH_LONG).show()
+        if (endCall) resetIdle()
+    }
+
     fun stopAndSendRecording() {
         if (!isRecording || isTranscribing) return
         isTranscribing = true
@@ -157,15 +167,7 @@ internal fun rememberConversationVoiceRecording(
         recordingElapsedMs = 0L
         recordingAmplitudes = List(24) { 0f }
         if (recording == null || recording.durationMs < MinVoiceMs) {
-            isTranscribing = false
-            // A dud capture must never end the call: the first recording in
-            // particular can come back empty while the mic warms up. Stay in
-            // the session and listen again instead of dropping everything.
-            if (sessionActive) {
-                startRecording()
-            } else {
-                resetIdle()
-            }
+            failTurn("Couldn't capture audio")
             return
         }
         jobs.transcribe?.cancel()
@@ -192,18 +194,19 @@ internal fun rememberConversationVoiceRecording(
                 resetIdle()
                 return@launch
             }
+            var transcribeError: String? = null
             val transcript = try {
                 chatState.transcribeRecording(recording.bytes, recording.format)
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                transcribeError = e.message?.trim()?.takeIf { it.isNotBlank() }
                 null
             }
             if (!isActive) return@launch
             if (transcript.isNullOrBlank()) {
-                isTranscribing = false
-                jobs.transcribe = null
-                if (sessionActive) startRecording() else resetIdle()
+                val detail = transcribeError?.let { " ($it)" }.orEmpty()
+                failTurn("Couldn't transcribe that$detail")
                 return@launch
             }
             try {
@@ -215,7 +218,7 @@ internal fun rememberConversationVoiceRecording(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Send failed; keep the orb up so the conversation can continue.
+                failTurn("Couldn't send that", endCall = !chatState.isRunning)
             }
             if (!isActive) return@launch
             isTranscribing = false

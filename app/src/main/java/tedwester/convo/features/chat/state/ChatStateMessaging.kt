@@ -2,7 +2,6 @@ package tedwester.convo.features.chat.state
 
 import android.os.SystemClock
 import android.util.Base64
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -260,20 +259,14 @@ internal suspend fun ChatState.transcribeRecordingImpl(
         }
     }
     return withContext(Dispatchers.IO) {
-        try {
-            api.transcribeAudio(
-                apiKey = apiKey,
-                request = TranscriptionRequest(
-                    model = transcriptionModelId,
-                    audioBase64 = Base64.encodeToString(audioBytes, Base64.NO_WRAP),
-                    format = format,
-                ),
-            ).takeIf { it.isNotBlank() }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            null
-        }
+        api.transcribeAudio(
+            apiKey = apiKey,
+            request = TranscriptionRequest(
+                model = transcriptionModelId,
+                audioBase64 = Base64.encodeToString(audioBytes, Base64.NO_WRAP),
+                format = format,
+            ),
+        ).takeIf { it.isNotBlank() }
     }
 }
 
