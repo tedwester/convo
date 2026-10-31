@@ -142,6 +142,14 @@ class ChatCompletionController(
             setStatus(chatId, ChatRunStatus.CompletedUnread)
             if (!appForeground && success) {
                 scope.launch {
+                    // The title fetch below takes a moment, and the user may open
+                    // the chat while it runs. Recheck before posting: an alert for
+                    // the chat on screen would sit there stale with no way to
+                    // clear it except leaving and coming back.
+                    if (viewingChatId == chatId && isAppForeground()) {
+                        clearRunningStatus(chatId)
+                        return@launch
+                    }
                     val title = withContext(Dispatchers.IO) {
                         repository.listChats().find { it.id == chatId }?.title
                     }.orEmpty()

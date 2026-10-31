@@ -105,6 +105,7 @@ internal fun AssistantMarkdown(
         padding = padding,
         animations = markdownAnimations(animateTextSize = { this }),
         imageTransformer = ConvoMarkdownImageTransformer,
+        components = rememberAssistantMarkdownComponents(),
         modifier = modifier.fillMaxWidth(),
     )
 }
