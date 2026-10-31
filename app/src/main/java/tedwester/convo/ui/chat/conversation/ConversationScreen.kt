@@ -40,6 +40,7 @@ import tedwester.convo.core.security.KeyStorage
 import tedwester.convo.features.chat.ChatState
 import tedwester.convo.features.chat.data.ComposerPreferences
 import tedwester.convo.features.chat.data.VoicePreferences
+import tedwester.convo.features.chat.data.VoiceTtsMode
 import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.features.chat.state.consumeSendAnimation
@@ -534,9 +535,9 @@ fun ConversationScreen(
                 },
                 showSearchToggle = !isTranscriptionOnly &&
                     (model?.supportsWebSearch == true || composerHintsPending ||
-                        ((model?.supportsVoiceSelection == true ||
-                            voiceRecording.isOrbVisible) &&
-                            voiceReplyModel?.supportsWebSearch == true)),
+                        (voiceReplyModel?.supportsWebSearch == true &&
+                            (voiceRecording.isOrbVisible ||
+                                voicePreferences.mode == VoiceTtsMode.Conversation))),
                 isSearchEnabled = chatState.isSearchEnabled,
                 onToggleSearch = chatState::toggleSearch,
                 showReasoningToggle = !isTranscriptionOnly &&
