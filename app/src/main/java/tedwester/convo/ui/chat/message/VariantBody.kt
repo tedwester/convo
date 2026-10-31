@@ -39,6 +39,7 @@ internal fun VariantBody(
     AssistantTurnText(
         text = liveText,
         modifier = modifier.fillMaxWidth(),
+        isStreaming = message.isStreaming,
     )
 }
 
@@ -46,6 +47,7 @@ internal fun VariantBody(
 internal fun AssistantTurnText(
     text: String,
     modifier: Modifier = Modifier,
+    isStreaming: Boolean = false,
 ) {
     val resolved = text.ifBlank { EMPTY_RESPONSE_TEXT }
     if (isAssistantStatusContent(resolved)) {
@@ -54,6 +56,7 @@ internal fun AssistantTurnText(
         AssistantMarkdown(
             content = resolved,
             modifier = modifier,
+            isStreaming = isStreaming,
         )
     }
 }

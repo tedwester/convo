@@ -38,4 +38,18 @@ class DataUriFetcher(
             return DataUriFetcher(data.toString(), options)
         }
     }
+
+    /**
+     * Markdown image links arrive at Coil as [String], not [Uri] — the
+     * markdown renderer hands the raw `![](…)` destination string to the
+     * loader. Without this factory every `![](data:…)` assistant image falls
+     * through to Coil's built-in handlers (which don't decode base64 data
+     * URIs) and renders as a permanent blank placeholder.
+     */
+    class StringFactory : Fetcher.Factory<String> {
+        override fun create(data: String, options: Options, imageLoader: coil.ImageLoader): Fetcher? {
+            if (!data.startsWith("data:", ignoreCase = true)) return null
+            return DataUriFetcher(data, options)
+        }
+    }
 }

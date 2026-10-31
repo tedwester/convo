@@ -2,6 +2,7 @@ package tedwester.convo.core.network
 
 import org.json.JSONArray
 import org.json.JSONObject
+import tedwester.convo.core.image.AssistantImages
 import tedwester.convo.core.network.model.ModelReasoningConfig
 import tedwester.convo.core.network.model.StreamDelta
 import tedwester.convo.features.chat.model.ReasoningEffort
@@ -20,7 +21,17 @@ internal fun extractContentText(raw: Any?): String = when (raw) {
 
 internal fun extractContentPart(part: Any?): String = when (part) {
     null, JSONObject.NULL -> ""
-    is String -> part
+    is String -> {
+        val trimmed = part.trim()
+        // Some providers send images[] as bare URL strings instead of
+        // {type: image_url} objects — wrap those so they render as images
+        // rather than giant text blocks.
+        if (trimmed.isNotEmpty() && AssistantImages.isBareImageUrl(trimmed)) {
+            AssistantImages.encodeImageMarkdown(trimmed) ?: part
+        } else {
+            part
+        }
+    }
     is JSONArray -> extractContentText(part)
     is JSONObject -> {
         val type = part.optString("type")
@@ -29,10 +40,16 @@ internal fun extractContentPart(part: Any?): String = when (part) {
                 type.equals("output_text", ignoreCase = true) ->
                 part.optString("text")
 
-            type.equals("image_url", ignoreCase = true) -> {
+            type.equals("image_url", ignoreCase = true) ||
+                type.equals("image", ignoreCase = true) ||
+                type.equals("input_image", ignoreCase = true) ||
+                type.equals("output_image", ignoreCase = true) -> {
                 val url = part.optJSONObject("image_url")?.optString("url")
-                    ?: part.optString("url")
-                if (url.isBlank()) "" else "![]($url)"
+                    ?.takeIf { it.isNotBlank() }
+                    ?: part.optJSONObject("image")?.optString("url")?.takeIf { it.isNotBlank() }
+                    ?: part.optString("url").takeIf { it.isNotBlank() }
+                    ?: part.optString("image_url").takeIf { it.isNotBlank() }
+                AssistantImages.encodeImageMarkdown(url) ?: ""
             }
 
             part.has("text") && !part.isNull("text") -> part.optString("text")
@@ -44,7 +61,7 @@ internal fun extractContentPart(part: Any?): String = when (part) {
 }
 
 internal fun joinContent(vararg parts: String): String =
-    parts.filter { it.isNotBlank() }.joinToString("\n\n")
+    AssistantImages.joinContent(*parts)
 
 internal fun stringListFrom(array: JSONArray?): List<String> {
     if (array == null) return emptyList()

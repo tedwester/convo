@@ -108,6 +108,9 @@ class ConvoApp : Application(), ImageLoaderFactory {
 
     override fun newImageLoader(): ImageLoader =
         ImageLoader.Builder(this)
-            .components { add(DataUriFetcher.Factory()) }
+            .components {
+                add(DataUriFetcher.Factory())
+                add(DataUriFetcher.StringFactory())
+            }
             .build()
 }

@@ -23,6 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import tedwester.convo.ConvoApp
+import tedwester.convo.core.image.AssistantImages
 import tedwester.convo.core.network.OpenRouterApi
 import tedwester.convo.core.network.model.ChatMessageDto
 import tedwester.convo.core.network.model.OpenRouterModel
@@ -270,6 +271,10 @@ class ChatCompletionController(
     private suspend fun runStream(request: CompletionRequest, session: Session) {
         val contentBuffer = StringBuilder()
         val reasoningBuffer = StringBuilder()
+        // OpenRouter repeats the cumulative images[] array on every SSE event
+        // for image-output chat models. Track seen URLs so each image is
+        // appended once instead of stacking N duplicate placeholders.
+        val seenImageUrls = LinkedHashSet<String>()
         val startedAt = SystemClock.elapsedRealtime()
         var thoughtDurationMs: Long? = null
         var lastUiEmitMs = 0L
@@ -301,12 +306,19 @@ class ChatCompletionController(
                 enableWebSearch = request.enableWebSearch,
                 reasoning = request.reasoning,
                 maxTokens = request.maxTokens,
+                requestImageOutput = request.model.supportsImageOutput,
             ).collect { delta ->
                 delta.content?.let { chunk ->
-                    if (contentBuffer.isEmpty() && chunk.isNotBlank()) {
-                        captureThoughtDurationIfNeeded()
+                    // Streaming text fragments ("Hello " + "world") must be
+                    // appended verbatim — no extra separators. Only duplicate
+                    // image blocks are filtered out.
+                    val filtered = AssistantImages.stripDuplicateMarkdownImages(chunk, seenImageUrls)
+                    if (filtered.isNotEmpty()) {
+                        if (contentBuffer.isEmpty() && filtered.isNotBlank()) {
+                            captureThoughtDurationIfNeeded()
+                        }
+                        contentBuffer.append(filtered)
                     }
-                    contentBuffer.append(chunk)
                 }
                 delta.reasoning?.let { reasoningBuffer.append(it) }
                 val now = SystemClock.elapsedRealtime()

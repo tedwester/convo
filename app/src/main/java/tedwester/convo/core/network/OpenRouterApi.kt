@@ -31,6 +31,7 @@ interface OpenRouterApi {
         enableWebSearch: Boolean = false,
         reasoning: ReasoningRequest? = null,
         maxTokens: Int? = null,
+        requestImageOutput: Boolean = false,
     ): String
 
     fun chatCompletionStream(
@@ -40,6 +41,7 @@ interface OpenRouterApi {
         enableWebSearch: Boolean = false,
         reasoning: ReasoningRequest? = null,
         maxTokens: Int? = null,
+        requestImageOutput: Boolean = false,
     ): Flow<StreamDelta>
 
     fun updateRequestTimeoutMinutes(minutes: Int)

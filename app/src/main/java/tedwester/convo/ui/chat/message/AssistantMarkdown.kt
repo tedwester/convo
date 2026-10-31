@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
-import com.mikepenz.markdown.model.markdownAnimations
 import com.mikepenz.markdown.model.markdownPadding
 import com.mikepenz.markdown.model.rememberMarkdownState
+import tedwester.convo.core.image.AssistantImages
 import tedwester.convo.ui.theme.AssistantSerifFamily
 import tedwester.convo.ui.theme.convoAssistantTextColor
 
@@ -26,8 +26,17 @@ import tedwester.convo.ui.theme.convoAssistantTextColor
 internal fun AssistantMarkdown(
     content: String,
     modifier: Modifier = Modifier,
+    isStreaming: Boolean = false,
 ) {
     if (content.isBlank()) return
+
+    // While streaming, a half-written `![…](…` image would otherwise fire Coil
+    // with a partial URL and reserve a blank placeholder that reads as empty
+    // space under the text. Hide the dangling opener until it completes.
+    val displayContent = remember(content, isStreaming) {
+        if (isStreaming) AssistantImages.sanitizeForStreaming(content) else content
+    }
+    if (displayContent.isBlank()) return
 
     val linkColor = MaterialTheme.colorScheme.primary
     val bodyColor = convoAssistantTextColor()
@@ -94,7 +103,7 @@ internal fun AssistantMarkdown(
     )
 
     val markdownState = rememberMarkdownState(
-        content = content,
+        content = displayContent,
         retainState = true,
     )
 
@@ -103,7 +112,6 @@ internal fun AssistantMarkdown(
         colors = colors,
         typography = typography,
         padding = padding,
-        animations = markdownAnimations(animateTextSize = { this }),
         imageTransformer = ConvoMarkdownImageTransformer,
         components = rememberAssistantMarkdownComponents(),
         modifier = modifier.fillMaxWidth(),

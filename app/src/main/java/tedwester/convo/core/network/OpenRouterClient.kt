@@ -162,6 +162,7 @@ class OpenRouterClient(
         enableWebSearch: Boolean,
         reasoning: ReasoningRequest?,
         maxTokens: Int?,
+        requestImageOutput: Boolean,
     ): String = withContext(Dispatchers.IO) {
         val request = buildChatCompletionRequest(
             apiKey = apiKey,
@@ -171,6 +172,7 @@ class OpenRouterClient(
             enableWebSearch = enableWebSearch,
             reasoning = reasoning,
             maxTokens = maxTokens,
+            requestImageOutput = requestImageOutput,
         )
         val response = client.newCall(request).execute()
         val body = response.body?.string().orEmpty()
@@ -199,6 +201,7 @@ class OpenRouterClient(
         enableWebSearch: Boolean,
         reasoning: ReasoningRequest?,
         maxTokens: Int?,
+        requestImageOutput: Boolean,
     ): Flow<StreamDelta> = callbackFlow {
         val request = buildChatCompletionRequest(
             apiKey = apiKey,
@@ -208,6 +211,7 @@ class OpenRouterClient(
             enableWebSearch = enableWebSearch,
             reasoning = reasoning,
             maxTokens = maxTokens,
+            requestImageOutput = requestImageOutput,
         )
         val webSearchParser = if (enableWebSearch) WebSearchStreamParser() else null
         val call = client.newCall(request)
@@ -491,6 +495,7 @@ class OpenRouterClient(
         enableWebSearch: Boolean = false,
         reasoning: ReasoningRequest? = null,
         maxTokens: Int? = null,
+        requestImageOutput: Boolean = false,
     ): Request {
         val messagesJson = JSONArray().apply {
             messages.forEach { message ->
@@ -501,6 +506,15 @@ class OpenRouterClient(
             put("model", model)
             put("messages", messagesJson)
             put("stream", stream)
+            if (requestImageOutput) {
+                // Chat-native image output (e.g. Gemini image-via-chat): without
+                // modalities the model returns text only, even when its
+                // output_modalities include "image".
+                put("modalities", JSONArray().apply {
+                    put("image")
+                    put("text")
+                })
+            }
             if (enableWebSearch) {
                 put(
                     "tools",
