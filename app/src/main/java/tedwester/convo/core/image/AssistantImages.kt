@@ -72,13 +72,13 @@ object AssistantImages {
     }
 
     fun extractMarkdownImageUrls(markdown: String): List<String> =
-        MarkdownImage.findAll(markdown).mapNotNull { normalizeImageUrl(it.groupValues[1]) }.toList()
+        MarkdownImage.findAll(markdown).mapNotNull { normalizeImageUrl(it.groupValues[2]) }.toList()
 
     fun stripDuplicateMarkdownImages(chunk: String, seenUrls: MutableSet<String>): String {
         if (!chunk.contains("![")) return chunk
         var result = chunk
         for (match in MarkdownImage.findAll(chunk).toList().asReversed()) {
-            val normalized = normalizeImageUrl(match.groupValues[1])
+            val normalized = normalizeImageUrl(match.groupValues[2])
             if (normalized == null) {
                 // Unrenderable — drop the block so it never reserves a blank slot.
                 result = result.removeRange(match.range)
@@ -87,7 +87,7 @@ object AssistantImages {
             if (!seenUrls.add(normalized)) {
                 result = result.removeRange(match.range)
             } else {
-                val fixed = "![]($normalized)"
+                val fixed = "![" + match.groupValues[1] + "]($normalized)"
                 if (match.value != fixed) {
                     result = result.replaceRange(match.range, fixed)
                 }
@@ -133,7 +133,7 @@ object AssistantImages {
 
     sealed interface MarkdownSegment {
         data class Text(val text: String) : MarkdownSegment
-        data class Image(val url: String) : MarkdownSegment
+        data class Image(val url: String, val alt: String = "") : MarkdownSegment
     }
 
     fun splitMarkdownImages(markdown: String): List<MarkdownSegment> {
@@ -166,10 +166,10 @@ object AssistantImages {
                         if (match.range.first > pos) {
                             textRun.append(part, pos, match.range.first)
                         }
-                        val normalized = normalizeImageUrl(match.groupValues[1])
+                        val normalized = normalizeImageUrl(match.groupValues[2])
                         if (normalized != null) {
                             flushText()
-                            out.add(MarkdownSegment.Image(normalized))
+                            out.add(MarkdownSegment.Image(normalized, match.groupValues[1].trim()))
                         } else {
                             textRun.append('`').append(match.value).append('`')
                         }

@@ -134,6 +134,7 @@ internal fun AssistantMarkdown(
                     )
                     is MarkdownSegment.Image -> AssistantMarkdownImage(
                         url = segment.url,
+                        alt = segment.alt,
                         modifier = Modifier.fillMaxWidth(),
                         onViewImage = onViewAttachment,
                     )

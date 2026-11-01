@@ -42,6 +42,7 @@ private val InlineImageShape = RoundedCornerShape(14.dp)
 internal fun AssistantMarkdownImage(
     url: String,
     modifier: Modifier = Modifier,
+    alt: String = "",
     onViewImage: (ChatAttachment) -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -70,7 +71,7 @@ internal fun AssistantMarkdownImage(
     key(retryToken) {
         SubcomposeAsyncImage(
             model = url,
-            contentDescription = null,
+            contentDescription = alt.ifBlank { null },
             modifier = modifier
                 .fillMaxWidth()
                 .clip(InlineImageShape)
