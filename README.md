@@ -23,8 +23,7 @@
 
 ## Screenshots
 
-<!-- Drop phone screenshots in assets/screenshots/ and reference them here, e.g.
-<img src="assets/screenshots/chat.png" width="270" alt="Chat"> -->
+<img src="assets/screenshots/showcase1.png" width="270" alt="Vision reply identifying a photo"> <img src="assets/screenshots/showcase2.png" width="270" alt="Model picker with filters"> <img src="assets/screenshots/showcase3.png" width="270" alt="Chat list with projects">
 
 ## Features
 
