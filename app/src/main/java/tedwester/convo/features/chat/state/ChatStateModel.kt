@@ -21,8 +21,6 @@ internal fun ChatState.startEditingMessageImpl(messageId: Long) {
     } ?: return
     editingMessageId = messageId
     input = message.userDisplayText()
-    // The composer's attachment strip shows what is being edited, so images and files from
-    // the message can be removed or added to before resending.
     clearPendingAttachments()
     message.attachments.forEach { addAttachment(it) }
 }
@@ -39,11 +37,6 @@ internal fun ChatState.toggleSearchImpl() {
     isSearchEnabled = !isSearchEnabled
 }
 
-/**
- * Whether the voice reply model can search. The composer toggle answers to the
- * chat model, but in voice mode the reply comes from this model instead, so it
- * gets a vote too. Unknown models count as no: search must be confirmed present.
- */
 private fun ChatState.voiceReplySupportsSearch(): Boolean {
     if (selectedModel?.usesIntegratedConversationReply == true) {
         return selectedModel?.supportsWebSearch == true

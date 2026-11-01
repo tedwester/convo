@@ -3,13 +3,6 @@ package tedwester.convo.core.audio
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * Raw PCM helpers.
- *
- * OpenRouter returns uncompressed audio for the `pcm` response format: headerless 16-bit
- * little-endian samples. Android's players cannot open that on its own, so it is wrapped
- * in a WAV container before it is stored.
- */
 object PcmAudio {
 
     /** Default sample rate for the providers that return raw PCM. */
@@ -19,13 +12,6 @@ object PcmAudio {
 
     const val Channels = 1
 
-    /**
-     * Wraps headerless PCM samples in a WAV container.
-     *
-     * @param samples raw little-endian 16-bit samples
-     * @param sampleRate samples per second
-     * @param channels number of channels
-     */
     fun wrapInWav(
         samples: ByteArray,
         sampleRate: Int = SpeechSampleRate,

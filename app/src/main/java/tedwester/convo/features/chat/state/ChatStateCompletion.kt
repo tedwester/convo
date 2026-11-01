@@ -120,10 +120,7 @@ internal fun ChatState.encodeImageDataUrl(attachment: ChatAttachment): String? {
     return "data:$mime;base64,$b64"
 }
 
-/** Files larger than this ride along as a filename note instead of a payload. */
 private const val MaxFilePartBytes = 10 * 1024 * 1024
-
-/** Inline text stops here; longer text files go as file parts instead. */
 private const val MaxInlineTextChars = 20_000
 private const val MaxInlineTextBytes = 256 * 1024
 

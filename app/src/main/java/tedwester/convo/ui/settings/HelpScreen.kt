@@ -118,6 +118,8 @@ fun HelpScreen(
 
                     Pick transcription and reply models for conversation mode. You can show voice replies as text first (with a button to switch to audio), and optionally auto-play new voice replies.
 
+                    If a voice call hits an error, for example transcription failing, the call ends with a message saying what went wrong — tap the mic to start a new call.
+
                     Per-model voice selection is available from the voice picker when a TTS model is active.
                 """.trimIndent(),
             )
@@ -131,9 +133,9 @@ fun HelpScreen(
 
                     Use the repeat control on an assistant message to regenerate a response. Multiple variants are kept — swipe horizontally or use the variant pager to compare them.
 
-                    Image and video replies appear inline with viewers. Audio replies show a playback row; you can download clips or switch between audio and transcript views.
+                    Image and video replies appear inline with viewers. Images a chat model sends back render as cards — tap one to open it full-screen, where you can pinch-zoom and save it. If an image fails to load you will see a retry tile instead of an empty gap. Audio replies show a playback row; you can download clips or switch between audio and transcript views.
 
-                    Markdown formatting, code blocks, and inline images in replies are rendered in the message bubble.
+                    Markdown formatting and code blocks are rendered in the message bubble.
                 """.trimIndent(),
             )
 

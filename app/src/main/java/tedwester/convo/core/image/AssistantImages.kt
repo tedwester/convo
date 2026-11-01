@@ -1,19 +1,5 @@
 package tedwester.convo.core.image
 
-/**
- * Single home for every rule about assistant reply images.
- *
- * OpenRouter chat models can return images two ways:
- *  1. Natively — `message.content[]` parts with `type: "image_url"`, or a
- *     top-level `message.images[]` / `delta.images[]` array. These are
- *     normalized to `![](url)` markdown by [encodeImageMarkdown] at the
- *     network boundary ([tedwester.convo.core.network] parsing).
- *  2. Authored markdown — the model writes `![alt](url)` inline in its text,
- *     which flows through untouched.
- *
- * Everything downstream (streaming dedup, render sanitizing, Coil loading)
- * reads from here so the rules stay in one place.
- */
 object AssistantImages {
 
     private val MarkdownImage =
@@ -26,18 +12,6 @@ object AssistantImages {
 
     private const val MaxDataUriChars = 20_000_000
 
-    /**
-     * Clean a raw image URL for safe embedding in `![](…)` markdown and for
-     * handing to Coil. Returns null when the URL can never render.
-     *
-     * - trims, strips `<…>` wrapping
-     * - `data:image/…` URIs: all whitespace removed (servers fold long
-     *   base64 across lines), requires `,payload`
-     * - `http(s)` URLs: line breaks removed, spaces and `(`/`)`
-     *   percent-encoded so the markdown destination never terminates early
-     *   (signed URLs), `http` upgraded to `https` (cleartext is blocked on
-     *   Android, so `http` image URLs can never load)
-     */
     fun normalizeImageUrl(raw: String?): String? {
         var url = raw?.trim().orEmpty()
         if (url.isBlank()) return null
@@ -73,21 +47,33 @@ object AssistantImages {
 
     fun isRenderableImageUrl(url: String?): Boolean = normalizeImageUrl(url) != null
 
-    /** Wrap a URL as `![](url)`, or null when it can never render. */
     fun encodeImageMarkdown(rawUrl: String?): String? {
         val normalized = normalizeImageUrl(rawUrl) ?: return null
         return "![]($normalized)"
     }
 
-    /** All normalized image URLs inside `![](…)` blocks. */
+    fun decodeDataUri(dataUri: String): Pair<ByteArray, String>? {
+        val comma = dataUri.indexOf(',')
+        if (comma <= 5) return null
+        val meta = dataUri.substring(5, comma)
+        if (!meta.startsWith("image/", ignoreCase = true)) return null
+        val payload = dataUri.substring(comma + 1).replace(Regex("\\s+"), "")
+        if (payload.isEmpty()) return null
+        val bytes = if (meta.contains(";base64", ignoreCase = true)) {
+            runCatching {
+                android.util.Base64.decode(payload, android.util.Base64.DEFAULT)
+            }.getOrNull()
+        } else {
+            runCatching {
+                java.net.URLDecoder.decode(payload, "UTF-8").toByteArray()
+            }.getOrNull()
+        }?.takeIf { it.isNotEmpty() } ?: return null
+        return bytes to meta.substringBefore(';').ifBlank { "image/png" }
+    }
+
     fun extractMarkdownImageUrls(markdown: String): List<String> =
         MarkdownImage.findAll(markdown).mapNotNull { normalizeImageUrl(it.groupValues[1]) }.toList()
 
-    /**
-     * Strip `![](…)` blocks whose URL was already emitted (OpenRouter repeats
-     * the cumulative `images[]` array on every SSE event). Mutates [seenUrls]
-     * with each newly kept URL and returns the chunk with only fresh images.
-     */
     fun stripDuplicateMarkdownImages(chunk: String, seenUrls: MutableSet<String>): String {
         if (!chunk.contains("![")) return chunk
         var result = chunk
@@ -101,43 +87,26 @@ object AssistantImages {
             if (!seenUrls.add(normalized)) {
                 result = result.removeRange(match.range)
             } else {
-                // Keep first sighting, but normalize the destination so Coil sees
-                // the same URL that dedup tracks (whitespace/encoding fixed).
                 val fixed = "![]($normalized)"
                 if (match.value != fixed) {
                     result = result.replaceRange(match.range, fixed)
                 }
             }
         }
-        // Collapse gaps left behind, preserving leading text spacing
-        // (" world\n\n![](dup)" -> " world", not "world" — the leading space
-        // continues the previous streaming fragment).
         val collapsed = result.replace(Regex("\n{3,}"), "\n\n")
         if (collapsed.isBlank()) return ""
         // Drop trailing blank lines left by a removed image, keep leading.
         return collapsed.trimEnd()
     }
 
-    /**
-     * Hide a trailing half-written `![…](…` image while streaming so Coil is
-     * never fired with a partial URL and no blank placeholder is reserved.
-     * Complete images (ending in `)`) are kept. Plain `!` exclamations are kept.
-     */
     fun sanitizeForStreaming(text: String): String {
         val bang = text.lastIndexOf("![")
         if (bang < 0) {
-            // Lone trailing "!" is never an image start worth hiding — but a lone
-            // "!" + "[" split across chunks ("…![") is covered above.
             return text
         }
         val tail = text.substring(bang)
-        // Complete image that runs to (or past) the end — keep everything.
-        // A complete image followed by more text is also fine; only a dangling
-        // start at the very end is stripped.
         val complete = MarkdownImage.find(tail)
         if (complete != null && tail.substring(complete.range.last + 1).trim().isNotEmpty()) {
-            // Complete image with text after it — nothing dangling at the end
-            // unless there is *another* opener after the match.
             val after = tail.substring(complete.range.last + 1)
             val reopen = after.lastIndexOf("![")
             if (reopen < 0) return text
@@ -148,13 +117,9 @@ object AssistantImages {
             return text.substring(0, bang + complete.range.last + 1 + reopen).trimEnd()
         }
         if (complete != null) return text
-        // No complete image from the last opener to the end — the opener is a
-        // partial image still streaming in. Drop it (keep text before it).
-        // Guard: "![alt]" without parens yet is also partial.
         return text.substring(0, bang).trimEnd()
     }
 
-    /** True when a bare string looks like an image URL worth auto-wrapping. */
     fun isBareImageUrl(text: String): Boolean {
         val t = text.trim()
         if (t.isEmpty() || t.contains(' ') || t.contains('\n')) return false
@@ -171,16 +136,6 @@ object AssistantImages {
         data class Image(val url: String) : MarkdownSegment
     }
 
-    /**
-     * Split reply markdown into text runs and image URLs, in order. Images are
-     * rendered as native cards downstream; text runs go to the markdown
-     * renderer with no image nodes left in them.
-     *
-     * Matches are skipped inside fenced code blocks and inline code spans, so
-     * documented syntax (`![](url)`) keeps rendering as code. Unrenderable
-     * destinations are escaped as inline code instead of reserving an empty
-     * image slot.
-     */
     fun splitMarkdownImages(markdown: String): List<MarkdownSegment> {
         val out = ArrayList<MarkdownSegment>()
         var textRun = StringBuilder()

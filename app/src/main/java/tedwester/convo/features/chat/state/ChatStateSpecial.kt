@@ -33,8 +33,6 @@ internal fun ChatState.runSpeechReply(
     val chatId = currentChatId ?: return
     if (userText.isBlank()) return
     val prefs = voiceStore.load()
-    // Voice calls are always conversations: the back-and-forth needs a reply model
-    // no matter what the speak-my-words setting says.
     val conversation = forceConversation || prefs.mode == VoiceTtsMode.Conversation
     val showTextFirst = prefs.showVoiceRepliesAsTextFirst
     val id = assistantId ?: ++currentId
@@ -150,8 +148,6 @@ internal fun ChatState.runSpeechReply(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // The error stands on its own: prefixing the spoken text would hide the warning
-            // marker and render the failure as an ordinary reply.
             SpecialGenerationOutcome(
                 content = "⚠ ${e.message?.takeIf { it.isNotBlank() } ?: "Voice generation failed"}",
                 success = false,

@@ -115,9 +115,6 @@ internal fun ChatState.resendUserMessageImpl(
         return
     }
 
-    // An edited resend branches like a regeneration does: the tail that followed the old
-    // wording is stashed on it, and the edit becomes a new variant of the user's message
-    // with its own follow-ups. Same machinery as assistant variants, same index space.
     val priorTexts = existing.savedVariants()
     val priorAttachments = existing.savedAttachmentVariants()
     beginVariantBranch(
@@ -593,9 +590,6 @@ internal fun ChatState.selectVariantImpl(messageId: Long, delta: Int) {
     val next = (oldVariant + delta).coerceIn(0, slotCount - 1)
     if (next == oldVariant) return
 
-    // Switching variants keeps each variant's own continuation: the tail that followed the
-    // old variant is stashed on it, and whatever followed the new variant is restored, so
-    // going back never loses the messages that came after.
     val currentTail = if (index + 1 < messages.size) {
         messages.subList(index + 1, messages.size).toList()
     } else {

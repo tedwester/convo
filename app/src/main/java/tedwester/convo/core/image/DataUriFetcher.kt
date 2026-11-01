@@ -1,7 +1,6 @@
 package tedwester.convo.core.image
 
 import android.net.Uri
-import android.util.Base64
 import coil.decode.DataSource
 import coil.decode.ImageSource
 import coil.fetch.FetchResult
@@ -16,18 +15,11 @@ class DataUriFetcher(
 ) : Fetcher {
 
     override suspend fun fetch(): FetchResult {
-        val comma = dataUri.indexOf(',')
-        require(comma > 5) { "Invalid data URI" }
-        val meta = dataUri.substring(5, comma)
-        val payload = dataUri.substring(comma + 1).replace(Regex("\\s+"), "")
-        val bytes = if (meta.contains(";base64", ignoreCase = true)) {
-            Base64.decode(payload, Base64.DEFAULT)
-        } else {
-            java.net.URLDecoder.decode(payload, Charsets.UTF_8.name()).toByteArray()
-        }
+        val (bytes, mimeType) = AssistantImages.decodeDataUri(dataUri)
+            ?: throw IllegalArgumentException("Invalid data URI")
         return SourceResult(
             source = ImageSource(Buffer().write(bytes), options.context),
-            mimeType = meta.substringBefore(';').ifBlank { null },
+            mimeType = mimeType,
             dataSource = DataSource.MEMORY,
         )
     }
@@ -39,13 +31,6 @@ class DataUriFetcher(
         }
     }
 
-    /**
-     * Markdown image links arrive at Coil as [String], not [Uri] — the
-     * markdown renderer hands the raw `![](…)` destination string to the
-     * loader. Without this factory every `![](data:…)` assistant image falls
-     * through to Coil's built-in handlers (which don't decode base64 data
-     * URIs) and renders as a permanent blank placeholder.
-     */
     class StringFactory : Fetcher.Factory<String> {
         override fun create(data: String, options: Options, imageLoader: coil.ImageLoader): Fetcher? {
             if (!data.startsWith("data:", ignoreCase = true)) return null

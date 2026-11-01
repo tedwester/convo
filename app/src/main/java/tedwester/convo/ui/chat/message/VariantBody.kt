@@ -3,6 +3,7 @@ package tedwester.convo.ui.chat.message
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.features.chat.model.ChatMessage
 import tedwester.convo.features.chat.model.EMPTY_RESPONSE_TEXT
 import tedwester.convo.features.chat.model.isAssistantStatusContent
@@ -12,6 +13,7 @@ internal fun VariantBody(
     message: ChatMessage,
     modifier: Modifier = Modifier,
     forceShow: Boolean = false,
+    onViewAttachment: (ChatAttachment) -> Unit = {},
 ) {
     val liveText = if (message.isStreaming) {
         message.content
@@ -40,6 +42,7 @@ internal fun VariantBody(
         text = liveText,
         modifier = modifier.fillMaxWidth(),
         isStreaming = message.isStreaming,
+        onViewAttachment = onViewAttachment,
     )
 }
 
@@ -48,6 +51,7 @@ internal fun AssistantTurnText(
     text: String,
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
+    onViewAttachment: (ChatAttachment) -> Unit = {},
 ) {
     val resolved = text.ifBlank { EMPTY_RESPONSE_TEXT }
     if (isAssistantStatusContent(resolved)) {
@@ -57,6 +61,7 @@ internal fun AssistantTurnText(
             content = resolved,
             modifier = modifier,
             isStreaming = isStreaming,
+            onViewAttachment = onViewAttachment,
         )
     }
 }

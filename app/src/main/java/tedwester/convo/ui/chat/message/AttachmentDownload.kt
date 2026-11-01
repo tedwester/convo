@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
+import tedwester.convo.core.image.AssistantImages
 import tedwester.convo.features.chat.model.ChatAttachment
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -192,5 +193,59 @@ internal suspend fun saveAudioBytesToDownloads(
     } catch (e: Exception) {
         resolver.delete(uri, null, null)
         false
+    }
+}
+
+private val viewerHttpClient by lazy { okhttp3.OkHttpClient() }
+
+internal suspend fun cacheRemoteImageForViewing(
+    context: Context,
+    url: String,
+): ChatAttachment? = withContext(Dispatchers.IO) {
+    runCatching {
+        val bytes: ByteArray
+        val mime: String
+        if (url.startsWith("data:", ignoreCase = true)) {
+            val decoded = AssistantImages.decodeDataUri(url) ?: return@runCatching null
+            bytes = decoded.first
+            mime = decoded.second
+        } else {
+            okhttp3.Request.Builder().url(url).get().build().let { request ->
+                viewerHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@runCatching null
+                    bytes = response.body?.bytes()?.takeIf { it.isNotEmpty() }
+                        ?: return@runCatching null
+                    mime = response.header("Content-Type")?.substringBefore(';')?.trim()
+                        ?.takeIf { it.startsWith("image/") }
+                        ?: guessViewerImageMime(url)
+                }
+            }
+        }
+        val ext = when {
+            mime.contains("png", ignoreCase = true) -> "png"
+            mime.contains("jpeg", ignoreCase = true) || mime.contains("jpg", ignoreCase = true) -> "jpg"
+            mime.contains("webp", ignoreCase = true) -> "webp"
+            mime.contains("gif", ignoreCase = true) -> "gif"
+            else -> "png"
+        }
+        val file = File(context.cacheDir, "convo_view_${System.currentTimeMillis()}.$ext")
+        file.writeBytes(bytes)
+        ChatAttachment(
+            id = "remote-${file.nameWithoutExtension}",
+            path = file.absolutePath,
+            mimeType = mime,
+            displayName = file.name,
+        )
+    }.getOrNull()
+}
+
+private fun guessViewerImageMime(url: String): String {
+    val ext = url.substringBefore('?').substringAfterLast('.', "").lowercase()
+    return when (ext) {
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        "gif" -> "image/gif"
+        else -> "image/png"
     }
 }

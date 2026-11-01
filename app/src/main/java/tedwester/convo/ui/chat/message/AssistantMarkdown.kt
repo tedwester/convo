@@ -28,6 +28,7 @@ import com.mikepenz.markdown.model.markdownPadding
 import com.mikepenz.markdown.model.rememberMarkdownState
 import tedwester.convo.core.image.AssistantImages
 import tedwester.convo.core.image.AssistantImages.MarkdownSegment
+import tedwester.convo.features.chat.model.ChatAttachment
 import tedwester.convo.ui.theme.AssistantSerifFamily
 import tedwester.convo.ui.theme.convoAssistantTextColor
 
@@ -36,6 +37,7 @@ internal fun AssistantMarkdown(
     content: String,
     modifier: Modifier = Modifier,
     isStreaming: Boolean = false,
+    onViewAttachment: (ChatAttachment) -> Unit = {},
 ) {
     if (content.isBlank()) return
 
@@ -133,6 +135,7 @@ internal fun AssistantMarkdown(
                     is MarkdownSegment.Image -> AssistantMarkdownImage(
                         url = segment.url,
                         modifier = Modifier.fillMaxWidth(),
+                        onViewImage = onViewAttachment,
                     )
                 }
             }

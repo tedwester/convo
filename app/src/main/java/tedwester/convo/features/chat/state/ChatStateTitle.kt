@@ -8,18 +8,6 @@ import tedwester.convo.core.network.model.ReasoningRequest
 import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.features.chat.model.isAssistantStatusContent
 
-/**
- * AI chat titles, generated the way the industry does it: after the first exchange lands, a
- * second, hidden, throwaway completion summarizes the conversation into a few words.
- *
- * The call is tiny (a short prompt in, a few words out) and runs on a fixed chain of
- * free models, each retried, so the feature costs nothing and never bothers the user when
- * it fails. A failed title simply leaves whatever automatic title is there.
- *
- * Titles only ever replace automatic ones: the untouched default or the truncation the
- * repository derived from the first message. A manual rename always wins and is never
- * overwritten.
- */
 private val TitleModelChain = listOf(
     "liquid/lfm-2.5-2.6b:free",
     "nvidia/nemotron-3.5-lightning:free",
@@ -31,12 +19,9 @@ private const val TitleRetryDelayMs = 1000L
 private const val TitleMaxTokens = 256
 private const val TitlePromptChars = 500
 
-/** A title is a few words, never a sentence and never our own prompt echoed back. */
 private const val TitleMaxChars = 40
 private const val TitleMaxWords = 7
 
-/** Vocabulary from the title prompt itself — any candidate containing these is the model
- * parroting instructions instead of answering, and must be rejected, not applied. */
 private val TitleEchoWords = listOf(
     "concise",
     "conversation",
@@ -65,8 +50,6 @@ internal fun ChatState.maybeGenerateTitle() {
         ?.content
         ?.takeIf { it.isNotBlank() }
         ?: return
-    // Error replies ("⚠ ...", stops, empty notices) say nothing about the topic,
-    // so the title model only gets the user's prompt for those.
     val assistantText = assistantRaw.takeUnless { isAssistantStatusContent(it) }.orEmpty()
     val current = chats.firstOrNull { it.id == chatId } ?: return
     val automatic = current.title == "New chat" ||
@@ -105,8 +88,6 @@ private suspend fun ChatState.generateTitleFor(
                     apiKey = key,
                     model = model,
                     messages = listOf(ChatMessageDto(role = "user", content = prompt)),
-                    // Titles must not spend the token budget thinking: reasoning models
-                    // would burn a small cap on thought and return an empty answer.
                     reasoning = ReasoningRequest(effort = "none", exclude = true),
                     maxTokens = TitleMaxTokens,
                 )
@@ -147,11 +128,6 @@ internal fun parseTitleResponse(raw: String): String? {
     return fallback.cleanTitleCandidate()
 }
 
-/**
- * A candidate only counts if it reads like a title: short, a few words, and nothing from
- * the prompt's own vocabulary. Anything else is the model thinking out loud, and applying
- * it would put instructions where the chat's name goes.
- */
 internal fun String.cleanTitleCandidate(): String? {
     val cleaned = trim()
         .trim('"', '“', '”', '‘', '’', '«', '»', '「', '」')
@@ -165,6 +141,5 @@ internal fun String.cleanTitleCandidate(): String? {
     if (cleaned.contains('{') || cleaned.contains('}')) return null
     val lower = cleaned.lowercase()
     if (TitleEchoWords.any { lower.contains(it) }) return null
-    // Titles always open with a capital, no matter what casing the model used.
     return cleaned.replaceFirstChar { it.uppercase() }
 }

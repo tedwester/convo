@@ -206,7 +206,10 @@ internal fun AssistantMessage(
                     }
                 } else {
                     if (showResponseBody) {
-                        VariantBody(message = message)
+                        VariantBody(
+                            message = message,
+                            onViewAttachment = onViewAttachment,
+                        )
                     }
                     if (showEmptyFallback) {
                         AssistantStatusText(
@@ -500,6 +503,7 @@ private fun AssistantVariantPage(
                 AssistantTurnText(
                     text = bodyText,
                     modifier = Modifier.fillMaxWidth(),
+                    onViewAttachment = onViewAttachment,
                 )
             }
         }
