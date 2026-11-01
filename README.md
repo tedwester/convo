@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://github.com/tedwester/convo/releases"><img src="https://img.shields.io/badge/Get_it_on-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Get it on GitHub"></a>
-  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/tedwester/convo"><img src="https://img.shields.io/badge/Get_it_on-Obtainium-6d4bd8?style=for-the-badge&logo=android&logoColor=white" alt="Get it on Obtainium"></a>
+  <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22tedwester.convo%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Ftedwester%2Fconvo%22%2C%22author%22%3A%22tedwester%22%2C%22name%22%3A%22Convo%22%2C%22additionalSettings%22%3A%22%7B%5C%22apkFilterRegEx%5C%22%3A%5C%22Convo-.%2A%5C%5C%5C%5C.apk%5C%22%7D%22%7D"><img src="https://img.shields.io/badge/Get_it_on-Obtainium-6d4bd8?style=for-the-badge&logo=android&logoColor=white" alt="Get it on Obtainium"></a>
 </p>
 
 ## Screenshots
@@ -39,7 +39,7 @@
 ## Install
 
 - **GitHub:** grab the latest APK from [Releases](https://github.com/tedwester/convo/releases).
-- **Obtainium:** tap the button above, or add the source manually — GitHub source, repo URL `https://github.com/tedwester/convo`, APK filter `Convo-.*\.apk`.
+- **Obtainium:** tap the button above (APK filter is pre-filled). To follow betas, enable `Include pre-releases` in the app's Obtainium settings. Manual setup: GitHub source, repo URL `https://github.com/tedwester/convo`, APK filter `Convo-.*\.apk`.
 - **F-Droid:** in progress — check back soon.
 
 Requires Android 10+ (API 29) and an [OpenRouter API key](https://openrouter.ai/keys).
