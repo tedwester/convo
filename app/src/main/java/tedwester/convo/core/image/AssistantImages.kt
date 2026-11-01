@@ -3,7 +3,7 @@ package tedwester.convo.core.image
 object AssistantImages {
 
     private val MarkdownImage =
-        Regex("""!\[[^\]]*]\(\s*<?((?:[^()\s]|\([^()\s]*\))+)>?(?:\s+["'][^"']*["'])?\s*\)""")
+        Regex("""!\[([^\]]*)]\(\s*<?((?:[^()\s]|\([^()\s]*\))+)>?(?:\s+["'][^"']*["'])?\s*\)""")
 
     private val ImageExtension = Regex(
         """\.(png|jpe?g|webp|gif|bmp|avif|heic|heif|svg)(\?.*)?$""",
