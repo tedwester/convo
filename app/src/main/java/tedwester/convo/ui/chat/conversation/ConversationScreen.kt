@@ -42,6 +42,8 @@ import tedwester.convo.features.chat.data.ComposerPreferences
 import tedwester.convo.features.chat.data.VoicePreferences
 import tedwester.convo.features.chat.data.VoiceTtsMode
 import tedwester.convo.features.chat.model.ChatAttachment
+import tedwester.convo.features.chat.model.REMOTE_VIEWER_ID_PREFIX
+import java.io.File
 import tedwester.convo.features.chat.model.MessageAuthor
 import tedwester.convo.features.chat.state.consumeSendAnimation
 import tedwester.convo.ui.chat.RectAnchor
@@ -634,12 +636,15 @@ fun ConversationScreen(
         }
 
         viewingAttachment?.takeIf { attachment ->
-            chatState.messages.any { message ->
-                message.attachments.any { it.id == attachment.id } ||
-                    message.attachmentVariants.any { group ->
-                        group.any { it.id == attachment.id }
-                    }
-            }
+            File(attachment.path).exists() && (
+                attachment.id.startsWith(REMOTE_VIEWER_ID_PREFIX) ||
+                chatState.messages.any { message ->
+                    message.attachments.any { it.id == attachment.id } ||
+                        message.attachmentVariants.any { group ->
+                            group.any { it.id == attachment.id }
+                        }
+                }
+            )
         }?.let { attachment ->
             if (attachment.isVideo) {
                 VideoViewerDialog(

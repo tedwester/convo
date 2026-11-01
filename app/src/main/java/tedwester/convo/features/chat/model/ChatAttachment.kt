@@ -1,5 +1,7 @@
 package tedwester.convo.features.chat.model
 
+internal const val REMOTE_VIEWER_ID_PREFIX = "remote-"
+
 data class ChatAttachment(
     val id: String,
 

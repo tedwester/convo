@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import tedwester.convo.core.image.AssistantImages
 import tedwester.convo.features.chat.model.ChatAttachment
+import tedwester.convo.features.chat.model.REMOTE_VIEWER_ID_PREFIX
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -228,10 +229,13 @@ internal suspend fun cacheRemoteImageForViewing(
             mime.contains("gif", ignoreCase = true) -> "gif"
             else -> "png"
         }
-        val file = File(context.cacheDir, "convo_view_${System.currentTimeMillis()}.$ext")
-        file.writeBytes(bytes)
+        val stub = "convo_view_${url.hashCode().toUInt().toString(16)}.$ext"
+        val file = File(context.cacheDir, stub)
+        if (!file.exists() || file.length() == 0L) {
+            file.writeBytes(bytes)
+        }
         ChatAttachment(
-            id = "remote-${file.nameWithoutExtension}",
+            id = REMOTE_VIEWER_ID_PREFIX + file.nameWithoutExtension,
             path = file.absolutePath,
             mimeType = mime,
             displayName = file.name,
