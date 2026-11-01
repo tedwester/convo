@@ -16,7 +16,8 @@ package tedwester.convo.core.image
  */
 object AssistantImages {
 
-    private val MarkdownImage = Regex("""!\[[^\]]*]\(\s*<?([^)\s]+)>?(?:\s+["'][^"']*["'])?\s*\)""")
+    private val MarkdownImage =
+        Regex("""!\[[^\]]*]\(\s*<?((?:[^()\s]|\([^()\s]*\))+)>?(?:\s+["'][^"']*["'])?\s*\)""")
 
     private val ImageExtension = Regex(
         """\.(png|jpe?g|webp|gif|bmp|avif|heic|heif|svg)(\?.*)?$""",
@@ -163,5 +164,70 @@ object AssistantImages {
         }
         return ImageExtension.containsMatchIn(t.substringBefore('?')) ||
             t.contains("image", ignoreCase = true) && t.length < 2048
+    }
+
+    sealed interface MarkdownSegment {
+        data class Text(val text: String) : MarkdownSegment
+        data class Image(val url: String) : MarkdownSegment
+    }
+
+    /**
+     * Split reply markdown into text runs and image URLs, in order. Images are
+     * rendered as native cards downstream; text runs go to the markdown
+     * renderer with no image nodes left in them.
+     *
+     * Matches are skipped inside fenced code blocks and inline code spans, so
+     * documented syntax (`![](url)`) keeps rendering as code. Unrenderable
+     * destinations are escaped as inline code instead of reserving an empty
+     * image slot.
+     */
+    fun splitMarkdownImages(markdown: String): List<MarkdownSegment> {
+        val out = ArrayList<MarkdownSegment>()
+        var textRun = StringBuilder()
+        fun flushText() {
+            val text = textRun.toString()
+            if (text.isNotBlank()) out.add(MarkdownSegment.Text(text))
+            textRun = StringBuilder()
+        }
+
+        var inFence = false
+        markdown.split('\n').forEachIndexed { index, line ->
+            if (index > 0) textRun.append('\n')
+            val trimmed = line.trimStart()
+            if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+                inFence = !inFence
+                textRun.append(line)
+                return@forEachIndexed
+            }
+            if (inFence) {
+                textRun.append(line)
+                return@forEachIndexed
+            }
+            val parts = line.split('`')
+            parts.forEachIndexed { partIndex, part ->
+                if (partIndex % 2 == 0) {
+                    var pos = 0
+                    for (match in MarkdownImage.findAll(part)) {
+                        if (match.range.first > pos) {
+                            textRun.append(part, pos, match.range.first)
+                        }
+                        val normalized = normalizeImageUrl(match.groupValues[1])
+                        if (normalized != null) {
+                            flushText()
+                            out.add(MarkdownSegment.Image(normalized))
+                        } else {
+                            textRun.append('`').append(match.value).append('`')
+                        }
+                        pos = match.range.last + 1
+                    }
+                    if (pos < part.length) textRun.append(part, pos, part.length)
+                } else {
+                    textRun.append(part)
+                }
+                if (partIndex < parts.lastIndex) textRun.append('`')
+            }
+        }
+        flushText()
+        return out
     }
 }

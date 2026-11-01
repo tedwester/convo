@@ -1,9 +1,12 @@
 package tedwester.convo.ui.chat.message
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextLinkStyles
@@ -13,13 +16,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mikepenz.markdown.compose.components.MarkdownComponents
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.MarkdownColors
+import com.mikepenz.markdown.model.MarkdownPadding
+import com.mikepenz.markdown.model.MarkdownTypography
 import com.mikepenz.markdown.model.markdownAnimations
 import com.mikepenz.markdown.model.markdownPadding
 import com.mikepenz.markdown.model.rememberMarkdownState
 import tedwester.convo.core.image.AssistantImages
+import tedwester.convo.core.image.AssistantImages.MarkdownSegment
 import tedwester.convo.ui.theme.AssistantSerifFamily
 import tedwester.convo.ui.theme.convoAssistantTextColor
 
@@ -31,9 +39,6 @@ internal fun AssistantMarkdown(
 ) {
     if (content.isBlank()) return
 
-    // While streaming, a half-written `![…](…` image would otherwise fire Coil
-    // with a partial URL and reserve a blank placeholder that reads as empty
-    // space under the text. Hide the dangling opener until it completes.
     val displayContent = remember(content, isStreaming) {
         if (isStreaming) AssistantImages.sanitizeForStreaming(content) else content
     }
@@ -102,12 +107,52 @@ internal fun AssistantMarkdown(
         codeBlock = PaddingValues(10.dp),
         blockQuote = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
     )
+    val components = rememberAssistantMarkdownComponents()
 
+    // Images render as native cards below; text runs keep the markdown
+    // renderer with no image nodes left for it to place.
+    val segments = remember(displayContent) {
+        AssistantImages.splitMarkdownImages(displayContent)
+    }
+    if (segments.isEmpty()) return
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        segments.forEachIndexed { index, segment ->
+            key(index) {
+                when (segment) {
+                    is MarkdownSegment.Text -> SegmentMarkdownText(
+                        text = segment.text,
+                        colors = colors,
+                        typography = typography,
+                        padding = padding,
+                        components = components,
+                    )
+                    is MarkdownSegment.Image -> AssistantMarkdownImage(
+                        url = segment.url,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SegmentMarkdownText(
+    text: String,
+    colors: MarkdownColors,
+    typography: MarkdownTypography,
+    padding: MarkdownPadding,
+    components: MarkdownComponents,
+    modifier: Modifier = Modifier,
+) {
     val markdownState = rememberMarkdownState(
-        content = displayContent,
+        content = text,
         retainState = true,
     )
-
     Markdown(
         markdownState = markdownState,
         colors = colors,
@@ -115,7 +160,7 @@ internal fun AssistantMarkdown(
         padding = padding,
         animations = markdownAnimations(animateTextSize = { this }),
         imageTransformer = ConvoMarkdownImageTransformer,
-        components = rememberAssistantMarkdownComponents(),
+        components = components,
         modifier = modifier.fillMaxWidth(),
     )
 }
