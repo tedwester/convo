@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
+import com.mikepenz.markdown.model.markdownAnimations
 import com.mikepenz.markdown.model.markdownPadding
 import com.mikepenz.markdown.model.rememberMarkdownState
 import tedwester.convo.core.image.AssistantImages
@@ -112,6 +113,7 @@ internal fun AssistantMarkdown(
         colors = colors,
         typography = typography,
         padding = padding,
+        animations = markdownAnimations(animateTextSize = { this }),
         imageTransformer = ConvoMarkdownImageTransformer,
         components = rememberAssistantMarkdownComponents(),
         modifier = modifier.fillMaxWidth(),

@@ -3,12 +3,10 @@ package tedwester.convo.ui.chat.message
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.isUnspecified
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.dp
 import com.mikepenz.markdown.coil2.Coil2ImageTransformerImpl
 import com.mikepenz.markdown.model.ImageData
 import com.mikepenz.markdown.model.ImageTransformer
@@ -23,8 +21,6 @@ import tedwester.convo.core.image.AssistantImages
  *   for a broken or half-streamed image
  * - valid URLs delegate to Coil (data-URI capable via
  *   `DataUriFetcher.StringFactory`), top-aligned so no gap opens above
- * - the loading placeholder is density-based (dp), not font-scaled (sp),
- *   so large-font users don't get a taller blank box
  */
 internal object ConvoMarkdownImageTransformer : ImageTransformer {
 
@@ -47,28 +43,13 @@ internal object ConvoMarkdownImageTransformer : ImageTransformer {
         containerSize: Size,
         intrinsicImageSize: Size,
     ): PlaceholderConfig {
-        if (!intrinsicImageSize.isUnspecified &&
-            intrinsicImageSize.width > 0f &&
-            intrinsicImageSize.height > 0f
-        ) {
-            return Coil2ImageTransformerImpl.placeholderConfig(
-                density = density,
-                containerSize = containerSize,
-                intrinsicImageSize = intrinsicImageSize,
-            ).copy(verticalAlign = PlaceholderVerticalAlign.Top)
-        }
-        with(density) {
-            val maxWidthPx = 320.dp.toPx()
-            val minWidthPx = 120.dp.toPx()
-            val widthPx = when {
-                containerSize.isUnspecified || containerSize.width <= 0f -> maxWidthPx
-                else -> containerSize.width.coerceIn(minWidthPx, maxWidthPx)
-            }
-            val heightPx = (widthPx * 9f / 16f).coerceIn(120.dp.toPx(), 320.dp.toPx())
-            return PlaceholderConfig(
-                size = Size(widthPx, heightPx),
-                verticalAlign = PlaceholderVerticalAlign.Top,
-            )
-        }
+        // PlaceholderConfig.size is consumed as sp downstream
+        // (InlineTextContent Placeholder(width = size.width.sp, ...)), matching
+        // the library default. Delegate for sizing, keep top alignment.
+        return Coil2ImageTransformerImpl.placeholderConfig(
+            density = density,
+            containerSize = containerSize,
+            intrinsicImageSize = intrinsicImageSize,
+        ).copy(verticalAlign = PlaceholderVerticalAlign.Top)
     }
 }
