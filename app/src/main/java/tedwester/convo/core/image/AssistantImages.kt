@@ -32,8 +32,10 @@ object AssistantImages {
      * - trims, strips `<…>` wrapping
      * - `data:image/…` URIs: all whitespace removed (servers fold long
      *   base64 across lines), requires `,payload`
-     * - `http(s)` URLs: whitespace removed, `(`/`)`/space percent-encoded so
-     *   the markdown destination never terminates early (signed URLs)
+     * - `http(s)` URLs: line breaks removed, spaces and `(`/`)`
+     *   percent-encoded so the markdown destination never terminates early
+     *   (signed URLs), `http` upgraded to `https` (cleartext is blocked on
+     *   Android, so `http` image URLs can never load)
      */
     fun normalizeImageUrl(raw: String?): String? {
         var url = raw?.trim().orEmpty()
@@ -56,10 +58,11 @@ object AssistantImages {
 
         val lower = url.lowercase()
         if (!lower.startsWith("http://") && !lower.startsWith("https://")) return null
-        val cleaned = url.replace(Regex("\\s+"), "")
-            .replace("(", "%28")
-            .replace(")", "%29")
-            .replace(" ", "%20")
+        var cleaned = url.replace(Regex("[\\r\\n\\t]+"), "").replace(" ", "%20")
+        if (cleaned.startsWith("http://", ignoreCase = true)) {
+            cleaned = "https://" + cleaned.substring("http://".length)
+        }
+        cleaned = cleaned.replace("(", "%28").replace(")", "%29")
         if (cleaned.isBlank() || cleaned.contains('"')) return null
         val parsed = runCatching { java.net.URI(cleaned) }.getOrNull() ?: return null
         if (parsed.host.isNullOrBlank()) return null
