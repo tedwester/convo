@@ -63,6 +63,7 @@ object AssistantImages {
             cleaned = "https://" + cleaned.substring("http://".length)
         }
         cleaned = cleaned.replace("(", "%28").replace(")", "%29")
+            .trimEnd('.', ',', ';', ':', '!', '?')
         if (cleaned.isBlank() || cleaned.contains('"')) return null
         val parsed = runCatching { java.net.URI(cleaned) }.getOrNull() ?: return null
         if (parsed.host.isNullOrBlank()) return null

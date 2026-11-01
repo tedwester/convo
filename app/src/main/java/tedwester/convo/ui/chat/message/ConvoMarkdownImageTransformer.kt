@@ -1,5 +1,6 @@
 package tedwester.convo.ui.chat.message
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.Size
@@ -26,7 +27,12 @@ internal object ConvoMarkdownImageTransformer : ImageTransformer {
 
     @Composable
     override fun transform(link: String): ImageData? {
-        val normalized = AssistantImages.normalizeImageUrl(link) ?: return null
+        val normalized = AssistantImages.normalizeImageUrl(link)
+        if (normalized == null) {
+            val safeLink = link.trim().substringBefore('?').take(120)
+            Log.d("ConvoMarkdown", "Skipping unrenderable image link: $safeLink")
+            return null
+        }
         return Coil2ImageTransformerImpl.transform(normalized)?.copy(
             contentScale = ContentScale.Fit,
             alignment = Alignment.TopCenter,
