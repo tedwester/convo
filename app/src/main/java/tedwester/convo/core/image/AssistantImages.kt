@@ -149,33 +149,6 @@ object AssistantImages {
         return text.substring(0, bang).trimEnd()
     }
 
-    /**
-     * Join non-blank parts with blank lines, dropping exact duplicate blocks
-     * (same text paragraph or same `![](url)` twice in one response).
-     */
-    fun joinContent(vararg parts: String): String {
-        val seen = LinkedHashSet<String>()
-        val out = ArrayList<String>(parts.size)
-        for (part in parts) {
-            val trimmed = part.trim()
-            if (trimmed.isBlank()) continue
-            // Split multi-block parts so a duplicated image paragraph dedups
-            // even when bundled with text: "text\n\n![](a)\n\n![](a)" -> once.
-            val blocks = trimmed.split(Regex("\n{2,}"))
-            for (block in blocks) {
-                val b = block.trim()
-                if (b.isBlank()) continue
-                val key = if (b.startsWith("![")) {
-                    normalizeImageUrl(MarkdownImage.find(b)?.groupValues?.getOrNull(1) ?: b) ?: b
-                } else {
-                    b
-                }
-                if (seen.add(key)) out.add(b)
-            }
-        }
-        return out.joinToString("\n\n")
-    }
-
     /** True when a bare string looks like an image URL worth auto-wrapping. */
     fun isBareImageUrl(text: String): Boolean {
         val t = text.trim()

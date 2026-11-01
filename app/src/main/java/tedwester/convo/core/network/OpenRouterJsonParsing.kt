@@ -61,7 +61,7 @@ internal fun extractContentPart(part: Any?): String = when (part) {
 }
 
 internal fun joinContent(vararg parts: String): String =
-    AssistantImages.joinContent(*parts)
+    parts.filter { it.isNotBlank() }.joinToString("\n\n")
 
 internal fun stringListFrom(array: JSONArray?): List<String> {
     if (array == null) return emptyList()
